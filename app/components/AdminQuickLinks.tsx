@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { AlertTriangle, FileUp, Users } from 'lucide-react';
+import { AlertTriangle, CalendarClock, FileUp, Users } from 'lucide-react';
 
 export default function AdminQuickLinks() {
   const pathname = usePathname();
@@ -11,6 +11,7 @@ export default function AdminQuickLinks() {
   return (
     <div style={{ position: 'fixed', right: 24, bottom: 24, zIndex: 1000, display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
       <Link href="/admin/conflicts" style={linkStyle('#e25858', '#b73737')}><AlertTriangle size={17} /> Conflict Center</Link>
+      <Link href="/admin/availability" style={linkStyle('#0ea5a8', '#4f46e5')}><CalendarClock size={17} /> Teacher Availability</Link>
       <Link href="/admin/teachers" style={linkStyle('#33415f', '#202a40')}><Users size={17} /> Manage Teachers</Link>
       <Link href="/import" style={linkStyle('#7c5cff', '#a855f7')}><FileUp size={17} /> Import PDF</Link>
     </div>
