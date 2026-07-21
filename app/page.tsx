@@ -1,7 +1,23 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { Bell, CalendarDays, ChevronLeft, ChevronRight, Clock3, LayoutDashboard, Plus, Search, Sparkles, Users } from 'lucide-react';
+import { FormEvent, useMemo, useState } from 'react';
+import {
+  Bell,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  LayoutDashboard,
+  Pencil,
+  Plus,
+  Search,
+  Sparkles,
+  Trash2,
+  Users,
+  X,
+} from 'lucide-react';
+
+type ViewMode = 'month' | 'week' | 'day';
 
 type Teacher = {
   name: string;
@@ -10,13 +26,16 @@ type Teacher = {
 
 type Lesson = {
   id: number;
-  day: number;
+  date: string;
   school: string;
   className: string;
-  time: string;
+  startTime: string;
+  endTime: string;
   teacher: string | null;
   unavailable?: boolean;
 };
+
+type LessonDraft = Omit<Lesson, 'id'>;
 
 const teachers: Teacher[] = [
   { name: 'Claris', color: '#70d28c' },
@@ -31,44 +50,91 @@ const teachers: Teacher[] = [
 ];
 
 const initialLessons: Lesson[] = [
-  { id: 1, day: 6, school: 'Compassvale Primary School', className: 'P1-3', time: '12:40 – 13:40', teacher: 'Siew Lynn' },
-  { id: 2, day: 7, school: 'Meridian Primary School', className: '4IN Keyboard', time: '08:30 – 09:30', teacher: 'Joel' },
-  { id: 3, day: 8, school: 'Compassvale Primary School', className: 'P1-7', time: '10:40 – 11:40', teacher: 'Claris' },
-  { id: 4, day: 9, school: 'Chongfu Primary School', className: '4 Innovative', time: '12:30 – 13:30', teacher: 'Wero' },
-  { id: 5, day: 10, school: 'Meridian Primary School', className: '4RB', time: '12:00 – 13:00', teacher: 'Gerald' },
-  { id: 6, day: 11, school: 'Farrer Park CCA', className: 'Guitar Ensemble', time: '14:00 – 16:00', teacher: 'Joel', unavailable: true },
-  { id: 7, day: 13, school: 'Chongfu Primary School', className: '3 Gracious', time: '10:30 – 11:30', teacher: 'Shi Yi' },
-  { id: 8, day: 15, school: 'Valour Primary School', className: 'Guitar Ensemble', time: '13:45 – 15:45', teacher: 'Edward' },
-  { id: 9, day: 16, school: 'Meridian Primary School', className: '3CA', time: '07:30 – 08:30', teacher: 'Audrey' },
-  { id: 10, day: 17, school: 'Bukit Timah Primary School', className: 'Relief Class', time: '09:00 – 10:00', teacher: null },
-  { id: 11, day: 20, school: 'Compassvale Primary School', className: 'P1-1', time: '11:10 – 12:10', teacher: 'Siew Lynn' },
-  { id: 12, day: 22, school: 'River Valley', className: 'Guitar Programme', time: '15:00 – 18:30', teacher: 'Edward' },
-  { id: 13, day: 24, school: 'Chongfu Primary School', className: '4 Sincere', time: '12:30 – 13:30', teacher: 'Gerald' },
-  { id: 14, day: 27, school: 'Compassvale Primary School', className: 'P1-5', time: '10:10 – 11:10', teacher: 'Claris' },
-  { id: 15, day: 29, school: 'School Pending', className: 'Teacher Required', time: '14:00 – 15:00', teacher: null },
-  { id: 16, day: 31, school: 'Chongfu Primary School', className: '3 Observant', time: '11:00 – 12:00', teacher: 'Ashley' },
+  { id: 1, date: '2026-07-06', school: 'Compassvale Primary School', className: 'P1-3', startTime: '12:40', endTime: '13:40', teacher: 'Siew Lynn' },
+  { id: 2, date: '2026-07-07', school: 'Meridian Primary School', className: '4IN Keyboard', startTime: '08:30', endTime: '09:30', teacher: 'Joel' },
+  { id: 3, date: '2026-07-08', school: 'Compassvale Primary School', className: 'P1-7', startTime: '10:40', endTime: '11:40', teacher: 'Claris' },
+  { id: 4, date: '2026-07-09', school: 'Chongfu Primary School', className: '4 Innovative', startTime: '12:30', endTime: '13:30', teacher: 'Wero' },
+  { id: 5, date: '2026-07-10', school: 'Meridian Primary School', className: '4RB', startTime: '12:00', endTime: '13:00', teacher: 'Gerald' },
+  { id: 6, date: '2026-07-11', school: 'Farrer Park CCA', className: 'Guitar Ensemble', startTime: '14:00', endTime: '16:00', teacher: 'Joel', unavailable: true },
+  { id: 7, date: '2026-07-13', school: 'Chongfu Primary School', className: '3 Gracious', startTime: '10:30', endTime: '11:30', teacher: 'Shi Yi' },
+  { id: 8, date: '2026-07-15', school: 'Valour Primary School', className: 'Guitar Ensemble', startTime: '13:45', endTime: '15:45', teacher: 'Edward' },
+  { id: 9, date: '2026-07-16', school: 'Meridian Primary School', className: '3CA', startTime: '07:30', endTime: '08:30', teacher: 'Audrey' },
+  { id: 10, date: '2026-07-17', school: 'Bukit Timah Primary School', className: 'Relief Class', startTime: '09:00', endTime: '10:00', teacher: null },
+  { id: 11, date: '2026-07-20', school: 'Compassvale Primary School', className: 'P1-1', startTime: '11:10', endTime: '12:10', teacher: 'Siew Lynn' },
+  { id: 12, date: '2026-07-22', school: 'River Valley', className: 'Guitar Programme', startTime: '15:00', endTime: '18:30', teacher: 'Edward' },
+  { id: 13, date: '2026-07-24', school: 'Chongfu Primary School', className: '4 Sincere', startTime: '12:30', endTime: '13:30', teacher: 'Gerald' },
+  { id: 14, date: '2026-07-27', school: 'Compassvale Primary School', className: 'P1-5', startTime: '10:10', endTime: '11:10', teacher: 'Claris' },
+  { id: 15, date: '2026-07-29', school: 'School Pending', className: 'Teacher Required', startTime: '14:00', endTime: '15:00', teacher: null },
+  { id: 16, date: '2026-07-31', school: 'Chongfu Primary School', className: '3 Observant', startTime: '11:00', endTime: '12:00', teacher: 'Ashley' },
 ];
 
 const weekdayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const leadingDays = [28, 29, 30];
-const monthDays = Array.from({ length: 31 }, (_, index) => index + 1);
-const trailingDays = [1];
+
+function pad(value: number) {
+  return String(value).padStart(2, '0');
+}
+
+function toDateKey(date: Date) {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function fromDateKey(value: string) {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
 
 function teacherColour(name: string | null) {
   return teachers.find((teacher) => teacher.name === name)?.color ?? '#fb7185';
 }
 
+function monthLabel(date: Date) {
+  return new Intl.DateTimeFormat('en-SG', { month: 'long', year: 'numeric' }).format(date);
+}
+
+function dayLabel(date: Date) {
+  return new Intl.DateTimeFormat('en-SG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(date);
+}
+
+function startOfWeek(date: Date) {
+  const result = new Date(date);
+  result.setDate(result.getDate() - result.getDay());
+  result.setHours(0, 0, 0, 0);
+  return result;
+}
+
+function createBlankLesson(date: Date): LessonDraft {
+  return {
+    date: toDateKey(date),
+    school: '',
+    className: '',
+    startTime: '09:00',
+    endTime: '10:00',
+    teacher: null,
+    unavailable: false,
+  };
+}
+
 export default function Home() {
+  const [lessons, setLessons] = useState<Lesson[]>(initialLessons);
   const [selectedTeachers, setSelectedTeachers] = useState<string[]>(teachers.map((teacher) => teacher.name));
   const [search, setSearch] = useState('');
+  const [viewMode, setViewMode] = useState<ViewMode>('month');
+  const [cursorDate, setCursorDate] = useState(new Date(2026, 6, 1));
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [draft, setDraft] = useState<LessonDraft>(() => createBlankLesson(new Date(2026, 6, 1)));
 
   const visibleLessons = useMemo(() => {
-    return initialLessons.filter((lesson) => {
+    const query = search.trim().toLowerCase();
+    return lessons.filter((lesson) => {
       const matchesTeacher = lesson.teacher === null || selectedTeachers.includes(lesson.teacher);
       const text = `${lesson.school} ${lesson.className} ${lesson.teacher ?? ''}`.toLowerCase();
-      return matchesTeacher && text.includes(search.toLowerCase());
+      return matchesTeacher && (!query || text.includes(query));
     });
-  }, [search, selectedTeachers]);
+  }, [lessons, search, selectedTeachers]);
+
+  const unassigned = lessons.filter((lesson) => lesson.teacher === null);
+  const unavailable = lessons.filter((lesson) => lesson.unavailable);
 
   const toggleTeacher = (name: string) => {
     setSelectedTeachers((current) =>
@@ -76,44 +142,86 @@ export default function Home() {
     );
   };
 
-  const unassigned = initialLessons.filter((lesson) => lesson.teacher === null);
-  const unavailable = initialLessons.filter((lesson) => lesson.unavailable);
+  const moveCursor = (direction: -1 | 1) => {
+    setCursorDate((current) => {
+      const next = new Date(current);
+      if (viewMode === 'month') next.setMonth(next.getMonth() + direction, 1);
+      if (viewMode === 'week') next.setDate(next.getDate() + direction * 7);
+      if (viewMode === 'day') next.setDate(next.getDate() + direction);
+      return next;
+    });
+  };
+
+  const openAddModal = (date = cursorDate) => {
+    setEditingId(null);
+    setDraft(createBlankLesson(date));
+    setModalOpen(true);
+  };
+
+  const openEditModal = (lesson: Lesson) => {
+    setEditingId(lesson.id);
+    setDraft({
+      date: lesson.date,
+      school: lesson.school,
+      className: lesson.className,
+      startTime: lesson.startTime,
+      endTime: lesson.endTime,
+      teacher: lesson.teacher,
+      unavailable: lesson.unavailable ?? false,
+    });
+    setModalOpen(true);
+  };
+
+  const saveLesson = (event: FormEvent) => {
+    event.preventDefault();
+    if (!draft.school.trim() || !draft.className.trim()) return;
+
+    if (editingId === null) {
+      setLessons((current) => [...current, { ...draft, id: Date.now() }]);
+    } else {
+      setLessons((current) => current.map((lesson) => (lesson.id === editingId ? { ...lesson, ...draft } : lesson)));
+    }
+    setModalOpen(false);
+  };
+
+  const deleteLesson = () => {
+    if (editingId === null) return;
+    setLessons((current) => current.filter((lesson) => lesson.id !== editingId));
+    setModalOpen(false);
+  };
+
+  const moveLessonToDate = (lessonId: number, date: string) => {
+    setLessons((current) => current.map((lesson) => (lesson.id === lessonId ? { ...lesson, date } : lesson)));
+  };
+
+  const heading = viewMode === 'month' ? monthLabel(cursorDate) : viewMode === 'week' ? `Week of ${dayLabel(startOfWeek(cursorDate))}` : dayLabel(cursorDate);
 
   return (
     <main className="shell">
       <aside className="sidebar">
         <div className="brandMark">MD</div>
-        <div className="brandText">
-          <strong>Music Delight</strong>
-          <span>MOE Operations</span>
-        </div>
+        <div className="brandText"><strong>Music Delight</strong><span>MOE Operations</span></div>
         <nav>
           <button className="navItem active"><LayoutDashboard size={18} /> Dashboard</button>
           <button className="navItem"><CalendarDays size={18} /> Calendar</button>
           <button className="navItem"><Users size={18} /> Teachers</button>
           <button className="navItem"><Sparkles size={18} /> AI Assistant</button>
         </nav>
-        <div className="sidebarFooter">
-          <div className="profileAvatar">GA</div>
-          <div><strong>Gerald</strong><span>Administrator</span></div>
-        </div>
+        <div className="sidebarFooter"><div className="profileAvatar">GA</div><div><strong>Gerald</strong><span>Administrator</span></div></div>
       </aside>
 
       <section className="content">
         <header className="topbar">
-          <div>
-            <p className="eyebrow">ADMIN WORKSPACE</p>
-            <h1>Master Calendar</h1>
-          </div>
+          <div><p className="eyebrow">ADMIN WORKSPACE</p><h1>Master Calendar</h1></div>
           <div className="topActions">
             <div className="searchBox"><Search size={17} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search classes or teachers" /></div>
-            <button className="iconButton"><Bell size={18} /><span className="notificationDot" /></button>
-            <button className="primaryButton"><Plus size={18} /> Add lesson</button>
+            <button className="iconButton" aria-label="Notifications"><Bell size={18} /><span className="notificationDot" /></button>
+            <button className="primaryButton" onClick={() => openAddModal()}><Plus size={18} /> Add lesson</button>
           </div>
         </header>
 
         <section className="statsGrid">
-          <article className="statCard"><span>Total lessons</span><strong>{initialLessons.length}</strong><small>July 2026</small></article>
+          <article className="statCard"><span>Total lessons</span><strong>{lessons.length}</strong><small>{monthLabel(cursorDate)}</small></article>
           <article className="statCard"><span>Teachers active</span><strong>{teachers.length}</strong><small>All teaching staff</small></article>
           <article className="statCard warning"><span>Needs assignment</span><strong>{unassigned.length}</strong><small>Action required</small></article>
           <article className="statCard danger"><span>Cannot attend</span><strong>{unavailable.length}</strong><small>Replacement required</small></article>
@@ -122,70 +230,78 @@ export default function Home() {
         <section className="workspaceGrid">
           <article className="calendarPanel glassPanel">
             <div className="calendarToolbar">
-              <div className="monthNavigation"><button><ChevronLeft size={18} /></button><h2>July 2026</h2><button><ChevronRight size={18} /></button></div>
-              <div className="viewToggle"><button className="selected">Month</button><button>Week</button><button>Day</button></div>
+              <div className="monthNavigation"><button onClick={() => moveCursor(-1)} aria-label="Previous"><ChevronLeft size={18} /></button><h2>{heading}</h2><button onClick={() => moveCursor(1)} aria-label="Next"><ChevronRight size={18} /></button></div>
+              <div className="toolbarRight">
+                <button className="todayButton" onClick={() => setCursorDate(new Date(2026, 6, 21))}>Today</button>
+                <div className="viewToggle">
+                  {(['month', 'week', 'day'] as ViewMode[]).map((mode) => <button key={mode} className={viewMode === mode ? 'selected' : ''} onClick={() => setViewMode(mode)}>{mode[0].toUpperCase() + mode.slice(1)}</button>)}
+                </div>
+              </div>
             </div>
-            <div className="calendarGrid weekdayRow">
-              {weekdayLabels.map((label) => <div key={label}>{label}</div>)}
-            </div>
-            <div className="calendarGrid daysGrid">
-              {leadingDays.map((day) => <DayCell key={`lead-${day}`} day={day} muted lessons={[]} />)}
-              {monthDays.map((day) => <DayCell key={day} day={day} lessons={visibleLessons.filter((lesson) => lesson.day === day)} />)}
-              {trailingDays.map((day) => <DayCell key={`trail-${day}`} day={day} muted lessons={[]} />)}
-            </div>
+
+            {viewMode === 'month' && <MonthView cursorDate={cursorDate} lessons={visibleLessons} onAdd={openAddModal} onEdit={openEditModal} onMove={moveLessonToDate} />}
+            {viewMode === 'week' && <WeekView cursorDate={cursorDate} lessons={visibleLessons} onAdd={openAddModal} onEdit={openEditModal} />}
+            {viewMode === 'day' && <DayView cursorDate={cursorDate} lessons={visibleLessons} onAdd={openAddModal} onEdit={openEditModal} />}
           </article>
 
           <aside className="rightRail">
             <section className="glassPanel filterPanel">
               <div className="sectionHeading"><div><p className="eyebrow">FILTER</p><h3>Teachers</h3></div><button onClick={() => setSelectedTeachers(teachers.map((teacher) => teacher.name))}>All</button></div>
               <div className="teacherList">
-                {teachers.map((teacher) => (
-                  <label key={teacher.name} className="teacherOption">
-                    <input type="checkbox" checked={selectedTeachers.includes(teacher.name)} onChange={() => toggleTeacher(teacher.name)} />
-                    <span className="colourDot" style={{ background: teacher.color }} />
-                    <span>{teacher.name}</span>
-                  </label>
-                ))}
+                {teachers.map((teacher) => <label key={teacher.name} className="teacherOption"><input type="checkbox" checked={selectedTeachers.includes(teacher.name)} onChange={() => toggleTeacher(teacher.name)} /><span className="colourDot" style={{ background: teacher.color }} /><span>{teacher.name}</span></label>)}
               </div>
             </section>
 
             <section className="glassPanel unassignedPanel">
               <div className="sectionHeading"><div><p className="eyebrow">ACTION REQUIRED</p><h3>Unassigned</h3></div><span className="countBadge">{unassigned.length}</span></div>
-              {unassigned.map((lesson) => (
-                <div className="unassignedCard" key={lesson.id} draggable>
-                  <strong>{lesson.school}</strong>
-                  <span>{lesson.className}</span>
-                  <small><Clock3 size={14} /> {lesson.time}</small>
-                  <button>Assign teacher</button>
-                </div>
-              ))}
+              {unassigned.map((lesson) => <div className="unassignedCard" key={lesson.id}><strong>{lesson.school}</strong><span>{lesson.className}</span><small><Clock3 size={14} /> {lesson.startTime} – {lesson.endTime}</small><button onClick={() => openEditModal(lesson)}>Assign teacher</button></div>)}
             </section>
           </aside>
         </section>
       </section>
+
+      {modalOpen && (
+        <div className="modalBackdrop" onMouseDown={() => setModalOpen(false)}>
+          <form className="lessonModal" onSubmit={saveLesson} onMouseDown={(event) => event.stopPropagation()}>
+            <div className="modalHeader"><div><p className="eyebrow">LESSON DETAILS</p><h2>{editingId === null ? 'Add lesson' : 'Edit lesson'}</h2></div><button type="button" className="closeButton" onClick={() => setModalOpen(false)}><X size={20} /></button></div>
+            <label>Date<input type="date" value={draft.date} onChange={(event) => setDraft({ ...draft, date: event.target.value })} required /></label>
+            <label>School<input value={draft.school} onChange={(event) => setDraft({ ...draft, school: event.target.value })} placeholder="School name" required /></label>
+            <label>Class / programme<input value={draft.className} onChange={(event) => setDraft({ ...draft, className: event.target.value })} placeholder="Class or programme" required /></label>
+            <div className="formRow"><label>Start time<input type="time" value={draft.startTime} onChange={(event) => setDraft({ ...draft, startTime: event.target.value })} required /></label><label>End time<input type="time" value={draft.endTime} onChange={(event) => setDraft({ ...draft, endTime: event.target.value })} required /></label></div>
+            <label>Teacher<select value={draft.teacher ?? ''} onChange={(event) => setDraft({ ...draft, teacher: event.target.value || null })}><option value="">Unassigned</option>{teachers.map((teacher) => <option key={teacher.name}>{teacher.name}</option>)}</select></label>
+            <label className="checkboxRow"><input type="checkbox" checked={draft.unavailable ?? false} onChange={(event) => setDraft({ ...draft, unavailable: event.target.checked })} /> Teacher cannot attend</label>
+            <div className="modalActions">{editingId !== null && <button type="button" className="deleteButton" onClick={deleteLesson}><Trash2 size={16} /> Delete</button>}<span /><button type="button" className="secondaryButton" onClick={() => setModalOpen(false)}>Cancel</button><button type="submit" className="primaryButton"><Pencil size={16} /> Save lesson</button></div>
+          </form>
+        </div>
+      )}
     </main>
   );
 }
 
-function DayCell({ day, muted = false, lessons }: { day: number; muted?: boolean; lessons: Lesson[] }) {
-  return (
-    <div className={`dayCell ${muted ? 'muted' : ''}`}>
-      <span className="dayNumber">{day}</span>
-      <div className="lessonStack">
-        {lessons.map((lesson) => (
-          <div
-            className={`lessonCard ${lesson.unavailable ? 'unavailable' : ''} ${lesson.teacher === null ? 'unassigned' : ''}`}
-            key={lesson.id}
-            draggable
-            style={{ '--teacher-colour': teacherColour(lesson.teacher) } as React.CSSProperties}
-          >
-            <strong>{lesson.time}</strong>
-            <span>{lesson.school}</span>
-            <small>{lesson.className} · {lesson.teacher ?? 'Unassigned'}</small>
-            {lesson.unavailable && <em>Cannot attend</em>}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+function MonthView({ cursorDate, lessons, onAdd, onEdit, onMove }: { cursorDate: Date; lessons: Lesson[]; onAdd: (date: Date) => void; onEdit: (lesson: Lesson) => void; onMove: (lessonId: number, date: string) => void }) {
+  const first = new Date(cursorDate.getFullYear(), cursorDate.getMonth(), 1);
+  const gridStart = new Date(first);
+  gridStart.setDate(first.getDate() - first.getDay());
+  const cells = Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(gridStart);
+    date.setDate(gridStart.getDate() + index);
+    return date;
+  });
+
+  return <><div className="calendarGrid weekdayRow">{weekdayLabels.map((label) => <div key={label}>{label}</div>)}</div><div className="calendarGrid daysGrid">{cells.map((date) => { const key = toDateKey(date); const dayLessons = lessons.filter((lesson) => lesson.date === key).sort((a, b) => a.startTime.localeCompare(b.startTime)); const muted = date.getMonth() !== cursorDate.getMonth(); return <div key={key} className={`dayCell ${muted ? 'muted' : ''}`} onDoubleClick={() => onAdd(date)} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { const lessonId = Number(event.dataTransfer.getData('text/lesson-id')); if (lessonId) onMove(lessonId, key); }}><span className="dayNumber">{date.getDate()}</span><button className="dayAddButton" onClick={() => onAdd(date)} aria-label="Add lesson"><Plus size={12} /></button><div className="lessonStack">{dayLessons.map((lesson) => <LessonCard key={lesson.id} lesson={lesson} onEdit={onEdit} />)}</div></div>; })}</div></>;
+}
+
+function WeekView({ cursorDate, lessons, onAdd, onEdit }: { cursorDate: Date; lessons: Lesson[]; onAdd: (date: Date) => void; onEdit: (lesson: Lesson) => void }) {
+  const start = startOfWeek(cursorDate);
+  const days = Array.from({ length: 7 }, (_, index) => { const date = new Date(start); date.setDate(start.getDate() + index); return date; });
+  return <div className="weekGrid">{days.map((date) => { const key = toDateKey(date); const dayLessons = lessons.filter((lesson) => lesson.date === key).sort((a, b) => a.startTime.localeCompare(b.startTime)); return <section className="weekColumn" key={key}><button className="weekHeading" onClick={() => onAdd(date)}><span>{weekdayLabels[date.getDay()]}</span><strong>{date.getDate()}</strong></button><div className="weekLessons">{dayLessons.length ? dayLessons.map((lesson) => <LessonCard key={lesson.id} lesson={lesson} onEdit={onEdit} />) : <button className="emptySlot" onClick={() => onAdd(date)}>+ Add lesson</button>}</div></section>; })}</div>;
+}
+
+function DayView({ cursorDate, lessons, onAdd, onEdit }: { cursorDate: Date; lessons: Lesson[]; onAdd: (date: Date) => void; onEdit: (lesson: Lesson) => void }) {
+  const dayLessons = lessons.filter((lesson) => lesson.date === toDateKey(cursorDate)).sort((a, b) => a.startTime.localeCompare(b.startTime));
+  return <div className="dayAgenda"><div className="agendaHeader"><div><p className="eyebrow">DAILY SCHEDULE</p><h2>{dayLabel(cursorDate)}</h2></div><button className="primaryButton" onClick={() => onAdd(cursorDate)}><Plus size={17} /> Add lesson</button></div>{dayLessons.length ? dayLessons.map((lesson) => <button key={lesson.id} className="agendaItem" onClick={() => onEdit(lesson)} style={{ '--teacher-colour': teacherColour(lesson.teacher) } as React.CSSProperties}><span className="agendaTime">{lesson.startTime}<small>{lesson.endTime}</small></span><span className="agendaAccent" /><span className="agendaDetails"><strong>{lesson.school}</strong><small>{lesson.className} · {lesson.teacher ?? 'Unassigned'}</small></span>{lesson.unavailable && <em>Cannot attend</em>}</button>) : <div className="emptyAgenda"><CalendarDays size={30} /><strong>No lessons scheduled</strong><span>Add the first lesson for this day.</span></div>}</div>;
+}
+
+function LessonCard({ lesson, onEdit }: { lesson: Lesson; onEdit: (lesson: Lesson) => void }) {
+  return <button className={`lessonCard ${lesson.unavailable ? 'unavailable' : ''} ${lesson.teacher === null ? 'unassigned' : ''}`} draggable onDragStart={(event) => event.dataTransfer.setData('text/lesson-id', String(lesson.id))} onClick={() => onEdit(lesson)} style={{ '--teacher-colour': teacherColour(lesson.teacher) } as React.CSSProperties}><strong>{lesson.startTime} – {lesson.endTime}</strong><span>{lesson.school}</span><small>{lesson.className} · {lesson.teacher ?? 'Unassigned'}</small>{lesson.unavailable && <em>Cannot attend</em>}</button>;
 }
