@@ -33,6 +33,8 @@ type AppDataContextValue = {
   referencesLoading: boolean;
   ensureReferences: (force?: boolean) => Promise<void>;
   getLessons: (range: LessonRange, force?: boolean) => Promise<LessonRow[]>;
+  upsertCachedLesson: (lesson: LessonRow) => void;
+  removeCachedLesson: (lessonId: string) => void;
   invalidateLessons: () => void;
 };
 
@@ -99,6 +101,37 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     return request;
   }, [supabase]);
 
+  const upsertCachedLesson = useCallback((lesson: LessonRow) => {
+    for (const [cacheKey, rows] of lessonCache.current.entries()) {
+      const [start, end] = cacheKey.split('|');
+      const belongsToRange = lesson.lesson_date >= start && lesson.lesson_date < end;
+      const existingIndex = rows.findIndex((row) => row.id === lesson.id);
+
+      if (!belongsToRange && existingIndex >= 0) {
+        lessonCache.current.set(cacheKey, rows.filter((row) => row.id !== lesson.id));
+        continue;
+      }
+
+      if (!belongsToRange) continue;
+
+      const nextRows = existingIndex >= 0
+        ? rows.map((row) => (row.id === lesson.id ? lesson : row))
+        : [...rows, lesson];
+
+      nextRows.sort((a, b) =>
+        a.lesson_date.localeCompare(b.lesson_date) || a.start_time.localeCompare(b.start_time),
+      );
+      lessonCache.current.set(cacheKey, nextRows);
+    }
+  }, []);
+
+  const removeCachedLesson = useCallback((lessonId: string) => {
+    for (const [cacheKey, rows] of lessonCache.current.entries()) {
+      const nextRows = rows.filter((row) => row.id !== lessonId);
+      if (nextRows.length !== rows.length) lessonCache.current.set(cacheKey, nextRows);
+    }
+  }, []);
+
   const invalidateLessons = useCallback(() => {
     lessonCache.current.clear();
     lessonPromises.current.clear();
@@ -110,8 +143,19 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     referencesLoading,
     ensureReferences,
     getLessons,
+    upsertCachedLesson,
+    removeCachedLesson,
     invalidateLessons,
-  }), [teachers, availability, referencesLoading, ensureReferences, getLessons, invalidateLessons]);
+  }), [
+    teachers,
+    availability,
+    referencesLoading,
+    ensureReferences,
+    getLessons,
+    upsertCachedLesson,
+    removeCachedLesson,
+    invalidateLessons,
+  ]);
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;
 }
