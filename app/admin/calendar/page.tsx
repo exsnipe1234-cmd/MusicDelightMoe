@@ -7,7 +7,7 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin, { DateClickArg, EventDropArg } from '@fullcalendar/interaction';
-import { ArrowLeft, CalendarDays, Loader2, Save, X } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Search, Users, X } from 'lucide-react';
 import { createClient } from '../../../utils/supabase/client';
 
 type Teacher = { name: string; color: string };
@@ -52,6 +52,8 @@ export default function InteractiveCalendarPage() {
   const [message, setMessage] = useState('Loading calendar...');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [draft, setDraft] = useState<Draft>(() => blankDraft());
+  const [teacherFilter, setTeacherFilter] = useState('all');
+  const [search, setSearch] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -76,9 +78,27 @@ export default function InteractiveCalendarPage() {
 
   const colourFor = (teacher: string | null) => teachers.find((item) => item.name === teacher)?.color ?? '#fb7185';
 
-  const events = lessons.map((lesson) => ({
+  const visibleLessons = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return lessons.filter((lesson) => {
+      const teacherMatch = teacherFilter === 'all' || (teacherFilter === 'unassigned' ? !lesson.teacher_name : lesson.teacher_name === teacherFilter);
+      const searchMatch = !query || [lesson.school, lesson.class_name, lesson.teacher_name ?? 'unassigned'].some((value) => value.toLowerCase().includes(query));
+      return teacherMatch && searchMatch;
+    });
+  }, [lessons, search, teacherFilter]);
+
+  const workload = useMemo(() => {
+    const counts = new Map<string, number>();
+    visibleLessons.forEach((lesson) => {
+      const name = lesson.teacher_name ?? 'Unassigned';
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    });
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  }, [visibleLessons]);
+
+  const events = visibleLessons.map((lesson) => ({
     id: lesson.id,
-    title: `${lesson.school} · ${lesson.teacher_name ?? 'Unassigned'}`,
+    title: lesson.school,
     start: `${lesson.lesson_date}T${lesson.start_time.slice(0, 5)}`,
     end: `${lesson.lesson_date}T${lesson.end_time.slice(0, 5)}`,
     backgroundColor: colourFor(lesson.teacher_name),
@@ -166,24 +186,52 @@ export default function InteractiveCalendarPage() {
         <Link href="/admin/conflicts" className="conflictLink">Open Conflict Center</Link>
       </header>
 
-      <section className="calendarCard">
-        {loading ? <div className="loading"><Loader2 className="spin"/> Loading calendar…</div> : <FullCalendar
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView="dayGridMonth"
-          initialDate="2026-07-01"
-          headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }}
-          editable
-          selectable
-          height="auto"
-          events={events}
-          dateClick={handleDateClick}
-          eventClick={(arg) => openLesson(arg.event.extendedProps as LessonRow)}
-          eventDrop={handleDrop}
-          eventResize={handleDrop}
-          nowIndicator
-          slotMinTime="06:00:00"
-          slotMaxTime="22:00:00"
-        />}
+      <section className="filterBar">
+        <div className="searchBox"><Search size={17}/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search school, class or teacher…"/></div>
+        <select value={teacherFilter} onChange={(event) => setTeacherFilter(event.target.value)}>
+          <option value="all">All teachers</option>
+          <option value="unassigned">Unassigned</option>
+          {teachers.map((teacher) => <option key={teacher.name} value={teacher.name}>{teacher.name}</option>)}
+        </select>
+        <button onClick={() => { setSearch(''); setTeacherFilter('all'); }}>Clear filters</button>
+        <span>{visibleLessons.length} shown</span>
+      </section>
+
+      <section className="contentGrid">
+        <div className="calendarCard">
+          {loading ? <div className="loading"><Loader2 className="spin"/> Loading calendar…</div> : <FullCalendar
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            initialView="dayGridMonth"
+            initialDate="2026-07-01"
+            headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }}
+            editable
+            selectable
+            height="auto"
+            events={events}
+            dateClick={handleDateClick}
+            eventClick={(arg) => openLesson(arg.event.extendedProps as LessonRow)}
+            eventDrop={handleDrop}
+            eventResize={handleDrop}
+            eventContent={(arg) => {
+              const lesson = arg.event.extendedProps as LessonRow;
+              return <div className="eventCard"><strong>{lesson.school}</strong><span>{lesson.class_name}</span><small>{lesson.teacher_name ?? 'Unassigned'} · {lesson.start_time.slice(0, 5)}–{lesson.end_time.slice(0, 5)}</small></div>;
+            }}
+            nowIndicator
+            slotMinTime="06:00:00"
+            slotMaxTime="22:00:00"
+          />}
+        </div>
+
+        <aside className="workloadCard">
+          <div className="workloadTitle"><Users size={18}/><div><p>WORKLOAD</p><h2>Top teachers</h2></div></div>
+          {workload.length === 0 ? <span className="empty">No lessons match.</span> : workload.map(([name, count]) => {
+            const max = workload[0]?.[1] ?? 1;
+            return <button key={name} onClick={() => setTeacherFilter(name === 'Unassigned' ? 'unassigned' : name)}>
+              <div><strong>{name}</strong><span>{count} lessons</span></div>
+              <div className="bar"><i style={{ width: `${Math.max(8, (count / max) * 100)}%`, background: colourFor(name === 'Unassigned' ? null : name) }}/></div>
+            </button>;
+          })}
+        </aside>
       </section>
 
       {drawerOpen && <div className="drawerBackdrop" onMouseDown={() => setDrawerOpen(false)}><aside className="drawer" onMouseDown={(event) => event.stopPropagation()}>
@@ -198,7 +246,7 @@ export default function InteractiveCalendarPage() {
       </aside></div>}
 
       <style jsx global>{`
-        .editorShell{min-height:100vh;padding:30px;max-width:1550px;margin:auto;color:#eef2fb}.editorHeader{display:flex;justify-content:space-between;align-items:end;margin-bottom:20px}.editorHeader p,.drawerHeader p{margin:14px 0 6px;color:#8b7cff;font-size:11px;font-weight:900;letter-spacing:.16em}.editorHeader h1{margin:0 0 6px;font-size:34px}.editorHeader span{color:#8794ab}.back{display:flex;align-items:center;gap:7px;color:#aa9cff}.conflictLink{padding:11px 15px;border-radius:11px;background:#6653de;color:white;text-decoration:none;font-weight:750}.calendarCard{border:1px solid rgba(148,163,184,.14);background:#0d1425;border-radius:18px;padding:18px;overflow:hidden}.loading{display:flex;justify-content:center;align-items:center;gap:10px;min-height:420px}.fc{--fc-border-color:rgba(148,163,184,.13);--fc-page-bg-color:#0d1425;--fc-neutral-bg-color:#111a2d;--fc-list-event-hover-bg-color:#162039;color:#eef2fb}.fc .fc-button{background:#6653de;border:0}.fc .fc-button-primary:not(:disabled).fc-button-active{background:#493ab8}.fc .fc-daygrid-day-number,.fc .fc-col-header-cell-cushion{color:#cfd7e7;text-decoration:none}.fc .fc-event{cursor:pointer;border-radius:6px;padding:2px 4px;font-weight:700}.drawerBackdrop{position:fixed;inset:0;background:rgba(3,7,18,.65);display:flex;justify-content:flex-end;z-index:2000}.drawer{width:min(430px,100%);height:100%;background:#0d1425;border-left:1px solid rgba(148,163,184,.16);padding:24px;display:grid;align-content:start;gap:15px;box-shadow:-25px 0 70px rgba(0,0,0,.35)}.drawerHeader{display:flex;justify-content:space-between;align-items:start}.drawerHeader h2{margin:0;font-size:25px}.drawerHeader button{border:0;background:transparent;color:#9aa7bd;cursor:pointer}.drawer label{display:grid;gap:7px;color:#aeb8ca;font-size:13px;font-weight:700}.drawer input,.drawer select{padding:11px 12px;border-radius:10px;border:1px solid rgba(148,163,184,.16);background:#111a2d;color:#eef2fb}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.check{display:flex!important;grid-template-columns:auto 1fr;align-items:center}.check input{width:auto}.drawerActions{display:grid;grid-template-columns:auto 1fr auto;align-items:center;margin-top:8px}.drawerActions button{padding:11px 14px;border:0;border-radius:10px;font-weight:800;cursor:pointer}.drawerActions .delete{background:rgba(251,113,133,.12);color:#fb7185}.drawerActions .save{display:flex;align-items:center;gap:7px;background:#6653de;color:white}.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}@media(max-width:760px){.editorShell{padding:18px}.editorHeader{display:grid;gap:14px}.fc .fc-toolbar{display:grid;gap:10px}.row{grid-template-columns:1fr}}
+        .editorShell{min-height:100vh;padding:30px;max-width:1650px;margin:auto;color:#eef2fb}.editorHeader{display:flex;justify-content:space-between;align-items:end;margin-bottom:20px}.editorHeader p,.drawerHeader p,.workloadTitle p{margin:14px 0 6px;color:#8b7cff;font-size:11px;font-weight:900;letter-spacing:.16em}.editorHeader h1{margin:0 0 6px;font-size:34px}.editorHeader span{color:#8794ab}.back{display:flex;align-items:center;gap:7px;color:#aa9cff}.conflictLink{padding:11px 15px;border-radius:11px;background:#6653de;color:white;text-decoration:none;font-weight:750}.filterBar{display:grid;grid-template-columns:minmax(260px,1fr) 190px auto auto;gap:10px;align-items:center;margin-bottom:14px}.filterBar select,.filterBar button,.searchBox{height:44px;border-radius:11px;border:1px solid rgba(148,163,184,.16);background:#0d1425;color:#eef2fb}.searchBox{display:flex;align-items:center;gap:9px;padding:0 12px}.searchBox input{width:100%;border:0;outline:0;background:transparent;color:#eef2fb}.filterBar select{padding:0 12px}.filterBar button{padding:0 14px;cursor:pointer}.filterBar>span{text-align:right;color:#8794ab;font-size:13px}.contentGrid{display:grid;grid-template-columns:minmax(0,1fr) 245px;gap:14px;align-items:start}.calendarCard,.workloadCard{border:1px solid rgba(148,163,184,.14);background:#0d1425;border-radius:18px}.calendarCard{padding:18px;overflow:hidden}.workloadCard{padding:16px;position:sticky;top:18px}.workloadTitle{display:flex;align-items:center;gap:10px;margin-bottom:8px}.workloadTitle p{margin:0 0 3px}.workloadTitle h2{font-size:17px;margin:0}.workloadCard>button{display:grid;gap:8px;width:100%;padding:12px 0;border:0;border-bottom:1px solid rgba(148,163,184,.1);background:transparent;color:#eef2fb;text-align:left;cursor:pointer}.workloadCard>button>div:first-child{display:flex;justify-content:space-between;gap:8px}.workloadCard span{color:#8794ab;font-size:12px}.bar{height:5px;background:#192238;border-radius:999px;overflow:hidden}.bar i{display:block;height:100%;border-radius:999px}.empty{display:block;padding:18px 0}.loading{display:flex;justify-content:center;align-items:center;gap:10px;min-height:420px}.fc{--fc-border-color:rgba(148,163,184,.13);--fc-page-bg-color:#0d1425;--fc-neutral-bg-color:#111a2d;--fc-list-event-hover-bg-color:#162039;color:#eef2fb}.fc .fc-button{background:#6653de;border:0}.fc .fc-button-primary:not(:disabled).fc-button-active{background:#493ab8}.fc .fc-daygrid-day-number,.fc .fc-col-header-cell-cushion{color:#cfd7e7;text-decoration:none}.fc .fc-event{cursor:pointer;border-radius:7px;padding:2px 4px;font-weight:700;overflow:hidden}.eventCard{display:grid;line-height:1.15;padding:1px 0;overflow:hidden}.eventCard strong,.eventCard span,.eventCard small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.eventCard strong{font-size:11px}.eventCard span{font-size:10px;opacity:.8}.eventCard small{font-size:9px;opacity:.72}.drawerBackdrop{position:fixed;inset:0;background:rgba(3,7,18,.65);display:flex;justify-content:flex-end;z-index:2000}.drawer{width:min(430px,100%);height:100%;background:#0d1425;border-left:1px solid rgba(148,163,184,.16);padding:24px;display:grid;align-content:start;gap:15px;box-shadow:-25px 0 70px rgba(0,0,0,.35)}.drawerHeader{display:flex;justify-content:space-between;align-items:start}.drawerHeader h2{margin:0;font-size:25px}.drawerHeader button{border:0;background:transparent;color:#9aa7bd;cursor:pointer}.drawer label{display:grid;gap:7px;color:#aeb8ca;font-size:13px;font-weight:700}.drawer input,.drawer select{padding:11px 12px;border-radius:10px;border:1px solid rgba(148,163,184,.16);background:#111a2d;color:#eef2fb}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.check{display:flex!important;grid-template-columns:auto 1fr;align-items:center}.check input{width:auto}.drawerActions{display:grid;grid-template-columns:auto 1fr auto;align-items:center;margin-top:8px}.drawerActions button{padding:11px 14px;border:0;border-radius:10px;font-weight:800;cursor:pointer}.drawerActions .delete{background:rgba(251,113,133,.12);color:#fb7185}.drawerActions .save{display:flex;align-items:center;gap:7px;background:#6653de;color:white}.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}@media(max-width:1050px){.contentGrid{grid-template-columns:1fr}.workloadCard{position:static}.workloadCard>button{max-width:420px}}@media(max-width:760px){.editorShell{padding:18px}.editorHeader{display:grid;gap:14px}.filterBar{grid-template-columns:1fr}.filterBar>span{text-align:left}.fc .fc-toolbar{display:grid;gap:10px}.row{grid-template-columns:1fr}}
       `}</style>
     </main>
   );
