@@ -1,0 +1,28 @@
+main.shell {
+  display: block !important;
+  width: 100%;
+}
+
+main.shell .header {
+  width: 100%;
+}
+
+main.shell .teacherStrip {
+  width: 100%;
+}
+
+main.shell .teacherStrip button {
+  min-height: 44px;
+  padding: 10px 15px;
+}
+
+main.shell .grid {
+  width: 100%;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(520px, 1.6fr);
+}
+
+@media (max-width: 900px) {
+  main.shell .grid {
+    grid-template-columns: 1fr;
+  }
+}
