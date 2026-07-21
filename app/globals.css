@@ -7,7 +7,7 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 1180px; background: radial-gradient(circle at top right, rgba(90, 84, 255, .14), transparent 28%), #070b16; }
-button, input { font: inherit; }
+button, input, select { font: inherit; }
 button { cursor: pointer; }
 
 .shell { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
@@ -36,7 +36,7 @@ h3 { margin-bottom: 0; font-size: 16px; }
 .iconButton, .primaryButton { height: 42px; border: 1px solid rgba(148,163,184,.13); border-radius: 12px; color: #fff; }
 .iconButton { position: relative; width: 42px; background: #10172a; }
 .notificationDot { position: absolute; width: 7px; height: 7px; border-radius: 50%; background: #fb7185; top: 9px; right: 9px; }
-.primaryButton { display: flex; align-items: center; gap: 8px; padding: 0 16px; background: linear-gradient(135deg, #6c56e8, #5544cf); box-shadow: 0 10px 25px rgba(86,68,207,.22); }
+.primaryButton { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 16px; background: linear-gradient(135deg, #6c56e8, #5544cf); box-shadow: 0 10px 25px rgba(86,68,207,.22); }
 
 .statsGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 16px; }
 .statCard, .glassPanel { border: 1px solid rgba(148,163,184,.12); background: linear-gradient(145deg, rgba(20,27,48,.9), rgba(11,16,31,.78)); box-shadow: 0 20px 50px rgba(0,0,0,.16); backdrop-filter: blur(18px); }
@@ -51,7 +51,13 @@ h3 { margin-bottom: 0; font-size: 16px; }
 .glassPanel { border-radius: 18px; overflow: hidden; }
 .calendarToolbar { display: flex; align-items: center; justify-content: space-between; padding: 17px 18px; border-bottom: 1px solid rgba(148,163,184,.1); }
 .monthNavigation { display: flex; align-items: center; gap: 12px; }
-.monthNavigation button, .viewToggle button, .sectionHeading button { border: 0; background: transparent; color: #7f8ca5; }
+.monthNavigation h2 { min-width: 180px; text-align: center; }
+.monthNavigation button, .viewToggle button, .sectionHeading button, .todayButton { border: 0; background: transparent; color: #7f8ca5; }
+.monthNavigation button { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 8px; }
+.monthNavigation button:hover { background: rgba(148,163,184,.08); color: #fff; }
+.toolbarRight { display: flex; align-items: center; gap: 10px; }
+.todayButton { padding: 8px 11px; border: 1px solid rgba(148,163,184,.12); border-radius: 9px; }
+.todayButton:hover { color: #fff; background: rgba(148,163,184,.07); }
 .viewToggle { padding: 4px; border-radius: 10px; background: #0a1020; }
 .viewToggle button { padding: 7px 11px; border-radius: 8px; font-size: 12px; }
 .viewToggle .selected { background: #252044; color: #c8c2ff; }
@@ -59,11 +65,14 @@ h3 { margin-bottom: 0; font-size: 16px; }
 .weekdayRow { background: rgba(7,11,22,.46); color: #6f7c95; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
 .weekdayRow div { padding: 10px 12px; border-right: 1px solid rgba(148,163,184,.08); }
 .daysGrid { grid-auto-rows: minmax(145px, auto); }
-.dayCell { position: relative; padding: 28px 6px 7px; border-top: 1px solid rgba(148,163,184,.08); border-right: 1px solid rgba(148,163,184,.08); min-height: 145px; background: rgba(7,11,22,.13); }
+.dayCell { position: relative; padding: 28px 6px 7px; border-top: 1px solid rgba(148,163,184,.08); border-right: 1px solid rgba(148,163,184,.08); min-height: 145px; background: rgba(7,11,22,.13); transition: background .18s ease; }
+.dayCell:hover { background: rgba(120,87,255,.045); }
 .dayCell.muted { opacity: .3; background: rgba(7,11,22,.5); }
 .dayNumber { position: absolute; top: 7px; right: 9px; color: #8894ab; font-size: 12px; font-weight: 700; }
+.dayAddButton { position: absolute; top: 5px; left: 7px; width: 22px; height: 22px; display: grid; place-items: center; border: 0; border-radius: 7px; background: transparent; color: transparent; }
+.dayCell:hover .dayAddButton { color: #8d82ff; background: rgba(120,87,255,.1); }
 .lessonStack { display: grid; gap: 5px; }
-.lessonCard { --teacher-colour: #94a3b8; position: relative; overflow: hidden; display: grid; gap: 2px; border: 1px solid color-mix(in srgb, var(--teacher-colour) 35%, transparent); border-left: 4px solid var(--teacher-colour); border-radius: 8px; padding: 6px 7px; background: color-mix(in srgb, var(--teacher-colour) 13%, #10172a); color: #f8fafc; cursor: grab; }
+.lessonCard { --teacher-colour: #94a3b8; width: 100%; position: relative; overflow: hidden; display: grid; gap: 2px; border: 1px solid color-mix(in srgb, var(--teacher-colour) 35%, transparent); border-left: 4px solid var(--teacher-colour); border-radius: 8px; padding: 6px 7px; background: color-mix(in srgb, var(--teacher-colour) 13%, #10172a); color: #f8fafc; cursor: grab; text-align: left; }
 .lessonCard:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(0,0,0,.2); }
 .lessonCard strong { color: var(--teacher-colour); font-size: 9px; }
 .lessonCard span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; font-weight: 700; }
@@ -88,6 +97,43 @@ h3 { margin-bottom: 0; font-size: 16px; }
 .unassignedCard span { color: #a8b1c5; font-size: 11px; }
 .unassignedCard small { display: flex; gap: 5px; align-items: center; color: #78859d; }
 .unassignedCard button { margin-top: 4px; padding: 8px; border: 0; border-radius: 8px; background: rgba(120,87,255,.16); color: #bdb4ff; font-size: 11px; }
+
+.weekGrid { display: grid; grid-template-columns: repeat(7, minmax(130px, 1fr)); min-height: 620px; }
+.weekColumn { border-right: 1px solid rgba(148,163,184,.08); }
+.weekHeading { width: 100%; display: grid; place-items: center; gap: 3px; padding: 14px; border: 0; border-bottom: 1px solid rgba(148,163,184,.08); background: rgba(7,11,22,.35); color: #8692aa; }
+.weekHeading strong { font-size: 20px; color: #fff; }
+.weekHeading:hover { background: rgba(120,87,255,.07); }
+.weekLessons { display: grid; align-content: start; gap: 8px; padding: 10px 7px; }
+.emptySlot { min-height: 80px; border: 1px dashed rgba(148,163,184,.13); border-radius: 10px; background: transparent; color: #667189; }
+.emptySlot:hover { border-color: rgba(120,87,255,.4); color: #a99fff; }
+
+.dayAgenda { min-height: 620px; padding: 22px; }
+.agendaHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.agendaItem { --teacher-colour: #94a3b8; width: 100%; display: grid; grid-template-columns: 78px 4px 1fr auto; align-items: center; gap: 15px; margin-bottom: 10px; padding: 16px; border: 1px solid rgba(148,163,184,.11); border-radius: 13px; background: rgba(10,16,32,.65); color: #fff; text-align: left; }
+.agendaItem:hover { transform: translateX(2px); border-color: color-mix(in srgb, var(--teacher-colour) 45%, transparent); }
+.agendaTime { display: grid; color: var(--teacher-colour); font-weight: 800; }
+.agendaTime small { color: #738098; font-weight: 500; }
+.agendaAccent { width: 4px; height: 42px; border-radius: 4px; background: var(--teacher-colour); }
+.agendaDetails { display: grid; gap: 4px; }
+.agendaDetails small { color: #8c98af; }
+.agendaItem em { color: #fb7185; font-size: 10px; font-style: normal; font-weight: 800; text-transform: uppercase; }
+.emptyAgenda { min-height: 420px; display: grid; place-items: center; align-content: center; gap: 8px; color: #728097; }
+.emptyAgenda strong { color: #c7cfdd; }
+
+.modalBackdrop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px; background: rgba(2,6,16,.72); backdrop-filter: blur(8px); }
+.lessonModal { width: min(560px, 100%); display: grid; gap: 15px; padding: 22px; border: 1px solid rgba(148,163,184,.18); border-radius: 20px; background: linear-gradient(145deg, #151d33, #0b1121); box-shadow: 0 30px 90px rgba(0,0,0,.5); }
+.modalHeader { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+.closeButton { width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 10px; background: rgba(148,163,184,.08); color: #98a4ba; }
+.lessonModal label { display: grid; gap: 7px; color: #9aa6bc; font-size: 12px; font-weight: 700; }
+.lessonModal input, .lessonModal select { width: 100%; height: 42px; padding: 0 12px; border: 1px solid rgba(148,163,184,.16); border-radius: 10px; outline: 0; background: #0a1020; color: #fff; }
+.lessonModal input:focus, .lessonModal select:focus { border-color: #7568ed; box-shadow: 0 0 0 3px rgba(117,104,237,.12); }
+.formRow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.checkboxRow { display: flex !important; grid-template-columns: none; align-items: center; gap: 9px !important; }
+.checkboxRow input { width: 16px; height: 16px; accent-color: #7367ef; }
+.modalActions { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 9px; margin-top: 5px; }
+.secondaryButton, .deleteButton { height: 42px; display: flex; align-items: center; gap: 7px; padding: 0 15px; border-radius: 11px; }
+.secondaryButton { border: 1px solid rgba(148,163,184,.15); background: rgba(148,163,184,.06); color: #aeb8ca; }
+.deleteButton { border: 1px solid rgba(251,113,133,.22); background: rgba(251,113,133,.08); color: #fb7185; }
 
 @media (max-width: 1300px) {
   body { min-width: 1050px; }
