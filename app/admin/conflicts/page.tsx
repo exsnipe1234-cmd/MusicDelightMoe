@@ -77,8 +77,10 @@ export default function ConflictCenterPage() {
     return result;
   }, [lessons]);
 
-  const overlaps = conflicts.filter((item) => item.type === 'overlap');
-  const tight = conflicts.filter((item) => item.type === 'tight');
+  const activeConflicts = conflicts.filter((item) => !reviewed.includes(item.key));
+  const overlaps = activeConflicts.filter((item) => item.type === 'overlap');
+  const tight = activeConflicts.filter((item) => item.type === 'tight');
+  const reviewedCount = conflicts.length - activeConflicts.length;
   const unassigned = lessons.filter((lesson) => !lesson.teacher_name);
   const unavailable = lessons.filter((lesson) => lesson.unavailable);
   const issueCount = overlaps.length + tight.length + unassigned.length + unavailable.length;
@@ -94,10 +96,11 @@ export default function ConflictCenterPage() {
     setMessage(`${lesson.class_name} reassigned to ${teacherName}.`);
   };
 
-  const toggleReviewed = (key: string) => {
-    const next = reviewed.includes(key) ? reviewed.filter((item) => item !== key) : [...reviewed, key];
+  const markReviewed = (key: string) => {
+    const next = reviewed.includes(key) ? reviewed : [...reviewed, key];
     setReviewed(next);
     localStorage.setItem(REVIEWED_KEY, JSON.stringify(next));
+    setMessage('Conflict marked as reviewed and removed from active issues.');
   };
 
   return (
@@ -111,13 +114,13 @@ export default function ConflictCenterPage() {
         <article className={issueCount ? 'danger' : 'good'}><span>Total issues</span><strong>{issueCount}</strong><small>{message}</small></article>
         <article><span>Overlaps</span><strong>{overlaps.length}</strong><small>Same teacher, same time</small></article>
         <article><span>Tight travel gaps</span><strong>{tight.length}</strong><small>Under 30 min, different schools</small></article>
-        <article><span>Needs assignment</span><strong>{unassigned.length}</strong><small>No teacher linked</small></article>
+        <article><span>Needs assignment</span><strong>{unassigned.length}</strong><small>{reviewedCount ? `${reviewedCount} reviewed conflict${reviewedCount === 1 ? '' : 's'} hidden` : 'No teacher linked'}</small></article>
       </section>
 
-      {!loading && issueCount === 0 && <section className="allClear"><CheckCircle2 size={34}/><h2>No conflicts found</h2><p>The current timetable passed all automatic checks.</p></section>}
+      {!loading && issueCount === 0 && <section className="allClear"><CheckCircle2 size={34}/><h2>No active conflicts found</h2><p>The timetable has no unresolved issues.</p></section>}
 
-      {overlaps.length > 0 && <IssueSection title="Overlapping lessons" subtitle="Choose a replacement teacher for either lesson, or mark the clash as reviewed." icon={<AlertTriangle size={20}/>} items={overlaps.map((item) => <ConflictCard key={item.key} conflict={item} availableTeachers={availableTeachers} onReassign={reassign} reviewed={reviewed.includes(item.key)} onReview={() => toggleReviewed(item.key)}/>)} />}
-      {tight.length > 0 && <IssueSection title="Tight travel gaps" subtitle="Different schools with less than 30 minutes between lessons." icon={<MapPin size={20}/>} items={tight.map((item) => <ConflictCard key={item.key} conflict={item} availableTeachers={availableTeachers} onReassign={reassign} reviewed={reviewed.includes(item.key)} onReview={() => toggleReviewed(item.key)}/>)} />}
+      {overlaps.length > 0 && <IssueSection title="Overlapping lessons" subtitle="Choose a replacement teacher for either lesson, or mark the clash as reviewed." icon={<AlertTriangle size={20}/>} items={overlaps.map((item) => <ConflictCard key={item.key} conflict={item} availableTeachers={availableTeachers} onReassign={reassign} onReview={() => markReviewed(item.key)}/>)} />}
+      {tight.length > 0 && <IssueSection title="Tight travel gaps" subtitle="Different schools with less than 30 minutes between lessons." icon={<MapPin size={20}/>} items={tight.map((item) => <ConflictCard key={item.key} conflict={item} availableTeachers={availableTeachers} onReassign={reassign} onReview={() => markReviewed(item.key)}/>)} />}
       {unavailable.length > 0 && <IssueSection title="Teacher marked unavailable" subtitle="Assign a replacement teacher directly below." icon={<UserRoundX size={20}/>} items={unavailable.map((lesson) => <LessonCard key={lesson.id} lesson={lesson} choices={availableTeachers(lesson)} onReassign={reassign}/>)} />}
       {unassigned.length > 0 && <IssueSection title="Unassigned lessons" subtitle="Choose an available teacher and save immediately." icon={<CalendarDays size={20}/>} items={unassigned.map((lesson) => <LessonCard key={lesson.id} lesson={lesson} choices={availableTeachers(lesson)} onReassign={reassign}/>)} />}
 
@@ -137,8 +140,8 @@ function AssignmentControl({ lesson, choices, onReassign }: { lesson: LessonRow;
   return <div className="assignment"><select value={choice} onChange={(event) => setChoice(event.target.value)}><option value="">Available teacher…</option>{choices.map((teacher) => <option key={teacher.name} value={teacher.name}>{teacher.name}</option>)}</select><button disabled={!choice} onClick={() => onReassign(lesson, choice)}>Assign</button><style jsx>{`.assignment{display:flex;gap:8px;align-items:center}.assignment select{min-width:155px;padding:9px 10px;border-radius:9px;border:1px solid rgba(148,163,184,.16);background:#111a2d;color:#dce4f3}.assignment button{padding:9px 12px;border:0;border-radius:9px;background:#6653de;color:white;font-weight:750;cursor:pointer}.assignment button:disabled{opacity:.45;cursor:not-allowed}@media(max-width:850px){.assignment{align-items:stretch}.assignment select{flex:1}}`}</style></div>;
 }
 
-function ConflictCard({ conflict, availableTeachers, onReassign, reviewed, onReview }: { conflict: Conflict; availableTeachers: (lesson: LessonRow) => TeacherRow[]; onReassign: (lesson: LessonRow, teacherName: string) => void; reviewed: boolean; onReview: () => void }) {
-  return <article className={`issueCard ${conflict.type} ${reviewed ? 'reviewed' : ''}`}><div className="badge">{conflict.type === 'overlap' ? 'OVERLAP' : `${conflict.gap} MIN GAP`}</div><div className="meta"><strong>{conflict.teacher}</strong><span>{niceDate(conflict.date)}</span><button onClick={onReview}>{reviewed ? 'Reviewed ✓' : 'Mark reviewed'}</button></div><div className="lesson"><b>{timeRange(conflict.first)}</b><span>{conflict.first.school}</span><small>{conflict.first.class_name}</small><AssignmentControl lesson={conflict.first} choices={availableTeachers(conflict.first)} onReassign={onReassign}/></div><div className="arrow">→</div><div className="lesson"><b>{timeRange(conflict.second)}</b><span>{conflict.second.school}</span><small>{conflict.second.class_name}</small><AssignmentControl lesson={conflict.second} choices={availableTeachers(conflict.second)} onReassign={onReassign}/></div><style jsx>{`.issueCard{display:grid;grid-template-columns:auto 150px 1fr auto 1fr;gap:14px;align-items:center;padding:14px;border-radius:13px;background:#0b1222;border:1px solid rgba(148,163,184,.1)}.issueCard.overlap{border-color:rgba(251,113,133,.35)}.issueCard.tight{border-color:rgba(245,185,76,.3)}.issueCard.reviewed{opacity:.62}.badge{font-size:10px;font-weight:900;letter-spacing:.08em;color:#fb7185}.tight .badge{color:#f5b94c}.issueCard div{display:grid;gap:5px}.issueCard span,.issueCard small{color:#8995ad}.lesson b{color:#eef2fb}.arrow{color:#68758d}.meta button{width:max-content;border:0;background:transparent;color:#9a8cff;padding:3px 0;cursor:pointer;font-weight:700}@media(max-width:850px){.issueCard{grid-template-columns:1fr}.arrow{display:none}}`}</style></article>;
+function ConflictCard({ conflict, availableTeachers, onReassign, onReview }: { conflict: Conflict; availableTeachers: (lesson: LessonRow) => TeacherRow[]; onReassign: (lesson: LessonRow, teacherName: string) => void; onReview: () => void }) {
+  return <article className={`issueCard ${conflict.type}`}><div className="badge">{conflict.type === 'overlap' ? 'OVERLAP' : `${conflict.gap} MIN GAP`}</div><div className="meta"><strong>{conflict.teacher}</strong><span>{niceDate(conflict.date)}</span><button onClick={onReview}>Mark reviewed</button></div><div className="lesson"><b>{timeRange(conflict.first)}</b><span>{conflict.first.school}</span><small>{conflict.first.class_name}</small><AssignmentControl lesson={conflict.first} choices={availableTeachers(conflict.first)} onReassign={onReassign}/></div><div className="arrow">→</div><div className="lesson"><b>{timeRange(conflict.second)}</b><span>{conflict.second.school}</span><small>{conflict.second.class_name}</small><AssignmentControl lesson={conflict.second} choices={availableTeachers(conflict.second)} onReassign={onReassign}/></div><style jsx>{`.issueCard{display:grid;grid-template-columns:auto 150px 1fr auto 1fr;gap:14px;align-items:center;padding:14px;border-radius:13px;background:#0b1222;border:1px solid rgba(148,163,184,.1)}.issueCard.overlap{border-color:rgba(251,113,133,.35)}.issueCard.tight{border-color:rgba(245,185,76,.3)}.badge{font-size:10px;font-weight:900;letter-spacing:.08em;color:#fb7185}.tight .badge{color:#f5b94c}.issueCard div{display:grid;gap:5px}.issueCard span,.issueCard small{color:#8995ad}.lesson b{color:#eef2fb}.arrow{color:#68758d}.meta button{width:max-content;border:0;background:transparent;color:#9a8cff;padding:3px 0;cursor:pointer;font-weight:700}@media(max-width:850px){.issueCard{grid-template-columns:1fr}.arrow{display:none}}`}</style></article>;
 }
 
 function LessonCard({ lesson, choices, onReassign }: { lesson: LessonRow; choices: TeacherRow[]; onReassign: (lesson: LessonRow, teacherName: string) => void }) {
