@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import './dashboard-fix.css';
 import AdminQuickLinks from './components/AdminQuickLinks';
+import { AppDataProvider } from './providers/AppDataProvider';
 
 export const metadata: Metadata = {
   title: 'Music Delight MOE Calendar',
@@ -12,8 +13,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <body>
-        {children}
-        <AdminQuickLinks />
+        <AppDataProvider>
+          {children}
+          <AdminQuickLinks />
+        </AppDataProvider>
       </body>
     </html>
   );
