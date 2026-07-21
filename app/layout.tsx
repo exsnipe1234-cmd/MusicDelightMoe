@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import './dashboard-fix.css';
 import AdminQuickLinks from './components/AdminQuickLinks';
 
 export const metadata: Metadata = {
