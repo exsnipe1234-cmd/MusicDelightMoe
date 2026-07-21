@@ -1,0 +1,26 @@
+/* Dashboard layout isolation: prevents route-level admin styles from collapsing the home dashboard. */
+main.shell {
+  display: grid !important;
+  grid-template-columns: 240px minmax(0, 1fr) !important;
+  min-height: 100vh !important;
+}
+
+main.shell > .sidebar {
+  width: 240px !important;
+  min-width: 240px !important;
+  max-width: 240px !important;
+}
+
+main.shell > .sidebar nav {
+  width: 100%;
+}
+
+main.shell > .sidebar .navItem {
+  width: 100%;
+  max-width: 100%;
+}
+
+main.shell > .content {
+  min-width: 0;
+  width: 100%;
+}
