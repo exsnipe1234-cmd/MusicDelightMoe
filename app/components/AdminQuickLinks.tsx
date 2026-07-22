@@ -2,14 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { AlertTriangle, CalendarClock, FileUp, Users } from 'lucide-react';
+import { AlertCircle, AlertTriangle, CalendarClock, FileUp, Users } from 'lucide-react';
 
 export default function AdminQuickLinks() {
   const pathname = usePathname();
-  if (pathname !== '/') return null;
+  if (!pathname.startsWith('/admin')) return null;
 
   return (
-    <div style={{ position: 'fixed', right: 24, bottom: 24, zIndex: 1000, display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+    <div style={{ position: 'fixed', right: 24, bottom: 24, zIndex: 1000, display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: 'calc(100vw - 48px)' }}>
+      <Link href="/admin/requests" style={linkStyle('#f59e0b', '#d97706')}><AlertCircle size={17} /> Unable to Attend</Link>
       <Link href="/admin/conflicts" style={linkStyle('#e25858', '#b73737')}><AlertTriangle size={17} /> Conflict Center</Link>
       <Link href="/admin/availability" style={linkStyle('#0ea5a8', '#4f46e5')}><CalendarClock size={17} /> Teacher Availability</Link>
       <Link href="/admin/teachers" style={linkStyle('#33415f', '#202a40')}><Users size={17} /> Manage Teachers</Link>
