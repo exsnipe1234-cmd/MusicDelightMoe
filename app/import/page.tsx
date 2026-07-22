@@ -18,27 +18,138 @@ function parseLessonLine(line: string, date: string, id: number): ImportedLesson
 function dateForCell(year: number, monthIndex: number, cellIndex: number) { const first = new Date(year, monthIndex, 1); const gridStart = new Date(year, monthIndex, 1 - first.getDay()); gridStart.setDate(gridStart.getDate() + cellIndex); return `${gridStart.getFullYear()}-${pad(gridStart.getMonth() + 1)}-${pad(gridStart.getDate())}`; }
 function lessonKey(lesson: Pick<ImportedLesson,'date'|'startTime'|'endTime'|'school'|'className'|'teacher'>) { return `${lesson.date}|${lesson.startTime.slice(0,5)}|${lesson.endTime.slice(0,5)}|${lesson.school.trim().toLowerCase()}|${lesson.className.trim().toLowerCase()}|${lesson.teacher ?? ''}`; }
 
+type PositionedItem = { text: string; x: number; top: number };
+const weekdayIndex: Record<string, number> = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+
+function groupByTop<T extends { top: number }>(items: T[], tolerance = 6) {
+  const groups: { top: number; items: T[] }[] = [];
+  for (const item of [...items].sort((a, b) => a.top - b.top)) {
+    const existing = groups.find((group) => Math.abs(group.top - item.top) <= tolerance);
+    if (existing) {
+      existing.items.push(item);
+      existing.top = existing.items.reduce((sum, entry) => sum + entry.top, 0) / existing.items.length;
+    } else groups.push({ top: item.top, items: [item] });
+  }
+  return groups.sort((a, b) => a.top - b.top);
+}
+
+function columnLayout(items: PositionedItem[], viewportWidth: number) {
+  const weekdayItems = items
+    .filter((item) => weekdayIndex[item.text.toLowerCase()] !== undefined)
+    .sort((a, b) => a.x - b.x);
+
+  const centres = new Map<number, number>();
+  weekdayItems.forEach((item) => centres.set(weekdayIndex[item.text.toLowerCase()], item.x));
+
+  if (centres.size < 5) {
+    const dateGroups = groupByTop(items.filter((item) => /^\d{1,2}$/.test(item.text) && item.top > 50), 6)
+      .filter((group) => group.items.length >= 5);
+    const widest = dateGroups.sort((a, b) => b.items.length - a.items.length)[0];
+    if (widest) {
+      widest.items.sort((a, b) => a.x - b.x).slice(0, 7).forEach((item, index) => centres.set(index, item.x));
+    }
+  }
+
+  if (centres.size < 5) return null;
+  const known = [...centres.entries()].sort((a, b) => a[0] - b[0]);
+  const gaps: number[] = [];
+  for (let i = 1; i < known.length; i += 1) {
+    const dayGap = known[i][0] - known[i - 1][0];
+    if (dayGap > 0) gaps.push((known[i][1] - known[i - 1][1]) / dayGap);
+  }
+  const averageGap = gaps.length ? gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length : viewportWidth / 7;
+  const first = known[0];
+  const projected = Array.from({ length: 7 }, (_, day) => centres.get(day) ?? first[1] + (day - first[0]) * averageGap);
+  const bounds = projected.map((centre, index) => {
+    const left = index === 0 ? Math.max(0, centre - averageGap / 2) : (projected[index - 1] + centre) / 2;
+    const right = index === 6 ? Math.min(viewportWidth, centre + averageGap / 2) : (centre + projected[index + 1]) / 2;
+    return { left, right };
+  });
+  return bounds;
+}
+
+function calendarRows(items: PositionedItem[]) {
+  return groupByTop(items.filter((item) => /^\d{1,2}$/.test(item.text) && item.top > 55), 7)
+    .filter((group) => group.items.length >= 4)
+    .sort((a, b) => a.top - b.top)
+    .slice(0, 6);
+}
+
 async function extractLessons(file: File): Promise<{ lessons: ImportedLesson[]; monthName: string }> {
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
   pdfjs.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.10.38/legacy/build/pdf.worker.min.mjs';
-  const data = new Uint8Array(await file.arrayBuffer()); const document = await pdfjs.getDocument({ data }).promise; const page = await document.getPage(1); const viewport = page.getViewport({ scale: 1 }); const content = await page.getTextContent();
-  const items = (content.items as PdfTextItem[]).filter((item) => item.str.trim()).map((item) => ({ text: item.str.trim(), x: item.transform[4], top: viewport.height - item.transform[5] }));
-  const title = items.map((item) => item.text).join(' ').match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})/i); if (!title) throw new Error('The month and year could not be detected from this PDF.');
-  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December']; const monthIndex = monthNames.findIndex((name) => name.toLowerCase() === title[1].toLowerCase()); const year = Number(title[2]);
-  const dateItems = items.filter((item) => /^\d{1,2}$/.test(item.text) && item.top > 80); const rowGroups = new Map<number, typeof dateItems>(); for (const item of dateItems) { const rowKey = Math.round(item.top / 4) * 4; const group = rowGroups.get(rowKey) ?? []; group.push(item); rowGroups.set(rowKey, group); }
-  const rows = [...rowGroups.entries()].filter(([, group]) => group.length >= 7).sort(([a], [b]) => a - b).slice(0, 6); if (rows.length < 5) throw new Error('The calendar grid could not be detected.');
-  const firstRowDates = rows[0][1].sort((a, b) => a.x - b.x).slice(0, 7); const columnStarts = firstRowDates.map((item) => item.x - 1); const rowStarts = rows.map(([top]) => top - 2); const pageBottom = viewport.height - 20;
-  const linesByCell = new Map<number, Map<number, { x: number; text: string }[]>>();
-  for (const item of items) { if (item.top < rowStarts[0] + 5 || /^(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)$/i.test(item.text) || /^\d{1,2}$/.test(item.text)) continue; let column = -1; for (let i = 0; i < columnStarts.length; i += 1) { const end = i === columnStarts.length - 1 ? viewport.width : columnStarts[i + 1]; if (item.x >= columnStarts[i] && item.x < end) column = i; } let row = -1; for (let i = 0; i < rowStarts.length; i += 1) { const end = i === rowStarts.length - 1 ? pageBottom : rowStarts[i + 1]; if (item.top >= rowStarts[i] && item.top < end) row = i; } if (column < 0 || row < 0) continue; const cell = row * 7 + column; const yKey = Math.round(item.top * 2) / 2; const cellLines = linesByCell.get(cell) ?? new Map<number, { x: number; text: string }[]>(); const line = cellLines.get(yKey) ?? []; line.push({ x: item.x, text: item.text }); cellLines.set(yKey, line); linesByCell.set(cell, cellLines); }
-  const lessons: ImportedLesson[] = []; let id = Date.now(); for (const [cell, lineMap] of linesByCell) { const date = dateForCell(year, monthIndex, cell); const lines = [...lineMap.entries()].sort(([a], [b]) => a - b).map(([, parts]) => parts.sort((a, b) => a.x - b.x).map((part) => part.text).join(' ')); for (const line of lines) { const parsed = parseLessonLine(line, date, id++); if (parsed) lessons.push(parsed); } }
+  const data = new Uint8Array(await file.arrayBuffer());
+  const document = await pdfjs.getDocument({ data }).promise;
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const lessons: ImportedLesson[] = [];
+  let detectedMonth = -1;
+  let detectedYear = 0;
+  let id = Date.now();
+
+  for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
+    const page = await document.getPage(pageNumber);
+    const viewport = page.getViewport({ scale: 1 });
+    const content = await page.getTextContent();
+    const items: PositionedItem[] = (content.items as PdfTextItem[])
+      .filter((item) => item.str.trim())
+      .map((item) => ({ text: item.str.replace(/\s+/g, ' ').trim(), x: item.transform[4], top: viewport.height - item.transform[5] }));
+
+    const fullText = items.map((item) => item.text).join(' ');
+    const title = fullText.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})/i);
+    if (title) {
+      detectedMonth = monthNames.findIndex((name) => name.toLowerCase() === title[1].toLowerCase());
+      detectedYear = Number(title[2]);
+    }
+    if (detectedMonth < 0 || !detectedYear) continue;
+
+    const columns = columnLayout(items, viewport.width);
+    const rows = calendarRows(items);
+    if (!columns || rows.length < 4) continue;
+
+    const rowStarts = rows.map((row) => row.top - 3);
+    const pageBottom = viewport.height + 5;
+    const linesByCell = new Map<number, Map<number, { x: number; text: string }[]>>();
+
+    for (const item of items) {
+      if (item.top < rowStarts[0] + 4 || /^(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)$/i.test(item.text) || /^\d{1,2}$/.test(item.text)) continue;
+      const column = columns.findIndex((bound) => item.x >= bound.left && item.x < bound.right);
+      let row = -1;
+      for (let index = 0; index < rowStarts.length; index += 1) {
+        const end = index === rowStarts.length - 1 ? pageBottom : rowStarts[index + 1];
+        if (item.top >= rowStarts[index] && item.top < end) { row = index; break; }
+      }
+      if (column < 0 || row < 0) continue;
+      const cell = row * 7 + column;
+      const yKey = Math.round(item.top / 2) * 2;
+      const cellLines = linesByCell.get(cell) ?? new Map<number, { x: number; text: string }[]>();
+      const line = cellLines.get(yKey) ?? [];
+      line.push({ x: item.x, text: item.text });
+      cellLines.set(yKey, line);
+      linesByCell.set(cell, cellLines);
+    }
+
+    for (const [cell, lineMap] of linesByCell) {
+      const date = dateForCell(detectedYear, detectedMonth, cell);
+      const lines = [...lineMap.entries()]
+        .sort(([a], [b]) => a - b)
+        .map(([, parts]) => parts.sort((a, b) => a.x - b.x).map((part) => part.text).join(' '));
+      for (const line of lines) {
+        const parsed = parseLessonLine(line, date, id++);
+        if (parsed) lessons.push(parsed);
+      }
+    }
+  }
+
+  if (detectedMonth < 0 || !detectedYear) throw new Error('The month and year could not be detected from this PDF.');
+  if (!lessons.length) throw new Error('No lessons could be detected. This PDF may be scanned or use an unsupported layout.');
   const unique = lessons.filter((lesson, index, all) => all.findIndex((candidate) => lessonKey(candidate) === lessonKey(lesson)) === index);
-  return { lessons: unique.sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`)), monthName: `${monthNames[monthIndex]} ${year}` };
+  return { lessons: unique.sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`)), monthName: `${monthNames[detectedMonth]} ${detectedYear}` };
 }
 
 export default function ImportPage() {
   const router = useRouter(); const supabase = useMemo(() => createClient(), []); const [lessons, setLessons] = useState<ImportedLesson[]>([]); const [monthName, setMonthName] = useState(''); const [fileName, setFileName] = useState(''); const [status, setStatus] = useState<'idle'|'reading'|'ready'|'saving'|'saved'|'error'>('idle'); const [message, setMessage] = useState('');
   const assignedCount = useMemo(() => lessons.filter((lesson) => lesson.teacher).length, [lessons]);
-  const handleFile = async (event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; setFileName(file.name); setStatus('reading'); setMessage('Reading the calendar grid and detecting lessons...'); try { const result = await extractLessons(file); setLessons(result.lessons); setMonthName(result.monthName); setStatus('ready'); setMessage(`${result.lessons.length} lessons detected. Review them before importing.`); } catch (error) { setStatus('error'); setMessage(error instanceof Error ? error.message : 'The PDF could not be read.'); } };
+  const handleFile = async (event: ChangeEvent<HTMLInputElement>) => { const file = event.target.files?.[0]; if (!file) return; setFileName(file.name); setStatus('reading'); setMessage('Reading the PDF and detecting lessons across supported calendar layouts...'); try { const result = await extractLessons(file); setLessons(result.lessons); setMonthName(result.monthName); setStatus('ready'); setMessage(`${result.lessons.length} lessons detected. Review them before importing.`); } catch (error) { setStatus('error'); setMessage(error instanceof Error ? error.message : 'The PDF could not be read.'); } };
   const saveImport = async () => {
     setStatus('saving'); setMessage('Checking duplicates and saving to Supabase...');
     const dates = [...new Set(lessons.map((lesson) => lesson.date))];
