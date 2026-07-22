@@ -11,6 +11,7 @@ import interactionPlugin, { DateClickArg, EventDropArg } from '@fullcalendar/int
 import { BarChart3, CalendarDays, CalendarPlus, List, Loader2, Save, Search, X } from 'lucide-react';
 import { createClient } from '../../../utils/supabase/client';
 import { LessonRow, useAppData } from '../../providers/AppDataProvider';
+import SmartDashboard from '../components/SmartDashboard';
 
 type Draft = { id?: string; date: string; school: string; className: string; startTime: string; endTime: string; teacher: string; unavailable: boolean };
 type Range = { start: string; end: string };
@@ -83,6 +84,7 @@ export default function CalendarPage() {
   const remove = async () => { if (!draft.id || !window.confirm('Delete this lesson?')) return; const { error } = await supabase.from('lessons').delete().eq('id', draft.id); if (error) { setMessage(error.message); return; } setLessons((current) => current.filter((lesson) => lesson.id !== draft.id)); removeCachedLesson(draft.id); setDrawer(false); setMessage('Lesson deleted.'); };
 
   return <main className="editorShell">
+    <SmartDashboard />
     <header className="editorHeader"><div><p>MOE SCHEDULE</p><h1>Calendar</h1><span>{loading ? 'Loading…' : message}</span></div><div className="headerActions"><button className="exportButton" onClick={exportCalendarPdf}><CalendarDays size={17}/> Calendar PDF</button><button className="exportButton" onClick={exportSchedulePdf}><List size={17}/> Schedule PDF</button><Link href="/admin/conflicts" className="conflictLink">View conflicts</Link></div></header>
     <section className="filterBar"><div className="searchBox"><Search size={17}/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search school, class or teacher"/></div><select value={filter} onChange={(event) => setFilter(event.target.value)}><option value="all">All teachers</option><option value="unassigned">Unassigned</option>{teachers.map((teacher) => <option key={teacher.name}>{teacher.name}</option>)}</select><button onClick={() => { setSearch(''); setFilter('all'); }}>Clear</button><span>{visible.length} lessons</span></section>
     <section className="workloadPanel"><div className="workloadHeading"><BarChart3 size={18}/><div><p>VISIBLE RANGE</p><h2>Teacher workload</h2></div></div><div className="workloadStats">{workload.length === 0 ? <span className="empty">No lessons match the current filters.</span> : workload.map(([name, count]) => <button key={name} onClick={() => setFilter(name === 'Unassigned' ? 'unassigned' : name)}><i style={{ background: colour(name === 'Unassigned' ? null : name) }}/><span>{name}</span><strong>{count}</strong><small>lesson{count === 1 ? '' : 's'}</small></button>)}</div></section>

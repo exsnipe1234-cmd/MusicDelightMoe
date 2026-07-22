@@ -1,0 +1,13 @@
+Calendar AI teacher-name matching fix
+
+This update makes teacher searches use names found in BOTH:
+- teachers.name
+- lessons.teacher_name
+
+This fixes deployments where the teachers table is empty, uses full names, or is hidden by RLS while lesson rows remain readable.
+
+Install:
+1. Copy the app folder into your MusicDelightMoe V1.3 project.
+2. Replace the existing file when prompted.
+3. Restart with npm run dev.
+4. Test: Show Joel's lessons on 23 July 2026.

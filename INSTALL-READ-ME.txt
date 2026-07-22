@@ -1,0 +1,20 @@
+MusicDelightMoe V1.3 — Calendar AI Live Read-Only Patch
+
+1. Copy the contents of this patch folder into your MusicDelightMoe V1.3 project.
+2. Choose Replace when Windows asks.
+3. Confirm .env.local contains:
+   OPENAI_API_KEY=...
+   NEXT_PUBLIC_SUPABASE_URL=...
+   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
+4. You already installed the OpenAI package. If needed, run: npm install openai
+5. Stop the development server with Ctrl+C, then run: npm run dev
+6. Open the admin calendar and test Ask Calendar.
+
+Suggested tests:
+- Show Joel's lessons on 23 July 2026.
+- Which teachers are at Meridian Primary School this week?
+- Show guitar lessons on Friday.
+- Show Gerald's lessons at Chongfu between 08:00 and 12:00.
+
+This patch is read-only. It cannot add, change or delete lessons.
+Instrument searches are inferred from class_name because the database currently has no dedicated instrument column.

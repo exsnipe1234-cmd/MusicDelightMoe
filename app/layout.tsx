@@ -4,6 +4,7 @@ import './dashboard-fix.css';
 import './fullcalendar-overrides.css';
 import AdminQuickLinks from './components/AdminQuickLinks';
 import CalendarTeacherColourSync from './components/CalendarTeacherColourSync';
+import CalendarAiAssistant from './components/CalendarAiAssistant';
 import { AppDataProvider } from './providers/AppDataProvider';
 
 export const metadata: Metadata = {
@@ -19,6 +20,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           {children}
           <CalendarTeacherColourSync />
           <AdminQuickLinks />
+          <CalendarAiAssistant />
         </AppDataProvider>
       </body>
     </html>
