@@ -75,7 +75,7 @@ export default function TeacherAvailabilityPage() {
     if (mode === 'weekly' && startTime >= endTime) { setMessage('End time must be later than start time.'); return; }
     if (mode === 'leave' && startDate > endDate) { setMessage('End date must be the same as or later than start date.'); return; }
     setSaving(true);
-    const payload = mode === 'weekly'
+    const payload: Omit<Availability, 'id'> = mode === 'weekly'
       ? { teacher_name: selectedTeacher, availability_type: 'weekly', weekday, start_time: startTime, end_time: endTime, start_date: null, end_date: null, reason: reason.trim() || null }
       : { teacher_name: selectedTeacher, availability_type: 'leave', weekday: null, start_time: null, end_time: null, start_date: startDate, end_date: endDate, reason: reason.trim() || null };
     const { data, error } = await supabase.from('teacher_availability').insert(payload).select().single();
