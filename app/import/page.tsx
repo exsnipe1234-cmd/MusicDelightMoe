@@ -19,7 +19,8 @@ function dateForCell(year: number, monthIndex: number, cellIndex: number) { cons
 function lessonKey(lesson: Pick<ImportedLesson,'date'|'startTime'|'endTime'|'school'|'className'|'teacher'>) { return `${lesson.date}|${lesson.startTime.slice(0,5)}|${lesson.endTime.slice(0,5)}|${lesson.school.trim().toLowerCase()}|${lesson.className.trim().toLowerCase()}|${lesson.teacher ?? ''}`; }
 
 async function extractLessons(file: File): Promise<{ lessons: ImportedLesson[]; monthName: string }> {
-  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs'); pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/legacy/build/pdf.worker.min.mjs', import.meta.url).toString();
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  pdfjs.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.10.38/legacy/build/pdf.worker.min.mjs';
   const data = new Uint8Array(await file.arrayBuffer()); const document = await pdfjs.getDocument({ data }).promise; const page = await document.getPage(1); const viewport = page.getViewport({ scale: 1 }); const content = await page.getTextContent();
   const items = (content.items as PdfTextItem[]).filter((item) => item.str.trim()).map((item) => ({ text: item.str.trim(), x: item.transform[4], top: viewport.height - item.transform[5] }));
   const title = items.map((item) => item.text).join(' ').match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})/i); if (!title) throw new Error('The month and year could not be detected from this PDF.');
