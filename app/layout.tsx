@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import './dashboard-fix.css';
+import './fullcalendar-overrides.css';
 import AdminQuickLinks from './components/AdminQuickLinks';
 import { AppDataProvider } from './providers/AppDataProvider';
 
