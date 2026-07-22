@@ -142,3 +142,39 @@ h3 { margin-bottom: 0; font-size: 16px; }
   .workspaceGrid { grid-template-columns: minmax(0, 1fr) 230px; }
   .calendarGrid { grid-template-columns: repeat(7, minmax(110px, 1fr)); }
 }
+
+
+/* v1.1 responsive and scrolling improvements */
+html,body{max-width:100%;overflow-x:hidden}
+body{min-width:0!important}
+.adminAppShell{min-height:100vh}
+.adminPageContent{min-height:100vh;margin-left:238px;min-width:0;padding-bottom:96px}
+.adminPageContent main{max-width:100%;overflow:visible}
+.adminPageContent .shell,.adminPageContent .manageShell{min-height:calc(100vh - 1px)}
+.adminPageContent .panel,.adminPageContent .records,.adminPageContent .accountList{scroll-margin-top:18px}
+.adminPageContent table{max-width:100%}
+.adminPageContent .tableWrap,.adminPageContent .accountList,.adminPageContent .records{overscroll-behavior:contain}
+@media(max-width:900px){
+  .adminPageContent{margin-left:0;padding-bottom:90px}
+  .content{padding:18px 14px 100px}
+  .topbar,.calendarToolbar,.toolbarRight,.manageHeader,.panelHeading{align-items:flex-start;flex-wrap:wrap}
+  .topActions,.toolbarRight{width:100%;overflow-x:auto;padding-bottom:4px}
+  .searchBox{width:min(100%,360px)}
+  .statsGrid,.summaryGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .workspaceGrid{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .shell{display:block!important;min-height:100vh!important}
+  .calendarToolbar{gap:12px}
+  .calendarGrid,.weekGrid{min-width:840px}
+  .glassPanel{overflow:auto}
+  .formRow,.modalActions{grid-template-columns:1fr}
+  .lessonModal{max-height:calc(100dvh - 24px);overflow:auto}
+}
+@media(max-width:600px){
+  .statsGrid,.summaryGrid{grid-template-columns:1fr}
+  .content{padding:14px 10px 96px}
+  h1{font-size:24px}
+  .monthNavigation{width:100%;justify-content:space-between}.monthNavigation h2{min-width:0;font-size:16px}
+  .viewToggle{white-space:nowrap}
+  .agendaItem{grid-template-columns:64px 4px 1fr;padding:12px;gap:10px}.agendaItem>svg,.agendaItem em{display:none}
+}
