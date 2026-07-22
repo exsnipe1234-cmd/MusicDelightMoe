@@ -1,0 +1,48 @@
+/* Keep every FullCalendar lesson visibly coloured by its assigned teacher.
+   FullCalendar receives these values through backgroundColor, borderColor and textColor. */
+.fc .fc-event,
+.fc .fc-daygrid-event,
+.fc .fc-timegrid-event {
+  background-color: var(--fc-event-bg-color) !important;
+  border-color: var(--fc-event-border-color) !important;
+  color: var(--fc-event-text-color, #ffffff) !important;
+  border-width: 1px !important;
+  border-left-width: 4px !important;
+  border-radius: 7px !important;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.fc .fc-event:hover,
+.fc .fc-daygrid-event:hover,
+.fc .fc-timegrid-event:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.26);
+}
+
+.fc .fc-event-main,
+.fc .fc-event-main-frame,
+.fc .fc-event-title-container,
+.fc .fc-event-time,
+.fc .fc-event-title {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+.fc .fc-daygrid-event-dot {
+  border-color: var(--fc-event-border-color) !important;
+}
+
+.fc .eventCard,
+.fc .eventCard strong,
+.fc .eventCard span,
+.fc .eventCard small {
+  color: inherit !important;
+}
+
+.fc .eventCard small,
+.fc .eventCard span {
+  opacity: 0.92;
+}
