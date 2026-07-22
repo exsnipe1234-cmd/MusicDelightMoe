@@ -192,7 +192,7 @@ export default function ImportPage() {
       if (databaseClashes.length) issues.push(`Clashes with ${databaseClashes[0].school} ${databaseClashes[0].start_time.slice(0,5)}–${databaseClashes[0].end_time.slice(0,5)} already in the calendar.`);
 
       const exact = exactExisting.has(lessonKey(lesson));
-      const changed = !exact && existingByBase.get(baseKey(lesson));
+      const changed = !exact ? existingByBase.get(baseKey(lesson)) : undefined;
       let importStatus: ImportStatus = exact ? 'duplicate' : changed ? 'changed' : 'new';
       if (pdfClashes.length || databaseClashes.length) importStatus = 'conflict';
 
