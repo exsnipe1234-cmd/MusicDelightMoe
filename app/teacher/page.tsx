@@ -21,6 +21,7 @@ import {
 import { createClient } from '../../utils/supabase/client';
 
 type Profile = { display_name: string; teacher_name: string | null; role: 'admin' | 'teacher'; active: boolean };
+type AccessRow = { teacher_name: string };
 type LessonRow = { id: string; lesson_date: string; school: string; class_name: string; start_time: string; end_time: string; teacher_name: string | null; unavailable: boolean };
 type RequestRow = {
   id: string;
@@ -49,6 +50,7 @@ export default function TeacherPortal() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [userId, setUserId] = useState('');
   const [lessons, setLessons] = useState<LessonRow[]>([]);
+  const [linkedTeacherNames, setLinkedTeacherNames] = useState<string[]>([]);
   const [requests, setRequests] = useState<RequestRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -92,7 +94,23 @@ export default function TeacherPortal() {
 
       const typedProfile = profileData as Profile;
       setProfile(typedProfile);
-      if (!typedProfile.teacher_name) { setLoading(false); return; }
+
+      const { data: accessData, error: accessError } = await supabase
+        .from('profile_teacher_access')
+        .select('teacher_name')
+        .eq('profile_id', sessionData.session.user.id);
+      if (accessError) {
+        setMessage(`${accessError.message}. Run the multi-timetable Supabase migration first.`);
+        setLoading(false);
+        return;
+      }
+      const accessNames = ((accessData ?? []) as AccessRow[]).map((row) => row.teacher_name);
+      const visibleTeacherNames = Array.from(new Set([
+        ...(typedProfile.teacher_name ? [typedProfile.teacher_name] : []),
+        ...accessNames,
+      ]));
+      setLinkedTeacherNames(visibleTeacherNames);
+      if (!visibleTeacherNames.length) { setLoading(false); return; }
 
       const rangeStart = new Date();
       rangeStart.setDate(1);
@@ -104,7 +122,7 @@ export default function TeacherPortal() {
       const [{ data, error }] = await Promise.all([
         supabase.from('lessons')
           .select('id,lesson_date,school,class_name,start_time,end_time,teacher_name,unavailable')
-          .eq('teacher_name', typedProfile.teacher_name)
+          .in('teacher_name', visibleTeacherNames)
           .gte('lesson_date', dateKey(rangeStart)).lt('lesson_date', dateKey(rangeEnd))
           .order('lesson_date').order('start_time'),
         loadRequests(sessionData.session.user.id),
@@ -136,7 +154,7 @@ export default function TeacherPortal() {
   const weeklyHours = useMemo(() => weekLessons.reduce((s, l) => s + minutesBetween(l.start_time, l.end_time), 0) / 60, [weekLessons]);
   const monthlyHours = useMemo(() => monthLessons.reduce((s, l) => s + minutesBetween(l.start_time, l.end_time), 0) / 60, [monthLessons]);
   const schoolCount = useMemo(() => new Set(monthLessons.map((l) => l.school)).size, [monthLessons]);
-  const affectedLessons = useMemo(() => lessons.filter((l) => l.lesson_date >= startDate && l.lesson_date <= endDate), [lessons, startDate, endDate]);
+  const affectedLessons = useMemo(() => lessons.filter((l) => l.teacher_name === profile?.teacher_name && l.lesson_date >= startDate && l.lesson_date <= endDate), [lessons, profile?.teacher_name, startDate, endDate]);
   const countdown = useMemo(() => {
     if (!nextLesson) return 'No upcoming lessons';
     const diff = new Date(`${nextLesson.lesson_date}T${nextLesson.start_time.slice(0, 8)}`).getTime() - now.getTime();
@@ -191,14 +209,14 @@ export default function TeacherPortal() {
         <button className="signOut" onClick={signOut}><LogOut size={17} /> Sign out</button>
       </header>
 
-      <section className="welcome"><div><p>{new Intl.DateTimeFormat('en-SG', { weekday: 'long', day: 'numeric', month: 'long' }).format(now)}</p><h2>{greeting}, {teacherName} <span>👋</span></h2><small>Here is everything you need for your teaching day.</small></div><div className="livePill"><i /> Live timetable</div></section>
+      <section className="welcome"><div><p>{new Intl.DateTimeFormat('en-SG', { weekday: 'long', day: 'numeric', month: 'long' }).format(now)}</p><h2>{greeting}, {teacherName} <span>👋</span></h2><small>{linkedTeacherNames.length > 1 ? `Viewing ${linkedTeacherNames.join(' + ')}` : 'Here is everything you need for your teaching day.'}</small></div><div className="livePill"><i /> Live timetable</div></section>
       {message && <div className={message.startsWith('Your unable') ? 'success' : 'error'}>{message}</div>}
-      {!profile?.teacher_name && <div className="warning">Your account has not been linked to a teacher yet. Ask the administrator to set your teacher name.</div>}
+      {!linkedTeacherNames.length && <div className="warning">Your account has not been linked to any timetables yet. Ask the administrator to set your timetable access.</div>}
 
       <section className="heroGrid">
         <article className="nextCard">
           <div className="cardLabel"><Sparkles size={15} /> NEXT LESSON</div>
-          {nextLesson ? <><div className="nextMain"><div className="timeBadge"><Clock3 size={20} /><strong>{formatTime(nextLesson.start_time)}</strong><span>{formatTime(nextLesson.end_time)}</span></div><div><h3>{nextLesson.school}</h3><p>{nextLesson.class_name}</p><small><CalendarDays size={14} /> {nextLesson.lesson_date === todayKey ? 'Today' : new Intl.DateTimeFormat('en-SG', { weekday: 'long', day: 'numeric', month: 'short' }).format(parseLocalDate(nextLesson.lesson_date))}</small></div></div><div className="countdown"><i /><strong>{countdown}</strong></div></> : <div className="emptyNext"><CalendarDays size={34} /><strong>No upcoming lessons</strong><span>Your next assigned lesson will appear here.</span></div>}
+          {nextLesson ? <><div className="nextMain"><div className="timeBadge"><Clock3 size={20} /><strong>{formatTime(nextLesson.start_time)}</strong><span>{formatTime(nextLesson.end_time)}</span></div><div><h3>{nextLesson.school}</h3><p>{nextLesson.class_name}</p><small><CalendarDays size={14} /> {linkedTeacherNames.length > 1 ? `${nextLesson.teacher_name ?? 'Unassigned'} · ` : ''}{nextLesson.lesson_date === todayKey ? 'Today' : new Intl.DateTimeFormat('en-SG', { weekday: 'long', day: 'numeric', month: 'short' }).format(parseLocalDate(nextLesson.lesson_date))}</small></div></div><div className="countdown"><i /><strong>{countdown}</strong></div></> : <div className="emptyNext"><CalendarDays size={34} /><strong>No upcoming lessons</strong><span>Your next assigned lesson will appear here.</span></div>}
         </article>
         <article className="weekCard"><div className="sectionHeading"><div><p>THIS WEEK</p><h3>Weekly workload</h3></div><BarChart3 size={20} /></div><div className="weekBars">{['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((day,index)=><div className="barColumn" key={day}><span>{weeklyCounts[index]}</span><div><i style={{height:`${Math.max(8,weeklyCounts[index]/maxWeeklyCount*100)}%`}} /></div><small>{day}</small></div>)}</div></article>
       </section>
@@ -210,13 +228,13 @@ export default function TeacherPortal() {
       </section>
 
       <section className="lowerGrid">
-        <article className="scheduleCard" id="today-schedule"><div className="sectionHeading"><div><p>TODAY</p><h3>Today&apos;s schedule</h3></div><span>{todayLessons.length} lesson{todayLessons.length===1?'':'s'}</span></div><div className="todayList">{todayLessons.length ? todayLessons.map((lesson,index)=><div className={`todayLesson ${lesson.unavailable?'unavailable':''}`} key={lesson.id}><div className="timeline"><i/><span>{index<todayLessons.length-1&&<b/>}</span></div><div className="lessonTime"><strong>{formatTime(lesson.start_time)}</strong><span>{formatTime(lesson.end_time)}</span></div><div className="lessonDetails"><strong>{lesson.school}</strong><span>{lesson.class_name}</span><small><MapPin size={13}/> MOE programme</small></div>{lesson.unavailable&&<em>Cannot attend</em>}</div>) : <div className="emptySchedule"><CalendarDays size={30}/><strong>No lessons today</strong><span>Enjoy the open space in your schedule.</span></div>}</div></article>
+        <article className="scheduleCard" id="today-schedule"><div className="sectionHeading"><div><p>TODAY</p><h3>Today&apos;s schedule</h3></div><span>{todayLessons.length} lesson{todayLessons.length===1?'':'s'}</span></div><div className="todayList">{todayLessons.length ? todayLessons.map((lesson,index)=><div className={`todayLesson ${lesson.unavailable?'unavailable':''}`} key={lesson.id}><div className="timeline"><i/><span>{index<todayLessons.length-1&&<b/>}</span></div><div className="lessonTime"><strong>{formatTime(lesson.start_time)}</strong><span>{formatTime(lesson.end_time)}</span></div><div className="lessonDetails"><strong>{lesson.school}</strong><span>{lesson.class_name}</span><small><MapPin size={13}/> {linkedTeacherNames.length > 1 ? `${lesson.teacher_name ?? 'Unassigned'} · ` : ''}MOE programme</small></div>{lesson.unavailable&&<em>Cannot attend</em>}</div>) : <div className="emptySchedule"><CalendarDays size={30}/><strong>No lessons today</strong><span>Enjoy the open space in your schedule.</span></div>}</div></article>
         <aside className="quickCard"><div className="sectionHeading"><div><p>SHORTCUTS</p><h3>Quick actions</h3></div></div><button className="urgentAction" onClick={()=>setRequestOpen(true)}><span className="quickIcon alert"><AlertTriangle size={18}/></span><div><strong>Unable to attend</strong><small>Send a request for affected lessons</small></div><ChevronRight size={18}/></button><button onClick={scrollToSchedule}><span className="quickIcon"><CalendarDays size={18}/></span><div><strong>View today&apos;s timetable</strong><small>Jump to your lesson list</small></div><ChevronRight size={18}/></button><button onClick={()=>router.refresh()}><span className="quickIcon"><Clock3 size={18}/></span><div><strong>Refresh schedule</strong><small>Check for the latest changes</small></div><ChevronRight size={18}/></button></aside>
       </section>
 
       <section className="requestsCard"><div className="sectionHeading"><div><p>REQUESTS</p><h3>My unable-to-attend requests</h3></div><button onClick={()=>setRequestOpen(true)}>New request <ArrowRight size={15}/></button></div><div className="requestList">{requests.length ? requests.map((request)=><article key={request.id}><div><span>{new Intl.DateTimeFormat('en-SG',{day:'numeric',month:'short',year:'numeric'}).format(parseLocalDate(request.start_date))}{request.end_date!==request.start_date?` – ${new Intl.DateTimeFormat('en-SG',{day:'numeric',month:'short'}).format(parseLocalDate(request.end_date))}`:''}</span><strong>{request.reason}</strong><small>{request.affected_lessons?.length ?? 0} affected lesson{(request.affected_lessons?.length ?? 0)===1?'':'s'}</small></div><div className={`status ${request.status}`}>{statusLabel[request.status]}</div>{request.replacement_summary&&<p>{request.replacement_summary}</p>}{request.admin_note&&<p>{request.admin_note}</p>}{request.status==='pending'&&<button className="cancelRequest" onClick={()=>cancelRequest(request.id)}>Cancel</button>}</article>) : <div className="emptyRequests"><CheckCircle2 size={28}/><strong>No requests yet</strong><span>Use “Unable to attend” when you cannot make an assigned lesson.</span></div>}</div></section>
 
-      <section className="upcomingCard"><div className="sectionHeading"><div><p>UPCOMING</p><h3>Next scheduled lessons</h3></div><button onClick={scrollToSchedule}>Today <ArrowRight size={15}/></button></div><div className="upcomingGrid">{upcomingLessons.slice(0,6).map((lesson)=><article key={lesson.id}><span>{new Intl.DateTimeFormat('en-SG',{weekday:'short',day:'numeric',month:'short'}).format(parseLocalDate(lesson.lesson_date))}</span><strong>{lesson.school}</strong><small>{lesson.class_name}</small><p><Clock3 size={13}/> {formatTime(lesson.start_time)}–{formatTime(lesson.end_time)}</p></article>)}{!upcomingLessons.length&&<div className="emptyUpcoming">No upcoming lessons assigned.</div>}</div></section>
+      <section className="upcomingCard"><div className="sectionHeading"><div><p>UPCOMING</p><h3>Next scheduled lessons</h3></div><button onClick={scrollToSchedule}>Today <ArrowRight size={15}/></button></div><div className="upcomingGrid">{upcomingLessons.slice(0,6).map((lesson)=><article key={lesson.id}><span>{new Intl.DateTimeFormat('en-SG',{weekday:'short',day:'numeric',month:'short'}).format(parseLocalDate(lesson.lesson_date))}</span><strong>{lesson.school}</strong><small>{lesson.class_name}{linkedTeacherNames.length > 1 ? ` · ${lesson.teacher_name ?? 'Unassigned'}` : ''}</small><p><Clock3 size={13}/> {formatTime(lesson.start_time)}–{formatTime(lesson.end_time)}</p></article>)}{!upcomingLessons.length&&<div className="emptyUpcoming">No upcoming lessons assigned.</div>}</div></section>
 
       {requestOpen && <div className="modalBackdrop" onMouseDown={(e)=>{if(e.currentTarget===e.target)setRequestOpen(false)}}><section className="requestModal"><header><div><p>UNABLE TO ATTEND</p><h3>Send a replacement request</h3></div><button onClick={()=>setRequestOpen(false)}><X size={20}/></button></header><div className="formGrid"><label><span>From date</span><input type="date" value={startDate} min={todayKey} onChange={(e)=>{setStartDate(e.target.value);if(e.target.value>endDate)setEndDate(e.target.value)}}/></label><label><span>To date</span><input type="date" value={endDate} min={startDate} onChange={(e)=>setEndDate(e.target.value)}/></label></div><label className="field"><span>Reason</span><select value={reason} onChange={(e)=>setReason(e.target.value)}>{['MC','Sick','Annual leave','Emergency','Family matter','Transport issue','Other'].map((item)=><option key={item}>{item}</option>)}</select></label><label className="field"><span>Remarks <small>optional</small></span><textarea rows={3} value={remarks} onChange={(e)=>setRemarks(e.target.value)} placeholder="Add any information the admin should know."/></label><div className="affected"><div><span>Affected lessons</span><strong>{affectedLessons.length}</strong></div>{affectedLessons.length ? affectedLessons.map((lesson)=><article key={lesson.id}><CalendarDays size={16}/><div><strong>{lesson.school}</strong><span>{lesson.class_name}</span></div><p>{new Intl.DateTimeFormat('en-SG',{weekday:'short',day:'numeric',month:'short'}).format(parseLocalDate(lesson.lesson_date))}<br/>{formatTime(lesson.start_time)}–{formatTime(lesson.end_time)}</p></article>) : <div className="noAffected">No assigned lessons found for this date range.</div>}</div>{requestMessage&&<div className="modalError">{requestMessage}</div>}<footer><button className="secondary" onClick={()=>setRequestOpen(false)}>Close</button><button className="submit" disabled={submitting||!affectedLessons.length} onClick={submitRequest}>{submitting?<Loader2 className="spin" size={17}/>:<Send size={17}/>} Send request</button></footer></section></div>}
 
