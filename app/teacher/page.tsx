@@ -123,6 +123,7 @@ export default function TeacherPortal() {
         supabase.from('lessons')
           .select('id,lesson_date,school,class_name,start_time,end_time,teacher_name,unavailable')
           .in('teacher_name', visibleTeacherNames)
+          .eq('cancelled', false)
           .gte('lesson_date', dateKey(rangeStart)).lt('lesson_date', dateKey(rangeEnd))
           .order('lesson_date').order('start_time'),
         loadRequests(sessionData.session.user.id),

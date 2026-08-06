@@ -39,7 +39,7 @@ export default function ConflictCenter(){
   const{data:s}=await supabase.auth.getSession();if(!s.session){router.replace('/login');return}
   const{data:p}=await supabase.from('profiles').select('role,active').eq('id',s.session.user.id).single();if(!p?.active||p.role!=='admin'){router.replace(p?.role==='teacher'?'/teacher':'/login');return}
   const[lr,tr,ar]=await Promise.all([
-   supabase.from('lessons').select('id,lesson_date,school,class_name,start_time,end_time,teacher_name,unavailable').gte('lesson_date',range.start).lte('lesson_date',range.end).order('lesson_date').order('start_time'),
+    supabase.from('lessons').select('id,lesson_date,school,class_name,start_time,end_time,teacher_name,unavailable').eq('cancelled',false).gte('lesson_date',range.start).lte('lesson_date',range.end).order('lesson_date').order('start_time'),
    supabase.from('teachers').select('name,color').order('name'),
    supabase.from('teacher_availability').select('*')
   ]);

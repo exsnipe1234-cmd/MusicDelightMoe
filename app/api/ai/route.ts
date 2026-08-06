@@ -233,6 +233,7 @@ async function searchLessons(args: SearchLessonsArgs) {
   let query = supabase
     .from('lessons')
     .select('id,lesson_date,school,class_name,start_time,end_time,teacher_name,unavailable,source')
+    .eq('cancelled', false)
     .order('lesson_date', { ascending: true })
     .order('start_time', { ascending: true });
 

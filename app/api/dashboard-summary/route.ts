@@ -24,8 +24,8 @@ export async function GET() {
     const nextWeek = sgDate(7);
 
     const [todayResult, tomorrowResult, requestResult, taskResult, availabilityResult] = await Promise.all([
-      supabase.from('lessons').select('id,teacher_name,school,class_name,start_time,end_time,unavailable').eq('lesson_date', today),
-      supabase.from('lessons').select('id,teacher_name,school,class_name,start_time,end_time,unavailable').eq('lesson_date', tomorrow),
+      supabase.from('lessons').select('id,teacher_name,school,class_name,start_time,end_time,unavailable').eq('lesson_date', today).eq('cancelled', false),
+      supabase.from('lessons').select('id,teacher_name,school,class_name,start_time,end_time,unavailable').eq('lesson_date', tomorrow).eq('cancelled', false),
       supabase.from('teacher_unavailability_requests').select('id,teacher_name,start_date,end_date,status,reason').in('status', ['pending', 'approved']).lte('start_date', nextWeek).gte('end_date', today),
       supabase.from('replacement_tasks').select('id,teacher_name,lesson_date,school,class_name,start_time,end_time,status,replacement_teacher_name').in('status', ['open', 'pending']),
       supabase.from('teacher_availability').select('teacher_name,availability_type,start_date,end_date,reason').eq('availability_type', 'leave').lte('start_date', nextWeek).gte('end_date', today),

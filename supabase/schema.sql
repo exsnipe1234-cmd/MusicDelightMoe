@@ -16,6 +16,7 @@ create table if not exists public.lessons (
   end_time time not null,
   teacher_name text,
   unavailable boolean not null default false,
+  cancelled boolean not null default false,
   source text not null default 'manual',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

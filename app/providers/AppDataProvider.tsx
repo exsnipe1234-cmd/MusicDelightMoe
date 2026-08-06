@@ -24,6 +24,7 @@ export type LessonRow = {
   end_time: string;
   teacher_name: string | null;
   unavailable: boolean;
+  cancelled: boolean;
 };
 export type LessonRange = { start: string; end: string };
 
@@ -86,7 +87,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     const request = (async () => {
       const { data, error } = await supabase
         .from('lessons')
-        .select('id,lesson_date,school,class_name,start_time,end_time,teacher_name,unavailable')
+        .select('id,lesson_date,school,class_name,start_time,end_time,teacher_name,unavailable,cancelled')
         .gte('lesson_date', range.start)
         .lt('lesson_date', range.end)
         .order('lesson_date')
