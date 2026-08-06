@@ -18,7 +18,7 @@
 .fc .fc-daygrid-event:hover,
 .fc .fc-timegrid-event:hover {
   transform: translateY(-1px);
-  filter: brightness(1.08);
+  filter: brightness(1.04);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.26);
 }
 
@@ -45,4 +45,26 @@
 .fc .eventCard small,
 .fc .eventCard span {
   opacity: 0.92;
+}
+
+.fc .eventCard.compact {
+  grid-template-columns: 38px minmax(0, 1fr) !important;
+  align-items: start !important;
+  line-height: 1.25 !important;
+}
+
+.fc .eventCard.compact strong {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  overflow-wrap: anywhere;
+}
+
+.fc .eventCard.compact small {
+  display: block !important;
+  grid-column: 2;
+  max-width: none !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
 }
