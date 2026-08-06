@@ -33,7 +33,7 @@ export async function updateSession(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
   const path = request.nextUrl.pathname;
-  const publicPath = path === '/login';
+  const publicPath = path === '/login' || path === '/account/password';
 
   if (!user) {
     if (publicPath) return response;
@@ -58,7 +58,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (publicPath) {
+  if (path === '/login') {
     const destination = request.nextUrl.clone();
     destination.pathname = profile.role === 'teacher' ? '/teacher' : '/admin/calendar';
     destination.search = '';
@@ -66,7 +66,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (profile.role === 'teacher') {
-    const teacherAllowed = path === '/teacher' || path.startsWith('/teacher/');
+    const teacherAllowed = path === '/teacher' || path.startsWith('/teacher/') || path === '/account/password';
     if (!teacherAllowed) {
       const teacherUrl = request.nextUrl.clone();
       teacherUrl.pathname = '/teacher';

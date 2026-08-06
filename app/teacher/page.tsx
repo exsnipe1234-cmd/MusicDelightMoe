@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock3,
+  KeyRound,
   Loader2,
   LogOut,
   MapPin,
@@ -207,7 +208,7 @@ export default function TeacherPortal() {
     <main className="portalShell">
       <header className="portalHeader">
         <div className="brand"><span><CalendarDays size={22} /></span><div><p>MUSIC DELIGHT</p><h1>Teacher Portal</h1></div></div>
-        <button className="signOut" onClick={signOut}><LogOut size={17} /> Sign out</button>
+        <div style={{ display: 'flex', gap: 8 }}><button className="signOut" onClick={() => router.push('/account/password')}><KeyRound size={17} /> Password</button><button className="signOut" onClick={signOut}><LogOut size={17} /> Sign out</button></div>
       </header>
 
       <section className="welcome"><div><p>{new Intl.DateTimeFormat('en-SG', { weekday: 'long', day: 'numeric', month: 'long' }).format(now)}</p><h2>{greeting}, {teacherName} <span>👋</span></h2><small>{linkedTeacherNames.length > 1 ? `Viewing ${linkedTeacherNames.join(' + ')}` : 'Here is everything you need for your teaching day.'}</small></div><div className="livePill"><i /> Live timetable</div></section>

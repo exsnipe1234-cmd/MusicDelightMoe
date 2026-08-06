@@ -149,7 +149,7 @@ export default function TeacherManagementPage() {
     if (!profile.email) return;
     setSavingId(profile.id);
     const { error } = await supabase.auth.resetPasswordForEmail(profile.email, {
-      redirectTo: `${window.location.origin}/login`,
+      redirectTo: `${window.location.origin}/account/password`,
     });
     setMessage(error ? `Could not send reset email: ${error.message}` : `Password reset email sent to ${profile.email}.`);
     setSavingId(null);

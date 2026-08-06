@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { AlertTriangle, CalendarDays, FileUp, Home, LogOut, Menu, School, Users, UserRoundCheck, X } from 'lucide-react';
+import { AlertTriangle, CalendarDays, FileUp, Home, KeyRound, LogOut, Menu, School, Users, UserRoundCheck, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '../../../utils/supabase/client';
 
@@ -12,6 +12,7 @@ const links = [
   { href: '/admin/conflicts', label: 'Conflict Center', icon: AlertTriangle },
   { href: '/admin/availability', label: 'Availability', icon: UserRoundCheck },
   { href: '/admin/teachers', label: 'Teachers', icon: Users },
+  { href: '/account/password', label: 'Change password', icon: KeyRound, exact: true },
   { href: '/import', label: 'Import PDF', icon: FileUp, exact: true },
 ];
 
