@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { AlertTriangle, CalendarDays, FileUp, Home, KeyRound, LogOut, Menu, School, Users, UserRoundCheck, X } from 'lucide-react';
+import { AlertTriangle, CalendarDays, FileClock, FileUp, History, Home, KeyRound, LogOut, Menu, Repeat2, School, Users, UserRoundCheck, UserRoundX, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '../../../utils/supabase/client';
 
@@ -10,8 +10,12 @@ const links = [
   { href: '/', label: 'Dashboard', icon: Home, exact: true },
   { href: '/admin/calendar', label: 'Calendar', icon: CalendarDays },
   { href: '/admin/conflicts', label: 'Conflict Center', icon: AlertTriangle },
+  { href: '/admin/requests', label: 'Leave Requests', icon: UserRoundX },
+  { href: '/admin/replacements', label: 'Replacements', icon: Repeat2 },
   { href: '/admin/availability', label: 'Availability', icon: UserRoundCheck },
   { href: '/admin/teachers', label: 'Teachers', icon: Users },
+  { href: '/admin/import-history', label: 'Import History', icon: History },
+  { href: '/admin/audit', label: 'Audit Log', icon: FileClock },
   { href: '/account/password', label: 'Change password', icon: KeyRound, exact: true },
   { href: '/import', label: 'Import PDF', icon: FileUp, exact: true },
 ];

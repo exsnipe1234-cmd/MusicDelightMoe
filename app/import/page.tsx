@@ -5,10 +5,11 @@ import { useRouter } from 'next/navigation';
 import { ChangeEvent, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowLeft, CheckCircle2, Filter, Loader2, ShieldCheck, Upload, XCircle } from 'lucide-react';
 import { createClient } from '../../utils/supabase/client';
+import { useAppData } from '../providers/AppDataProvider';
 
 type ImportedLesson = { id: number; date: string; school: string; className: string; startTime: string; endTime: string; teacher: string | null; unavailable: boolean };
 type PdfTextItem = { str: string; transform: number[]; width?: number; height?: number };
-type ExistingRow = { id: string; lesson_date: string; school: string; class_name: string; start_time: string; end_time: string; teacher_name: string | null; unavailable?: boolean };
+type ExistingRow = { id: string; lesson_date: string; school: string; class_name: string; start_time: string; end_time: string; teacher_name: string | null; unavailable: boolean; cancelled: boolean; source: string; created_at: string; updated_at: string };
 type ImportStatus = 'new' | 'changed' | 'duplicate' | 'conflict' | 'review';
 type PreviewLesson = ImportedLesson & { importStatus: ImportStatus; selected: boolean; issues: string[]; existingTeacher?: string | null };
 type RemovedCandidate = ExistingRow;
@@ -154,6 +155,7 @@ async function extractLessons(file: File): Promise<{ lessons: ImportedLesson[]; 
 export default function ImportPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
+  const { invalidateLessons } = useAppData();
   const [lessons, setLessons] = useState<PreviewLesson[]>([]);
   const [removedCandidates, setRemovedCandidates] = useState<RemovedCandidate[]>([]);
   const [monthName, setMonthName] = useState('');
@@ -178,7 +180,8 @@ export default function ImportPage() {
 
   const analyseImport = (detected: ImportedLesson[], existingRows: ExistingRow[]) => {
     const exactExisting = new Set(existingRows.map((row) => lessonKey({ date: row.lesson_date, startTime: row.start_time, endTime: row.end_time, school: row.school, className: row.class_name, teacher: row.teacher_name })));
-    const existingByBase = new Map(existingRows.map((row) => [baseKey({date:row.lesson_date,startTime:row.start_time,endTime:row.end_time,school:row.school,className:row.class_name}), row]));
+    const existingByBase = new Map<string, ExistingRow[]>();
+    existingRows.forEach((row) => { const key = baseKey({date:row.lesson_date,startTime:row.start_time,endTime:row.end_time,school:row.school,className:row.class_name}); existingByBase.set(key, [...(existingByBase.get(key) ?? []), row]); });
     const importedBase = new Set(detected.map(baseKey));
 
     const analysed: PreviewLesson[] = detected.map((lesson) => {
@@ -192,9 +195,14 @@ export default function ImportPage() {
       if (databaseClashes.length) issues.push(`Clashes with ${databaseClashes[0].school} ${databaseClashes[0].start_time.slice(0,5)}–${databaseClashes[0].end_time.slice(0,5)} already in the calendar.`);
 
       const exact = exactExisting.has(lessonKey(lesson));
-      const changed = !exact ? existingByBase.get(baseKey(lesson)) : undefined;
-      let importStatus: ImportStatus = exact ? 'duplicate' : changed ? 'changed' : 'new';
-      if (pdfClashes.length || databaseClashes.length) importStatus = 'conflict';
+      const candidates = !exact ? existingByBase.get(baseKey(lesson)) ?? [] : [];
+      const changed = candidates.length === 1 ? candidates[0] : undefined;
+      if (candidates.some((row) => row.cancelled)) issues.push('A matching cancelled class exists. Reactivate or review it manually.');
+      if (candidates.length > 1) issues.push('Multiple teacher records match this class. Review them manually.');
+      if (!lesson.teacher && candidates.some((row) => row.teacher_name)) issues.push('The PDF has no recognised teacher and cannot replace an assigned teacher automatically.');
+      const blockedChange = candidates.length > 1 || Boolean(changed?.cancelled) || (!lesson.teacher && Boolean(changed?.teacher_name));
+      let importStatus: ImportStatus = exact ? 'duplicate' : blockedChange ? 'review' : changed ? 'changed' : 'new';
+      if (!exact && !blockedChange && (pdfClashes.length || databaseClashes.length)) importStatus = 'conflict';
 
       return {
         ...lesson,
@@ -233,7 +241,7 @@ export default function ImportPage() {
       const result = await extractLessons(file);
       setMonthName(result.monthName);
       const dates = [...new Set(result.lessons.map((lesson) => lesson.date))].sort();
-      const { data: existing, error: compareError } = await supabase.from('lessons').select('id,lesson_date,school,class_name,start_time,end_time,teacher_name,unavailable').gte('lesson_date', dates[0]).lte('lesson_date', dates[dates.length-1]);
+      const { data: existing, error: compareError } = await supabase.from('lessons').select('id,lesson_date,school,class_name,start_time,end_time,teacher_name,unavailable,cancelled,source,created_at,updated_at').gte('lesson_date', dates[0]).lte('lesson_date', dates[dates.length-1]);
       if (compareError) throw compareError;
       const analysis = analyseImport(result.lessons, (existing ?? []) as ExistingRow[]);
       setLessons(analysis.analysed); setRemovedCandidates(analysis.removals); setComparison(analysis.summary); setStatus('ready');
@@ -251,25 +259,24 @@ export default function ImportPage() {
     if (unsafeSelected.length && !allowConflicts) { setMessage('Resolve the selected clashes/review items, or confirm the override first.'); return; }
     setStatus('saving'); setMessage('Applying selected lessons to Supabase...');
     const dates = [...new Set(selectedLessons.map((lesson) => lesson.date))];
-    const { data: existing, error: readError } = await supabase.from('lessons').select('id,lesson_date,school,class_name,start_time,end_time,teacher_name').in('lesson_date', dates);
+    const { data: existing, error: readError } = await supabase.from('lessons').select('id,lesson_date,school,class_name,start_time,end_time,teacher_name,unavailable,cancelled,source,created_at,updated_at').in('lesson_date', dates);
     if (readError) { setStatus('error'); setMessage(`Could not check existing lessons: ${readError.message}`); return; }
     const rows = (existing ?? []) as ExistingRow[];
     const exactKeys = new Set(rows.map((row) => lessonKey({ date: row.lesson_date, startTime: row.start_time, endTime: row.end_time, school: row.school, className: row.class_name, teacher: row.teacher_name })));
-    const existingByBase = new Map(rows.map((row) => [baseKey({date:row.lesson_date,startTime:row.start_time,endTime:row.end_time,school:row.school,className:row.class_name}), row]));
-    const newLessons = selectedLessons.filter((lesson) => !exactKeys.has(lessonKey(lesson)) && !existingByBase.has(baseKey(lesson)));
-    const changedLessons = selectedLessons.filter((lesson) => !exactKeys.has(lessonKey(lesson)) && existingByBase.has(baseKey(lesson)));
+    const existingByBase = new Map<string, ExistingRow[]>();
+    rows.forEach((row) => { const key = baseKey({date:row.lesson_date,startTime:row.start_time,endTime:row.end_time,school:row.school,className:row.class_name}); existingByBase.set(key, [...(existingByBase.get(key) ?? []), row]); });
+    const pending = selectedLessons.filter((lesson) => !exactKeys.has(lessonKey(lesson)));
+    const newLessons = pending.filter((lesson) => !(existingByBase.get(baseKey(lesson))?.length));
+    const changedLessons = pending.filter((lesson) => existingByBase.get(baseKey(lesson))?.length === 1);
+    const blocked = pending.filter((lesson) => { const matches = existingByBase.get(baseKey(lesson)) ?? []; return matches.length > 1 || matches.some((row) => row.cancelled) || (!lesson.teacher && matches.some((row) => row.teacher_name)); });
+    if (blocked.length) { setStatus('error'); setMessage('Import stopped because matching cancelled, assigned, or multi-teacher records require manual review.'); return; }
 
-    if (newLessons.length) {
-      const payload = newLessons.map((lesson) => ({ lesson_date: lesson.date, school: lesson.school.trim(), class_name: lesson.className.trim(), start_time: lesson.startTime, end_time: lesson.endTime, teacher_name: lesson.teacher, unavailable: lesson.unavailable, source: 'pdf' }));
-      const { error } = await supabase.from('lessons').insert(payload);
-      if (error) { setStatus('error'); setMessage(`Import failed: ${error.message}`); return; }
-    }
-    for (const lesson of changedLessons) {
-      const row = existingByBase.get(baseKey(lesson));
-      if (!row) continue;
-      const { error } = await supabase.from('lessons').update({ teacher_name: lesson.teacher, unavailable: lesson.unavailable, source: 'pdf' }).eq('id', row.id);
-      if (error) { setStatus('error'); setMessage(`Could not update a changed lesson: ${error.message}`); return; }
-    }
+    const newPayload = newLessons.map((lesson) => ({ lesson_date: lesson.date, school: lesson.school.trim(), class_name: lesson.className.trim(), start_time: lesson.startTime, end_time: lesson.endTime, teacher_name: lesson.teacher }));
+    const updatePayload = changedLessons.map((lesson) => { const row = existingByBase.get(baseKey(lesson))![0]; return { lesson_id: row.id, teacher_name: lesson.teacher, expected_snapshot: row }; });
+    const sortedDates = [...dates].sort();
+    const { error } = await supabase.rpc('apply_timetable_import', { p_file_name: fileName, p_calendar_label: monthName, p_date_start: sortedDates[0], p_date_end: sortedDates[sortedDates.length - 1], p_new_lessons: newPayload, p_updates: updatePayload });
+    if (error) { setStatus('error'); setMessage(`Import failed safely: ${error.message}`); return; }
+    invalidateLessons();
     setStatus('saved');
     setMessage(`${newLessons.length} new lessons saved and ${changedLessons.length} changed lessons updated. Duplicates and possible removals were left untouched.`);
     setTimeout(() => router.push('/'), 1400);
