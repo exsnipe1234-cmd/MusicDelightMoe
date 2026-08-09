@@ -4,6 +4,7 @@ import './dashboard-fix.css';
 import './fullcalendar-overrides.css';
 import AdminQuickLinks from './components/AdminQuickLinks';
 import CalendarAiAssistant from './components/CalendarAiAssistant';
+import NativeAppViewport from './components/NativeAppViewport';
 import { AppDataProvider } from './providers/AppDataProvider';
 
 export const metadata: Metadata = {
@@ -16,6 +17,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en">
       <body>
         <AppDataProvider>
+          <NativeAppViewport />
           {children}
           <AdminQuickLinks />
           <CalendarAiAssistant />
