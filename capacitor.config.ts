@@ -8,7 +8,7 @@ const config: CapacitorConfig = {
     url: 'https://mdscal.com',
     androidScheme: 'https',
     cleartext: false,
-    allowNavigation: ['mdscal.com'],
+    allowNavigation: ['mdscal.com', 'www.mdscal.com'],
   },
 };
 
