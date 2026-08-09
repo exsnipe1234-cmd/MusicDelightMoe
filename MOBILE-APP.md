@@ -1,4 +1,4 @@
-# Music Delight Mobile App
+# MDS Calendar Mobile App
 
 The Android app is a Capacitor wrapper for the live platform at `https://mdscal.com`.
 

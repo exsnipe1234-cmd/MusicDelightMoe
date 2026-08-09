@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.musicdelight.moe',
-  appName: 'Music Delight MOE',
+  appName: 'MDS Calendar',
   webDir: 'www',
   server: {
     url: 'https://mdscal.com/login?nativeApp=1',
