@@ -68,3 +68,17 @@
   overflow: visible !important;
   text-overflow: clip !important;
 }
+
+@media (max-width: 900px) {
+  .calendarCard {
+    overflow-x: auto !important;
+  }
+
+  .calendarCard .fc-timeGridWeek-view {
+    min-width: 980px;
+  }
+
+  .calendarCard .fc-timeGridWeek-view .fc-timegrid-col {
+    min-width: 135px;
+  }
+}
