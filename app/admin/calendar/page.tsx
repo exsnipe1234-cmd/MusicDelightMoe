@@ -24,7 +24,8 @@ const currentMonthRange = (): Range => { const start = new Date(); start.setDate
 const pretty = (value: string) => new Intl.DateTimeFormat('en-SG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(`${value}T12:00:00`));
 const rgba = (hex: string, alpha: number) => { const safe = hex.replace('#', ''); const full = safe.length === 3 ? safe.split('').map((part) => part + part).join('') : safe; const value = Number.parseInt(full, 16); return Number.isFinite(value) ? `rgba(${(value >> 16) & 255},${(value >> 8) & 255},${value & 255},${alpha})` : `rgba(124,140,255,${alpha})`; };
 const escapeHtml = (value: string) => value.replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character] ?? character);
-const mapsUrl = (school: string) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${school} Singapore`)}`;
+const mapsUrl = (school: string) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${mapsSchool(school)} Singapore`)}`;
+const mapsSchool = (value: string) => { let school = value.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\bcca\b/gi, '').replace(/\bpri\b/gi, 'primary school').replace(/\bps\b(?!\s+school)/gi, 'primary school').replace(/\bprimary school\b\s+primary school\b/gi, 'primary school').replace(/\s+/g, ' ').trim().toLowerCase(); if (!school.includes('school') && !school.includes('secondary') && !school.includes('junior')) school = `${school} primary school`; return school.replace(/\b\w/g, (char) => char.toUpperCase()); };
 
 export default function CalendarPage() {
   const router = useRouter();
