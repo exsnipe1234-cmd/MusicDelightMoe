@@ -26,6 +26,8 @@ type Draft = {
 };
 
 const emptyTeacher = { name: '', color: '#70d28c' };
+type CreateDraft = { email: string; password: string; display_name: string; role: 'admin' | 'teacher'; teacher_name: string };
+const emptyCreate = (): CreateDraft => ({ email: '', password: '', display_name: '', role: 'teacher', teacher_name: '' });
 
 export default function TeacherManagementPage() {
   const supabase = useMemo(() => createClient(), []);
@@ -33,6 +35,8 @@ export default function TeacherManagementPage() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [newTeacher, setNewTeacher] = useState(emptyTeacher);
+  const [createDraft, setCreateDraft] = useState<CreateDraft>(emptyCreate);
+  const [creating, setCreating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [message, setMessage] = useState('Checking administrator access…');
@@ -170,6 +174,29 @@ export default function TeacherManagementPage() {
     setMessage(`${name} added to the teacher list.`);
   };
 
+  const createAccount = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!createDraft.email.trim() || !createDraft.password || !createDraft.display_name.trim()) {
+      setMessage('Fill in email address, password and display name.');
+      return;
+    }
+    setCreating(true);
+    setMessage(`Creating account for ${createDraft.display_name.trim() || createDraft.email.trim()}…`);
+    try {
+      const response = await fetch('/api/create-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(createDraft),
+      });
+      const body = await response.json();
+      if (!response.ok) { setMessage(`Could not create account: ${body.error}`); return; }
+      setMessage(`${body.displayName} account created successfully.`);
+      setCreateDraft(emptyCreate());
+      await loadData();
+    } catch (error) { setMessage(`Could not create account: ${error instanceof Error ? error.message : 'Network error'}`); }
+    finally { setCreating(false); }
+  };
+
   return (
     <main className="manageShell">
       <header className="manageHeader">
@@ -216,9 +243,21 @@ export default function TeacherManagementPage() {
       </section>
 
       <section className="panel addPanel">
-        <div className="panelHeading"><div><p className="eyebrow">TEACHER DIRECTORY</p><h2>Add teacher name</h2></div><small>This adds a timetable name. Create the login separately in Supabase Authentication, then link it above.</small></div>
+        <div className="panelHeading"><div><p className="eyebrow">TEACHER DIRECTORY</p><h2>Add teacher name</h2></div><small>This adds a timetable name. Create the login separately in Supabase Authentication, or use the form below.</small></div>
         <form onSubmit={addTeacher} className="addForm"><label>Teacher name<input value={newTeacher.name} onChange={(event) => setNewTeacher({...newTeacher,name:event.target.value})} placeholder="Teacher name" required/></label><label>Calendar colour<input type="color" value={newTeacher.color} onChange={(event) => setNewTeacher({...newTeacher,color:event.target.value})}/></label><button className="primary" type="submit"><Plus size={16}/> Add teacher</button></form>
         <div className="teacherChips">{teachers.map((teacher) => <span key={teacher.name}><i style={{background:teacher.color}}/>{teacher.name}</span>)}</div>
+      </section>
+
+      <section className="panel addPanel">
+        <div className="panelHeading"><div><p className="eyebrow">CREATE LOGIN</p><h2>Create new account</h2></div><small>This creates a login directly in the dashboard. The account will appear above after creation.</small></div>
+        <form onSubmit={createAccount} className="addForm" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+          <label>Email address<input type="email" value={createDraft.email} onChange={(event) => setCreateDraft({ ...createDraft, email: event.target.value })} placeholder="teacher@example.com" required/></label>
+          <label>Password<input type="password" value={createDraft.password} onChange={(event) => setCreateDraft({ ...createDraft, password: event.target.value })} placeholder="At least 8 characters" required/></label>
+          <label>Display name<input value={createDraft.display_name} onChange={(event) => setCreateDraft({ ...createDraft, display_name: event.target.value })} placeholder="Full name" required/></label>
+          <label>Role<select value={createDraft.role} onChange={(event) => setCreateDraft({ ...createDraft, role: event.target.value as CreateDraft['role'] })}><option value="teacher">Teacher</option><option value="admin">Admin</option></select></label>
+          {createDraft.role === 'teacher' && <label>Timetable name<select value={createDraft.teacher_name} onChange={(event) => setCreateDraft({ ...createDraft, teacher_name: event.target.value })}><option value="">Not linked</option>{teachers.map((teacher) => <option key={teacher.name}>{teacher.name}</option>)}</select></label>}
+          <button className="primary" type="submit" disabled={creating} style={{ gridColumn: '1/-1' }}>{creating ? <Loader2 className="spin" size={16}/> : <Plus size={16}/>} Create account</button>
+        </form>
       </section>
 
       <style jsx>{`
