@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'Music Delight MOE',
   webDir: 'www',
   server: {
-    url: 'https://mdscal.com',
+    url: 'https://mdscal.com/login?nativeApp=1',
     androidScheme: 'https',
     cleartext: false,
     allowNavigation: ['mdscal.com', 'www.mdscal.com'],
