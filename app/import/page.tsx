@@ -264,6 +264,7 @@ export default function ImportPage() {
   const [showRemoved, setShowRemoved] = useState(false);
   const [allowConflicts, setAllowConflicts] = useState(false);
   const [excelFile, setExcelFile] = useState<File | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [excelSchool, setExcelSchool] = useState('');
   const [excelTeacher, setExcelTeacher] = useState('');
 
@@ -346,8 +347,9 @@ export default function ImportPage() {
     const file = event.target.files?.[0];
     if (!file) return;
     setFileName(file.name); setComparison(null); setLessons([]); setRemovedCandidates([]); setAllowConflicts(false);
-    if (/\.(xlsx|xls)$/i.test(file.name)) { setExcelFile(file); setStatus('idle'); setMessage('Enter the school for this Excel timetable, then analyse it with the same safety checks as a PDF.'); return; }
-    setExcelFile(null); setStatus('reading'); setMessage('Reading the PDF, checking Supabase and scanning for timetable clashes...');
+    if (/\.(xlsx|xls)$/i.test(file.name)) { setExcelFile(file); setImageFile(null); setStatus('idle'); setMessage('Enter the school for this Excel timetable, then analyse it with the same safety checks as a PDF.'); return; }
+    if (file.type.startsWith('image/')) { setImageFile(file); setExcelFile(null); setStatus('idle'); setMessage('Enter the school for this timetable image, then use AI image analysis with the same safety checks as a PDF.'); return; }
+    setExcelFile(null); setImageFile(null); setStatus('reading'); setMessage('Reading the PDF, checking Supabase and scanning for timetable clashes...');
     try {
       const result = await extractLessons(file);
       await analyseDetected(result);
@@ -361,6 +363,20 @@ export default function ImportPage() {
     setStatus('reading'); setMessage('Reading the Excel schedule, checking Supabase and scanning for timetable clashes...');
     try { await analyseDetected(await extractExcelLessons(excelFile, excelSchool.trim(), excelTeacher.trim() || null)); }
     catch (error) { setStatus('error'); setMessage(error instanceof Error ? error.message : 'The Excel timetable could not be read.'); }
+  };
+
+  const analyseImage = async () => {
+    if (!imageFile || !excelSchool.trim()) { setMessage('Enter the school name for this timetable image first.'); return; }
+    setStatus('reading'); setMessage('Reading the timetable image with AI, checking Supabase and scanning for clashes...');
+    try {
+      const form = new FormData(); form.append('image', imageFile);
+      const response = await fetch('/api/import-image', { method: 'POST', body: form });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || 'Image timetable analysis failed.');
+      const rows = Array.isArray(body.lessons) ? body.lessons : [];
+      if (!rows.length) throw new Error('No confirmed dated lessons were detected. Use a clearer image or an Excel/PDF timetable.');
+      await analyseDetected({ monthName: body.monthName || 'Image timetable', lessons: rows.map((row: { date: string; startTime: string; endTime: string; className: string; teacher: string | null }, index: number) => ({ id: Date.now() + index, date: row.date, startTime: row.startTime, endTime: row.endTime, school: excelSchool.trim(), className: row.className, teacher: (row.teacher ?? excelTeacher.trim()) || null, unavailable: false })) });
+    } catch (error) { setStatus('error'); setMessage(error instanceof Error ? error.message : 'The timetable image could not be read.'); }
   };
 
   const toggleLesson = (id: number) => setLessons((current) => current.map((lesson) => lesson.id === id && lesson.importStatus !== 'duplicate' ? { ...lesson, selected: !lesson.selected } : lesson));
@@ -398,8 +414,8 @@ export default function ImportPage() {
   const filters: FilterName[] = ['all','new','changed','conflict','review','duplicate'];
 
   return <main className="importShell">
-    <header className="importHeader"><Link href="/" className="backLink"><ArrowLeft size={17}/> Back to calendar</Link><div><p>SMART TIMETABLE IMPORT</p><h1>Import MOE timetable</h1><span>Extract lessons from PDF or Excel, compare changes and catch teacher clashes before anything is saved.</span></div></header>
-    <section className="importCard uploadCard"><label className="dropZone"><input type="file" accept="application/pdf,.pdf,.xlsx,.xls" onChange={handleFile}/><Upload size={34}/><strong>{fileName || 'Choose PDF or Excel timetable'}</strong><span>PDF, XLSX or XLS · processed in your browser</span></label>{excelFile && <div style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr) auto',gap:10,alignItems:'end',marginTop:14,padding:13,border:'1px solid rgba(129,116,255,.26)',borderRadius:12,background:'rgba(120,87,255,.06)'}}><label style={{display:'grid',gap:6,color:'#aeb8ca',fontSize:12,fontWeight:800}}>School for this timetable<input value={excelSchool} onChange={(event)=>setExcelSchool(event.target.value)} placeholder="e.g. Chongfu Primary School" style={{padding:'10px',border:'1px solid rgba(148,163,184,.16)',borderRadius:9,background:'#0b1222',color:'#eef2fb'}}/></label><label style={{display:'grid',gap:6,color:'#aeb8ca',fontSize:12,fontWeight:800}}>Default teacher <small style={{color:'#7f8ca4',fontWeight:500}}>optional</small><select value={excelTeacher} onChange={(event)=>setExcelTeacher(event.target.value)} style={{padding:'10px',border:'1px solid rgba(148,163,184,.16)',borderRadius:9,background:'#0b1222',color:'#eef2fb'}}><option value="">Unassigned</option>{teacherNames.filter((teacher)=>teacher!=='Audrey Jansen').map((teacher)=><option key={teacher}>{teacher}</option>)}</select></label><button onClick={()=>void analyseExcel()} style={{padding:'11px 14px',border:0,borderRadius:10,background:'#6653de',color:'#fff',fontWeight:800,cursor:'pointer'}}>Analyse Excel</button></div>}<div className={`statusBox ${status}`}>{status === 'reading' || status === 'saving' ? <Loader2 className="spin" size={20}/> : status === 'error' ? <XCircle size={20}/> : <CheckCircle2 size={20}/>}<span>{message || 'No timetable selected yet.'}</span></div></section>
+    <header className="importHeader"><Link href="/" className="backLink"><ArrowLeft size={17}/> Back to calendar</Link><div><p>SMART TIMETABLE IMPORT</p><h1>Import MOE timetable</h1><span>Extract lessons from PDF, Excel, or timetable images, then catch conflicts before anything is saved.</span></div></header>
+    <section className="importCard uploadCard"><label className="dropZone"><input type="file" accept="application/pdf,.pdf,.xlsx,.xls,image/png,image/jpeg,image/webp" onChange={handleFile}/><Upload size={34}/><strong>{fileName || 'Choose timetable file or image'}</strong><span>PDF, Excel, WhatsApp image, PNG, JPEG or WebP</span></label>{(excelFile || imageFile) && <div style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr) auto',gap:10,alignItems:'end',marginTop:14,padding:13,border:'1px solid rgba(129,116,255,.26)',borderRadius:12,background:'rgba(120,87,255,.06)'}}><label style={{display:'grid',gap:6,color:'#aeb8ca',fontSize:12,fontWeight:800}}>School for this {imageFile ? 'timetable image' : 'Excel timetable'}<input value={excelSchool} onChange={(event)=>setExcelSchool(event.target.value)} placeholder="e.g. Chongfu Primary School" style={{padding:'10px',border:'1px solid rgba(148,163,184,.16)',borderRadius:9,background:'#0b1222',color:'#eef2fb'}}/></label><label style={{display:'grid',gap:6,color:'#aeb8ca',fontSize:12,fontWeight:800}}>Default teacher <small style={{color:'#7f8ca4',fontWeight:500}}>optional</small><select value={excelTeacher} onChange={(event)=>setExcelTeacher(event.target.value)} style={{padding:'10px',border:'1px solid rgba(148,163,184,.16)',borderRadius:9,background:'#0b1222',color:'#eef2fb'}}><option value="">Unassigned</option>{teacherNames.filter((teacher)=>teacher!=='Audrey Jansen').map((teacher)=><option key={teacher}>{teacher}</option>)}</select></label><button onClick={()=>void (imageFile ? analyseImage() : analyseExcel())} style={{padding:'11px 14px',border:0,borderRadius:10,background:'#6653de',color:'#fff',fontWeight:800,cursor:'pointer'}}>{imageFile ? 'Analyse image' : 'Analyse Excel'}</button></div>}<div className={`statusBox ${status}`}>{status === 'reading' || status === 'saving' ? <Loader2 className="spin" size={20}/> : status === 'error' ? <XCircle size={20}/> : <CheckCircle2 size={20}/>}<span>{message || 'No timetable selected yet.'}</span></div></section>
 
     {lessons.length > 0 && <>
       <section className="importStats">
