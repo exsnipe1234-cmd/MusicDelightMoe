@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChangeEvent, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowLeft, CheckCircle2, Filter, Loader2, ShieldCheck, Upload, XCircle } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { createClient } from '../../utils/supabase/client';
 import { useAppData } from '../providers/AppDataProvider';
 
@@ -152,6 +153,74 @@ async function extractLessons(file: File): Promise<{ lessons: ImportedLesson[]; 
   return { lessons: unique.sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`)), monthName: `${monthNames[detectedMonth]} ${detectedYear}` };
 }
 
+const excelMonths: Record<string, number> = { jan: 0, january: 0, feb: 1, february: 1, mar: 2, march: 2, apr: 3, april: 3, may: 4, jun: 5, june: 5, jul: 6, july: 6, aug: 7, august: 7, sep: 8, sept: 8, september: 8, oct: 9, october: 9, nov: 10, november: 10, dec: 11, december: 11 };
+
+function excelClock(hour: string, minute: string | undefined, meridiem: string) {
+  let value = Number(hour);
+  const pm = meridiem.toLowerCase().startsWith('p');
+  if (pm && value < 12) value += 12;
+  if (!pm && value === 12) value = 0;
+  return `${pad(value)}:${minute ?? '00'}`;
+}
+
+function parseExcelSession(value: string, year: number) {
+  const text = value.replace(/\s+/g, ' ').replace(/\.{2,}/g, '.').trim();
+  const dateMatch = [...text.matchAll(/\b(\d{1,2})\s+([a-z]{3,9})\b/gi)].find((match) => excelMonths[match[2].toLowerCase()] !== undefined);
+  const times = [...text.matchAll(/(\d{1,2})(?:[.:](\d{2}))?\s*(a\.?m\.?|p\.?m\.?)/gi)];
+  if (!dateMatch || times.length < 2) return null;
+  const month = excelMonths[dateMatch[2].toLowerCase()];
+  if (month === undefined) return null;
+  const date = `${year}-${pad(month + 1)}-${pad(Number(dateMatch[1]))}`;
+  return { date, startTime: excelClock(times[0][1], times[0][2], times[0][3]), endTime: excelClock(times[1][1], times[1][2], times[1][3]) };
+}
+
+async function extractExcelLessons(file: File, school: string, defaultTeacher: string | null): Promise<{ lessons: ImportedLesson[]; monthName: string }> {
+  const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
+  const worksheet = workbook.SheetNames.map((name) => ({ name, sheet: workbook.Sheets[name] })).find(({ sheet }) => {
+    const range = sheet['!ref'] ? XLSX.utils.decode_range(sheet['!ref']) : null;
+    if (!range) return false;
+    for (let row = range.s.r; row <= Math.min(range.e.r, range.s.r + 10); row += 1) {
+      const values = Array.from({ length: range.e.c - range.s.c + 1 }, (_, index) => String(sheet[XLSX.utils.encode_cell({ r: row, c: range.s.c + index })]?.w ?? '')).join(' ');
+      if (/classes/i.test(values) && /session/i.test(values)) return true;
+    }
+    return false;
+  });
+  if (!worksheet?.sheet['!ref']) throw new Error('No Schedule sheet with class and session columns was found in this Excel file.');
+
+  const range = XLSX.utils.decode_range(worksheet.sheet['!ref']);
+  let headerRow = -1; let classColumn = -1; let coachColumn = -1; const sessionColumns: number[] = [];
+  for (let row = range.s.r; row <= Math.min(range.e.r, range.s.r + 10); row += 1) {
+    for (let column = range.s.c; column <= range.e.c; column += 1) {
+      const value = String(worksheet.sheet[XLSX.utils.encode_cell({ r: row, c: column })]?.w ?? '').trim();
+      if (/classes/i.test(value)) { headerRow = row; classColumn = column; }
+      if (/coach/i.test(value)) coachColumn = column;
+      if (/^session\s*\d+/i.test(value)) sessionColumns.push(column);
+    }
+    if (headerRow >= 0 && sessionColumns.length) break;
+  }
+  if (headerRow < 0 || classColumn < 0 || !sessionColumns.length) throw new Error('Could not identify class and session columns in the Excel schedule.');
+
+  const year = Number(file.name.match(/20\d{2}/)?.[0] ?? new Date().getFullYear());
+  const title = String(worksheet.sheet[XLSX.utils.encode_cell({ r: range.s.r, c: range.s.c })]?.w ?? '');
+  const programme = title.match(/for\s+(.+?)\s+sessions/i)?.[1]?.trim() ?? '';
+  const lessons: ImportedLesson[] = []; let id = Date.now();
+  for (let row = headerRow + 1; row <= range.e.r; row += 1) {
+    const classLabel = String(worksheet.sheet[XLSX.utils.encode_cell({ r: row, c: classColumn })]?.w ?? '').replace(/\s+/g, ' ').trim();
+    if (!classLabel) continue;
+    const className = programme ? `${programme} - ${classLabel}` : classLabel;
+    const coach = coachColumn >= 0 ? String(worksheet.sheet[XLSX.utils.encode_cell({ r: row, c: coachColumn })]?.w ?? '').trim() : '';
+    const matchedTeacher = teacherNames.find((teacher) => coach.toLowerCase().includes(teacher.toLowerCase()));
+    for (const column of sessionColumns) {
+      const session = String(worksheet.sheet[XLSX.utils.encode_cell({ r: row, c: column })]?.w ?? '').trim();
+      const parsed = parseExcelSession(session, year);
+      if (parsed) lessons.push({ id: id++, ...parsed, school, className, teacher: matchedTeacher === 'Audrey Jansen' ? 'Audrey' : matchedTeacher ?? defaultTeacher, unavailable: false });
+    }
+  }
+  if (!lessons.length) throw new Error('No dated class sessions could be detected in this Excel schedule.');
+  const unique = lessons.filter((lesson, index, all) => all.findIndex((candidate) => lessonKey(candidate) === lessonKey(lesson)) === index);
+  return { lessons: unique.sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`)), monthName: `Excel timetable ${year}` };
+}
+
 export default function ImportPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -166,6 +235,9 @@ export default function ImportPage() {
   const [filter, setFilter] = useState<FilterName>('all');
   const [showRemoved, setShowRemoved] = useState(false);
   const [allowConflicts, setAllowConflicts] = useState(false);
+  const [excelFile, setExcelFile] = useState<File | null>(null);
+  const [excelSchool, setExcelSchool] = useState('');
+  const [excelTeacher, setExcelTeacher] = useState('');
 
   const assignedCount = useMemo(() => lessons.filter((lesson) => lesson.teacher).length, [lessons]);
   const selectedLessons = useMemo(() => lessons.filter((lesson) => lesson.selected), [lessons]);
@@ -232,23 +304,35 @@ export default function ImportPage() {
     };
   };
 
+  const analyseDetected = async (result: { lessons: ImportedLesson[]; monthName: string }) => {
+    setMonthName(result.monthName);
+    const dates = [...new Set(result.lessons.map((lesson) => lesson.date))].sort();
+    const { data: existing, error: compareError } = await supabase.from('lessons').select('id,lesson_date,school,class_name,start_time,end_time,teacher_name,unavailable,cancelled,source,created_at,updated_at').gte('lesson_date', dates[0]).lte('lesson_date', dates[dates.length-1]);
+    if (compareError) throw compareError;
+    const analysis = analyseImport(result.lessons, (existing ?? []) as ExistingRow[]);
+    setLessons(analysis.analysed); setRemovedCandidates(analysis.removals); setComparison(analysis.summary); setStatus('ready');
+    setMessage(`${result.lessons.length} lessons detected. ${analysis.summary.conflictCount} clash${analysis.summary.conflictCount === 1 ? '' : 'es'} and ${analysis.summary.reviewCount} item${analysis.summary.reviewCount === 1 ? '' : 's'} need review.`);
+  };
+
   const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    setFileName(file.name); setStatus('reading'); setComparison(null); setLessons([]); setRemovedCandidates([]); setAllowConflicts(false);
-    setMessage('Reading the PDF, checking Supabase and scanning for timetable clashes...');
+    setFileName(file.name); setComparison(null); setLessons([]); setRemovedCandidates([]); setAllowConflicts(false);
+    if (/\.(xlsx|xls)$/i.test(file.name)) { setExcelFile(file); setStatus('idle'); setMessage('Enter the school for this Excel timetable, then analyse it with the same safety checks as a PDF.'); return; }
+    setExcelFile(null); setStatus('reading'); setMessage('Reading the PDF, checking Supabase and scanning for timetable clashes...');
     try {
       const result = await extractLessons(file);
-      setMonthName(result.monthName);
-      const dates = [...new Set(result.lessons.map((lesson) => lesson.date))].sort();
-      const { data: existing, error: compareError } = await supabase.from('lessons').select('id,lesson_date,school,class_name,start_time,end_time,teacher_name,unavailable,cancelled,source,created_at,updated_at').gte('lesson_date', dates[0]).lte('lesson_date', dates[dates.length-1]);
-      if (compareError) throw compareError;
-      const analysis = analyseImport(result.lessons, (existing ?? []) as ExistingRow[]);
-      setLessons(analysis.analysed); setRemovedCandidates(analysis.removals); setComparison(analysis.summary); setStatus('ready');
-      setMessage(`${result.lessons.length} lessons detected. ${analysis.summary.conflictCount} clash${analysis.summary.conflictCount === 1 ? '' : 'es'} and ${analysis.summary.reviewCount} item${analysis.summary.reviewCount === 1 ? '' : 's'} need review.`);
+      await analyseDetected(result);
     } catch (error) {
       setStatus('error'); setMessage(error instanceof Error ? error.message : 'The PDF could not be read.');
     }
+  };
+
+  const analyseExcel = async () => {
+    if (!excelFile || !excelSchool.trim()) { setMessage('Enter the school name for this Excel timetable first.'); return; }
+    setStatus('reading'); setMessage('Reading the Excel schedule, checking Supabase and scanning for timetable clashes...');
+    try { await analyseDetected(await extractExcelLessons(excelFile, excelSchool.trim(), excelTeacher.trim() || null)); }
+    catch (error) { setStatus('error'); setMessage(error instanceof Error ? error.message : 'The Excel timetable could not be read.'); }
   };
 
   const toggleLesson = (id: number) => setLessons((current) => current.map((lesson) => lesson.id === id && lesson.importStatus !== 'duplicate' ? { ...lesson, selected: !lesson.selected } : lesson));
@@ -286,8 +370,8 @@ export default function ImportPage() {
   const filters: FilterName[] = ['all','new','changed','conflict','review','duplicate'];
 
   return <main className="importShell">
-    <header className="importHeader"><Link href="/" className="backLink"><ArrowLeft size={17}/> Back to calendar</Link><div><p>SMART PDF IMPORT</p><h1>Import MOE timetable</h1><span>Extract lessons, compare changes and catch teacher clashes before anything is saved.</span></div></header>
-    <section className="importCard uploadCard"><label className="dropZone"><input type="file" accept="application/pdf,.pdf" onChange={handleFile}/><Upload size={34}/><strong>{fileName || 'Choose MOE calendar PDF'}</strong><span>PDF only · processed in your browser</span></label><div className={`statusBox ${status}`}>{status === 'reading' || status === 'saving' ? <Loader2 className="spin" size={20}/> : status === 'error' ? <XCircle size={20}/> : <CheckCircle2 size={20}/>}<span>{message || 'No PDF selected yet.'}</span></div></section>
+    <header className="importHeader"><Link href="/" className="backLink"><ArrowLeft size={17}/> Back to calendar</Link><div><p>SMART TIMETABLE IMPORT</p><h1>Import MOE timetable</h1><span>Extract lessons from PDF or Excel, compare changes and catch teacher clashes before anything is saved.</span></div></header>
+    <section className="importCard uploadCard"><label className="dropZone"><input type="file" accept="application/pdf,.pdf,.xlsx,.xls" onChange={handleFile}/><Upload size={34}/><strong>{fileName || 'Choose PDF or Excel timetable'}</strong><span>PDF, XLSX or XLS · processed in your browser</span></label>{excelFile && <div style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr) auto',gap:10,alignItems:'end',marginTop:14,padding:13,border:'1px solid rgba(129,116,255,.26)',borderRadius:12,background:'rgba(120,87,255,.06)'}}><label style={{display:'grid',gap:6,color:'#aeb8ca',fontSize:12,fontWeight:800}}>School for this timetable<input value={excelSchool} onChange={(event)=>setExcelSchool(event.target.value)} placeholder="e.g. Chongfu Primary School" style={{padding:'10px',border:'1px solid rgba(148,163,184,.16)',borderRadius:9,background:'#0b1222',color:'#eef2fb'}}/></label><label style={{display:'grid',gap:6,color:'#aeb8ca',fontSize:12,fontWeight:800}}>Default teacher <small style={{color:'#7f8ca4',fontWeight:500}}>optional</small><select value={excelTeacher} onChange={(event)=>setExcelTeacher(event.target.value)} style={{padding:'10px',border:'1px solid rgba(148,163,184,.16)',borderRadius:9,background:'#0b1222',color:'#eef2fb'}}><option value="">Unassigned</option>{teacherNames.filter((teacher)=>teacher!=='Audrey Jansen').map((teacher)=><option key={teacher}>{teacher}</option>)}</select></label><button onClick={()=>void analyseExcel()} style={{padding:'11px 14px',border:0,borderRadius:10,background:'#6653de',color:'#fff',fontWeight:800,cursor:'pointer'}}>Analyse Excel</button></div>}<div className={`statusBox ${status}`}>{status === 'reading' || status === 'saving' ? <Loader2 className="spin" size={20}/> : status === 'error' ? <XCircle size={20}/> : <CheckCircle2 size={20}/>}<span>{message || 'No timetable selected yet.'}</span></div></section>
 
     {lessons.length > 0 && <>
       <section className="importStats">
