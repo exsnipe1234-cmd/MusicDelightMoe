@@ -117,10 +117,10 @@ export default function TeacherPortal() {
       if (!visibleTeacherNames.length) { setLoading(false); return; }
 
       const rangeStart = new Date();
-      rangeStart.setDate(1);
+      rangeStart.setMonth(0, 1);
       rangeStart.setHours(0, 0, 0, 0);
       const rangeEnd = new Date();
-      rangeEnd.setMonth(rangeEnd.getMonth() + 3, 1);
+      rangeEnd.setFullYear(rangeEnd.getFullYear() + 1, 0, 1);
       rangeEnd.setHours(0, 0, 0, 0);
 
       const [{ data, error }] = await Promise.all([
