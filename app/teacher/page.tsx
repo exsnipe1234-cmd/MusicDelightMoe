@@ -48,6 +48,7 @@ const minutesBetween = (start: string, end: string) => {
   return Math.max(0, eh * 60 + em - sh * 60 - sm);
 };
 const ordinal = (value: number) => { const suffix = value % 100 >= 11 && value % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[value % 10] ?? 'th'; return `${value}${suffix}`; };
+const normalizeClass = (value: string) => { const match = value.toLowerCase().match(/\bp?(\d{1,2})\b/); return match ? `grade-${match[1]}` : value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); };
 
 export default function TeacherPortal() {
   const router = useRouter();
@@ -151,7 +152,7 @@ export default function TeacherPortal() {
   }, [now]);
   const weekLessons = useMemo(() => lessons.filter((l) => { const d = parseLocalDate(l.lesson_date); return d >= weekRange.start && d < weekRange.end; }), [lessons, weekRange]);
   const monthLessons = useMemo(() => lessons.filter((l) => { const d = parseLocalDate(l.lesson_date); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear(); }), [lessons, now]);
-  const lessonNumbers = useMemo(() => { const counters = new Map<string, number>(); const numbers = new Map<string, number>(); [...lessons].sort((a, b) => a.lesson_date.localeCompare(b.lesson_date) || a.start_time.localeCompare(b.start_time)).forEach((lesson) => { const group = `${lesson.teacher_name ?? 'unassigned'}|${lesson.school.trim().toLowerCase()}|${lesson.class_name.trim().toLowerCase()}`; const next = (counters.get(group) ?? 0) + 1; counters.set(group, next); numbers.set(lesson.id, next); }); return numbers; }, [lessons]);
+  const lessonNumbers = useMemo(() => { const counters = new Map<string, number>(); const numbers = new Map<string, number>(); [...lessons].sort((a, b) => a.lesson_date.localeCompare(b.lesson_date) || a.start_time.localeCompare(b.start_time)).forEach((lesson) => { const group = `${lesson.teacher_name ?? 'unassigned'}|${lesson.school.trim().toLowerCase()}|${normalizeClass(lesson.class_name)}|${lesson.start_time.slice(0, 5)}|${lesson.end_time.slice(0, 5)}`; const next = (counters.get(group) ?? 0) + 1; counters.set(group, next); numbers.set(lesson.id, next); }); return numbers; }, [lessons]);
   const weeklyCounts = useMemo(() => {
     const counts = Array.from({ length: 7 }, () => 0);
     for (const lesson of weekLessons) counts[(parseLocalDate(lesson.lesson_date).getDay() + 6) % 7] += 1;
