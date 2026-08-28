@@ -63,3 +63,5 @@ body.light-mode .undoBanner button{min-height:34px;padding:7px 11px;border:0;bor
 body.light-mode .undoBanner .dismissUndo{background:transparent;color:#4338ca}
 body.light-mode button:focus-visible,body.light-mode a:focus-visible,body.light-mode input:focus-visible,body.light-mode select:focus-visible,body.light-mode textarea:focus-visible{outline:3px solid rgba(102,83,222,.35);outline-offset:2px}
 body.light-mode input[type="checkbox"]{min-width:18px;min-height:18px;accent-color:#6653de}
+body.light-mode .weekdayPicker{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:10px 0;color:#334155;font-size:12px;font-weight:800}.weekdayPicker>span{width:100%}.weekdayPicker label{display:flex;align-items:center;gap:4px;padding:7px 9px;border:1px solid #dbe2ee;border-radius:8px;background:#fff;color:#475569}
+@media(max-width:900px){body.light-mode .editorHeader .headerActions>*{flex:1 1 calc(50% - 7px)}body.light-mode .editorHeader .headerActions .conflictLink{flex:1 1 100%}}
