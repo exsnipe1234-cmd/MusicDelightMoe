@@ -242,6 +242,12 @@ body.light-mode .importShell .statusBox.ready,body.light-mode .importShell .stat
 body.light-mode .importShell .statusBox.error{color:#be123c}
 body.light-mode .accountCard .timetableAccess label,body.light-mode .teacherChips span{background:#eef2ff;color:#334155;border-color:#cbd5e1}
 body.light-mode .accountCard .timetableAccess label.primaryTeacher{background:#e0e7ff;color:#312e81}
+body.light-mode .smartDashboard .summaryCards strong{color:#172033!important}
+body.light-mode .smartDashboard .summaryCards span,body.light-mode .smartDashboard .alertGrid span,body.light-mode .smartDashboard .smartActions span{color:#475569!important}
+body.light-mode .manageShell .summaryGrid strong,body.light-mode .requestShell .summaryGrid strong{color:#172033!important}
+body.light-mode .manageShell .summaryGrid span,body.light-mode .requestShell .summaryGrid span{color:#475569!important}
+body.light-mode .manageShell .accountIdentity strong,body.light-mode .manageShell .accountIdentity span,body.light-mode .manageShell .fields label,body.light-mode .manageShell .timetableAccess>span{color:#334155!important}
+body.light-mode .requestShell .statusMessage{color:#334155!important;background:#fff!important;border-color:#dbe2ee!important}
 body.light-mode .workloadStats button{background:#f8fafc!important;color:#334155!important;border-color:#cbd5e1!important}
 body.light-mode .workloadStats button span,body.light-mode .workloadStats button small{color:#64748b!important}
 body.light-mode .workloadStats button strong{color:#172033!important}
