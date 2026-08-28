@@ -52,3 +52,14 @@ body.light-mode .taskTabs button{box-shadow:0 4px 12px rgba(30,41,59,.04);transi
 body.light-mode .taskTabs button:hover{transform:translateY(-1px)}
 @media(max-width:900px){body.light-mode .editorHeader .headerActions{gap:7px}.editorHeader .headerActions>*{min-height:44px}.editorHeader .headerActions .conflictLink{grid-column:1/-1}.workloadPanel{border-radius:16px!important}.smartDashboard{border-radius:18px!important}}
 @media(max-width:900px){body.light-mode .editorHeader .headerActions{display:flex!important;flex-wrap:wrap;width:100%;justify-content:stretch}.editorHeader .headerActions>*{flex:1 1 calc(50% - 7px);min-width:0}.editorHeader .headerActions .conflictLink{flex:1 1 100%;width:100%;min-width:0}}
+body.light-mode .bulkToolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0;padding:10px 12px;border:1px solid var(--premium-line);border-radius:12px;background:#fff;color:#334155;box-shadow:0 4px 14px rgba(30,41,59,.04)}
+body.light-mode .bulkToolbar label{display:flex;align-items:center;gap:7px;margin-right:auto;font-size:12px;font-weight:800}
+body.light-mode .bulkToolbar select,body.light-mode .bulkToolbar button{min-height:36px;padding:7px 10px;border:1px solid #cbd5e1;border-radius:9px;background:#f8fafc;color:#334155;font-size:12px;font-weight:800}
+body.light-mode .bulkToolbar button{background:#6653de;color:#fff;border-color:#6653de}
+body.light-mode .bulkToolbar .dangerAction{background:#fff1f2;color:#be123c;border-color:#fecdd3}
+body.light-mode .undoBanner{display:flex;align-items:center;gap:10px;margin:10px 0;padding:10px 13px;border:1px solid #c7d2fe;border-radius:12px;background:#eef2ff;color:#312e81;font-size:12px;font-weight:800}
+body.light-mode .undoBanner span{margin-right:auto;color:#312e81!important}
+body.light-mode .undoBanner button{min-height:34px;padding:7px 11px;border:0;border-radius:8px;background:#6653de;color:#fff;font-weight:800;cursor:pointer}
+body.light-mode .undoBanner .dismissUndo{background:transparent;color:#4338ca}
+body.light-mode button:focus-visible,body.light-mode a:focus-visible,body.light-mode input:focus-visible,body.light-mode select:focus-visible,body.light-mode textarea:focus-visible{outline:3px solid rgba(102,83,222,.35);outline-offset:2px}
+body.light-mode input[type="checkbox"]{min-width:18px;min-height:18px;accent-color:#6653de}

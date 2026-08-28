@@ -25,6 +25,7 @@ export type LessonRow = {
   teacher_name: string | null;
   unavailable: boolean;
   cancelled: boolean;
+  source?: string;
 };
 export type LessonRange = { start: string; end: string };
 
