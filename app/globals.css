@@ -206,3 +206,29 @@ body.light-mode .loginShell,body.light-mode .passwordShell{background:linear-gra
 body.light-mode .loginCard,body.light-mode .passwordCard{background:#fff;border-color:#dbe2ee;box-shadow:0 20px 60px rgba(30,41,59,.12)}
 body.light-mode .loginCard h1,body.light-mode .passwordCard h1{color:#172033}
 body.light-mode .loginCard .intro,body.light-mode .passwordCard>span{color:#64748b}
+body.light-mode .loginCard .inputWrap,body.light-mode .passwordCard label>div{background:#f8fafc;border-color:#cbd5e1;color:#64748b}
+body.light-mode .loginCard .inputWrap input,body.light-mode .passwordCard input{color:#172033}
+body.light-mode .loginCard small{color:#64748b}
+body.light-mode .lessonDrawer,body.light-mode .dayPanel,body.light-mode .quickDrawer,body.light-mode .requestModal{background:#fff;border-color:#dbe2ee;box-shadow:0 20px 60px rgba(30,41,59,.18)}
+body.light-mode .drawerHeader h2,body.light-mode .requestModal h3{color:#172033}
+body.light-mode .drawerHeader span,body.light-mode .drawerHeader button{color:#64748b}
+body.light-mode .dayLessonList>button{background:#f8fafc;color:#172033;border-color:#dbe2ee}
+body.light-mode .dayLessonList small,body.light-mode .noDayLessons{color:#64748b}
+body.light-mode .copyLessons,body.light-mode .addAnother{background:#eef2ff;color:#4338ca;border-color:#c7d2fe}
+body.light-mode .importCard,body.light-mode .importStats article,body.light-mode .previewCard{background:#fff;border-color:#dbe2ee}
+body.light-mode .dropZone{background:#f8fafc;color:#4338ca;border-color:#a5b4fc}
+body.light-mode .dropZone span,body.light-mode .importHeader span{color:#64748b}
+body.light-mode .analysisSummary{background:linear-gradient(135deg,#eef2ff,#fff);border-color:#c7d2fe}
+body.light-mode .analysisSummary h2,body.light-mode .analysisSummary span,body.light-mode .analysisSummary strong{color:#172033}
+body.light-mode .tableWrap,body.light-mode .toolbar,body.light-mode .removedPanel{background:#f8fafc;color:#172033;border-color:#dbe2ee}
+body.light-mode .tableWrap th{background:#e2e8f0;color:#334155}
+body.light-mode .tableWrap td{color:#334155;border-color:#dbe2ee}
+body.light-mode .requestModal input,body.light-mode .requestModal select,body.light-mode .requestModal textarea,body.light-mode .noteField textarea{background:#f8fafc;color:#172033;border-color:#cbd5e1}
+body.light-mode .requestCard .lessonList,body.light-mode .requestCard .remarks{background:#f8fafc;color:#334155}
+body.light-mode .lessonHero,body.light-mode .original,body.light-mode .suggestionHeading,body.light-mode .suggestions article{color:#172033}
+body.light-mode .calendarAiPanel{background:linear-gradient(160deg,#fff,#f8fafc);border-color:#dbe2ee;box-shadow:0 20px 60px rgba(30,41,59,.2)}
+body.light-mode .calendarAiHeader,body.light-mode .calendarAiNotice{border-color:#dbe2ee}
+body.light-mode .calendarAiIdentity strong,body.light-mode .calendarAiBubble h4{color:#172033}
+body.light-mode .calendarAiIdentity span,body.light-mode .calendarAiNotice,body.light-mode .calendarAiBubble,body.light-mode .calendarAiComposer small{color:#64748b}
+body.light-mode .calendarAiBubble{background:#eef2ff;border-color:#dbe2ee}
+body.light-mode .calendarAiComposer{background:#fff;border-color:#dbe2ee}
