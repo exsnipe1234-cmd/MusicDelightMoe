@@ -65,6 +65,7 @@ export default function TeacherPortal() {
   const [remarks, setRemarks] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [requestMessage, setRequestMessage] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 60_000);
@@ -136,7 +137,8 @@ export default function TeacherPortal() {
       setLoading(false);
     };
     void load();
-  }, [router]);
+  }, [router, reloadKey]);
+  useEffect(() => { const client = createClient(); const channel = client.channel('teacher-portal-live').on('postgres_changes', { event: '*', schema: 'public', table: 'lessons' }, () => setReloadKey((value) => value + 1)).subscribe(); return () => { void client.removeChannel(channel); }; }, []);
 
   const todayKey = dateKey(now);
   const teacherName = profile?.teacher_name ?? profile?.display_name ?? 'Teacher';

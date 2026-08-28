@@ -259,6 +259,7 @@ body.light-mode .portalShell .barColumn>span,body.light-mode .portalShell .barCo
 body.light-mode .portalShell .quickCard button{color:#172033!important;border-color:#dbe2ee!important}
 body.light-mode .portalShell .quickCard button small,body.light-mode .portalShell .lessonDetails>span,body.light-mode .portalShell .todayLesson .lessonDetails small{color:#475569!important}
 .mobilePortalNav{display:none}
+.taskTabs{display:flex;gap:8px;margin:14px 0;overflow-x:auto}.taskTabs button{white-space:nowrap;padding:9px 13px;border:1px solid #cbd5e1;border-radius:999px;background:#fff;color:#475569;font-weight:800;cursor:pointer}.taskTabs button.active{background:#6653de;color:#fff;border-color:#6653de}.taskTabs b{margin-left:5px}
 @media(max-width:780px){.mobilePortalNav{display:flex;gap:8px;margin:0 0 16px;overflow-x:auto}.mobilePortalNav a,.mobilePortalNav button{flex:1;min-width:90px;padding:10px 13px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;color:#334155;text-align:center;text-decoration:none;font-size:12px;font-weight:800}.mobilePortalNav a:first-child{background:#eef2ff;color:#4338ca;border-color:#c7d2fe}}
 body.light-mode .workloadStats button{background:#f8fafc!important;color:#334155!important;border-color:#cbd5e1!important}
 body.light-mode .workloadStats button span,body.light-mode .workloadStats button small{color:#64748b!important}

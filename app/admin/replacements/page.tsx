@@ -20,7 +20,7 @@ type Task = {
 };
 
 type Teacher = { name: string; color: string };
-type BusyLesson = { lesson_date: string; start_time: string; end_time: string; school: string; teacher_name: string | null };
+type BusyLesson = { lesson_date: string; start_time: string; end_time: string; school: string; teacher_name: string | null; cancelled?: boolean };
 type Suggestion = { name: string; score: number; reasons: string[] };
 
 const prettyDate = (value: string) => new Intl.DateTimeFormat('en-SG', {
@@ -38,6 +38,7 @@ export default function ReplacementQueuePage() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [message, setMessage] = useState('Loading replacement queue…');
   const [selected, setSelected] = useState<Task | null>(null);
+  const [taskFilter, setTaskFilter] = useState<Task['status']>('needs_replacement');
 
   const loadData = async () => {
     setLoading(true);
@@ -52,7 +53,7 @@ export default function ReplacementQueuePage() {
     const [{ data: taskRows, error: taskError }, { data: teacherRows }, { data: lessonRows }] = await Promise.all([
       supabase.from('replacement_tasks').select('*').order('lesson_date').order('start_time'),
       supabase.from('teachers').select('name,color').order('name'),
-      supabase.from('lessons').select('lesson_date,start_time,end_time,school,teacher_name'),
+      supabase.from('lessons').select('lesson_date,start_time,end_time,school,teacher_name,cancelled'),
     ]);
 
     if (taskError) {
@@ -78,7 +79,7 @@ export default function ReplacementQueuePage() {
     return teachers
       .filter((teacher) => teacher.name !== selected.original_teacher)
       .map((teacher) => {
-        const sameDay = busyLessons.filter((lesson) => lesson.teacher_name === teacher.name && lesson.lesson_date === selected.lesson_date);
+        const sameDay = busyLessons.filter((lesson) => lesson.teacher_name === teacher.name && lesson.lesson_date === selected.lesson_date && !lesson.cancelled);
         const conflict = sameDay.some((lesson) => overlaps(shortTime(selected.start_time), shortTime(selected.end_time), shortTime(lesson.start_time), shortTime(lesson.end_time)));
         if (conflict) return null;
         let score = 80;
@@ -107,6 +108,8 @@ export default function ReplacementQueuePage() {
 
   const pending = tasks.filter((task) => task.status === 'needs_replacement');
   const assigned = tasks.filter((task) => task.status === 'assigned');
+  const cancelled = tasks.filter((task) => task.status === 'cancelled');
+  const visibleTasks = tasks.filter((task) => task.status === taskFilter);
 
   return (
     <main className="shell">
@@ -123,20 +126,21 @@ export default function ReplacementQueuePage() {
 
       <div className={`message ${message.includes('Could not') || message.includes('required') || message.includes('not installed') ? 'error' : ''}`}>{loading ? <Loader2 className="spin" size={18}/> : <CheckCircle2 size={18}/>} {message}</div>
 
-      <section className="workspace">
+       <section className="taskTabs"><button className={taskFilter === 'needs_replacement' ? 'active' : ''} onClick={() => setTaskFilter('needs_replacement')}>Needs replacement <b>{pending.length}</b></button><button className={taskFilter === 'assigned' ? 'active' : ''} onClick={() => setTaskFilter('assigned')}>Assigned <b>{assigned.length}</b></button><button className={taskFilter === 'cancelled' ? 'active' : ''} onClick={() => setTaskFilter('cancelled')}>Cancelled <b>{cancelled.length}</b></button></section>
+       <section className="workspace">
         <div className="queue">
           <div className="heading"><div><p>QUEUE</p><h2>Lessons awaiting cover</h2></div><b>{pending.length}</b></div>
-          {pending.map((task) => <button key={task.id} className={selected?.id === task.id ? 'task active' : 'task'} onClick={() => setSelected(task)}>
+           {visibleTasks.map((task) => <button key={task.id} className={selected?.id === task.id ? 'task active' : 'task'} onClick={() => setSelected(task)}>
             <div><strong>{task.school}</strong><span>{task.class_name}</span></div>
             <small>{prettyDate(task.lesson_date)}</small>
             <em><Clock3 size={13}/>{shortTime(task.start_time)}–{shortTime(task.end_time)}</em>
             <i>Original: {task.original_teacher}</i>
           </button>)}
-          {!pending.length && <div className="empty"><CheckCircle2 size={34}/><strong>Queue cleared</strong><span>All approved absences have coverage.</span></div>}
+           {!visibleTasks.length && <div className="empty"><CheckCircle2 size={34}/><strong>{taskFilter === 'needs_replacement' ? 'Queue cleared' : 'Nothing here'}</strong><span>{taskFilter === 'needs_replacement' ? 'All approved absences have coverage.' : 'No replacement tasks have this status.'}</span></div>}
         </div>
 
         <div className="panel">
-          {selected ? <>
+           {selected && taskFilter === 'needs_replacement' ? <>
             <div className="lessonHero"><div><p>AFFECTED LESSON</p><h2>{selected.school}</h2><span>{selected.class_name}</span></div><div><strong>{shortTime(selected.start_time)}</strong><span>{prettyDate(selected.lesson_date)}</span></div></div>
             <div className="original">Unavailable teacher <strong>{selected.original_teacher}</strong></div>
             <div className="suggestionHeading"><div><p><Sparkles size={14}/> SMART SUGGESTIONS</p><h3>Best available teachers</h3></div><span>Conflict-checked</span></div>

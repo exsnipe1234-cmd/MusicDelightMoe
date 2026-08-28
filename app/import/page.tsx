@@ -191,6 +191,53 @@ function parseExcelDateCell(cell: XLSX.CellObject | undefined, year: number) {
   return `${Number(dateMatch[3] ?? year)}-${pad(month + 1)}-${pad(Number(dateMatch[1]))}`;
 }
 
+function parseExcelTimeCell(value: string) {
+  const text = value.replace(/\s+/g, ' ').trim();
+  const twelveHour = [...text.matchAll(/(\d{1,2})(?:[.:](\d{2}))?\s*(a\.?m\.?|p\.?m\.?)/gi)];
+  if (twelveHour.length >= 2) return { startTime: excelClock(twelveHour[0][1], twelveHour[0][2], twelveHour[0][3]), endTime: excelClock(twelveHour[1][1], twelveHour[1][2], twelveHour[1][3]) };
+  const twentyFourHour = text.match(/(\d{1,2}:\d{2})\s*(?:-|–|to)\s*(\d{1,2}:\d{2})/i);
+  if (twentyFourHour) return { startTime: toTime(twentyFourHour[1]), endTime: toTime(twentyFourHour[2]) };
+  return null;
+}
+
+function extractExcelTableLessons(workbook: XLSX.WorkBook, school: string, defaultTeacher: string | null) {
+  for (const name of workbook.SheetNames) {
+    const sheet = workbook.Sheets[name];
+    if (!sheet['!ref']) continue;
+    const range = XLSX.utils.decode_range(sheet['!ref']);
+    for (let headerRow = range.s.r; headerRow <= Math.min(range.e.r, range.s.r + 20); headerRow += 1) {
+      const columns: Record<string, number> = {};
+      for (let column = range.s.c; column <= range.e.c; column += 1) {
+        const value = String(sheet[XLSX.utils.encode_cell({ r: headerRow, c: column })]?.w ?? '').toLowerCase().trim();
+        if (/^date$|lesson date/.test(value)) columns.date = column;
+        if (/^start$|start time|from/.test(value)) columns.start = column;
+        if (/^end$|end time|to/.test(value)) columns.end = column;
+        if (/^time$|timing|time slot/.test(value)) columns.time = column;
+        if (/school|location|venue/.test(value)) columns.school = column;
+        if (/class|programme|program/.test(value)) columns.className = column;
+        if (/teacher|coach|instructor/.test(value)) columns.teacher = column;
+      }
+      if (columns.date === undefined || columns.className === undefined || (columns.time === undefined && (columns.start === undefined || columns.end === undefined))) continue;
+      const year = Number(workbook.Props?.CreatedDate?.getFullYear?.() ?? new Date().getFullYear());
+      const lessons: ImportedLesson[] = []; let id = Date.now();
+      for (let row = headerRow + 1; row <= range.e.r; row += 1) {
+        const date = parseExcelDateCell(sheet[XLSX.utils.encode_cell({ r: row, c: columns.date })], year);
+        const className = String(sheet[XLSX.utils.encode_cell({ r: row, c: columns.className })]?.w ?? '').replace(/\s+/g, ' ').trim();
+        if (!date || !className) continue;
+        const timing = columns.time !== undefined
+          ? parseExcelTimeCell(String(sheet[XLSX.utils.encode_cell({ r: row, c: columns.time })]?.w ?? ''))
+          : { startTime: toTime(String(sheet[XLSX.utils.encode_cell({ r: row, c: columns.start })]?.w ?? '')), endTime: toTime(String(sheet[XLSX.utils.encode_cell({ r: row, c: columns.end })]?.w ?? '')) };
+        if (!timing || timing.startTime === '00:00' || timing.endTime === '00:00') continue;
+        const rowSchool = columns.school === undefined ? school : String(sheet[XLSX.utils.encode_cell({ r: row, c: columns.school })]?.w ?? school).trim() || school;
+        const rowTeacher = columns.teacher === undefined ? defaultTeacher : String(sheet[XLSX.utils.encode_cell({ r: row, c: columns.teacher })]?.w ?? '').trim() || defaultTeacher;
+        lessons.push({ id: id++, date, ...timing, school: rowSchool, className, teacher: rowTeacher, unavailable: false });
+      }
+      if (lessons.length) return { lessons, monthName: `Excel timetable ${year}` };
+    }
+  }
+  return null;
+}
+
 async function extractExcelLessons(file: File, school: string, defaultTeacher: string | null): Promise<{ lessons: ImportedLesson[]; monthName: string }> {
   const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
   const worksheet = workbook.SheetNames.map((name) => ({ name, sheet: workbook.Sheets[name] })).find(({ sheet }) => {
@@ -202,7 +249,11 @@ async function extractExcelLessons(file: File, school: string, defaultTeacher: s
     }
     return false;
   });
-  if (!worksheet?.sheet['!ref']) throw new Error('No Schedule sheet with class and session columns was found in this Excel file.');
+  if (!worksheet?.sheet['!ref']) {
+    const tableResult = extractExcelTableLessons(workbook, school, defaultTeacher);
+    if (tableResult) return tableResult;
+    throw new Error('No supported Excel timetable layout was found. Expected a class/session matrix or Date, Time, School, Class columns.');
+  }
 
   const range = XLSX.utils.decode_range(worksheet.sheet['!ref']);
   let headerRow = -1; let classColumn = -1; let coachColumn = -1; let timingColumn = -1; const sessionColumns: number[] = [];
