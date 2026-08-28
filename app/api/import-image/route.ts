@@ -6,7 +6,7 @@ import { cookies } from 'next/headers';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-type DetectedLesson = { date: string; startTime: string; endTime: string; className: string; teacher: string | null };
+type DetectedLesson = { date: string; startTime: string; endTime: string; className: string; teacher: string | null; confidence?: number; reviewReasons?: string[] };
 
 const validDate = (value: unknown) => typeof value === 'string' && /^20\d{2}-\d{2}-\d{2}$/.test(value);
 const validTime = (value: unknown) => typeof value === 'string' && /^\d{2}:\d{2}$/.test(value);
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
         {
           role: 'user',
           content: [
-            { type: 'text', text: `Read this timetable image and return exactly this JSON shape: {"monthName":"string","lessons":[{"date":"YYYY-MM-DD","startTime":"HH:MM","endTime":"HH:MM","className":"string","teacher":"string or null"}]}. Extract only confirmed dated sessions. Use the title for programme context, such as "Guitar - 5N". Resolve dates with the year printed in the image; if no year is visible, return an empty lessons array. Ignore blacked-out, cancelled, blank, holiday, or unreadable cells. Teacher must be null unless a full teacher name is visibly printed.` },
+            { type: 'text', text: `Read this timetable image and return exactly this JSON shape: {"monthName":"string","lessons":[{"date":"YYYY-MM-DD","startTime":"HH:MM","endTime":"HH:MM","className":"string","teacher":"string or null","confidence":0,"reviewReasons":[]}]}. Extract only confirmed dated sessions. Use the title for programme context, such as "Guitar - 5N". Resolve dates with the year printed in the image; if no year is visible, return an empty lessons array. Ignore blacked-out, cancelled, blank, holiday, or unreadable cells. Teacher must be null unless a full teacher name is visibly printed. Set confidence from 0 to 100 based on legibility and add concise reviewReasons when date, time, class, or teacher text is uncertain.` },
             { type: 'image_url', image_url: { url: `data:${image.type};base64,${base64}`, detail: 'high' } },
           ],
         },
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     const lessons = Array.isArray(parsed.lessons) ? parsed.lessons.filter((lesson): lesson is DetectedLesson => {
       if (!lesson || typeof lesson !== 'object') return false;
       const row = lesson as DetectedLesson;
-      return validDate(row.date) && validTime(row.startTime) && validTime(row.endTime) && typeof row.className === 'string' && row.className.trim().length > 0 && (typeof row.teacher === 'string' || row.teacher === null);
+      return validDate(row.date) && validTime(row.startTime) && validTime(row.endTime) && typeof row.className === 'string' && row.className.trim().length > 0 && (typeof row.teacher === 'string' || row.teacher === null) && (row.confidence === undefined || (Number.isInteger(row.confidence) && row.confidence >= 0 && row.confidence <= 100)) && (row.reviewReasons === undefined || Array.isArray(row.reviewReasons));
     }) : [];
     return NextResponse.json({ monthName: typeof parsed.monthName === 'string' ? parsed.monthName : 'Image timetable', lessons });
   } catch (error) {

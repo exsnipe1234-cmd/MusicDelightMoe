@@ -8,7 +8,7 @@ import * as XLSX from 'xlsx';
 import { createClient } from '../../utils/supabase/client';
 import { useAppData } from '../providers/AppDataProvider';
 
-type ImportedLesson = { id: number; date: string; school: string; className: string; startTime: string; endTime: string; teacher: string | null; unavailable: boolean };
+type ImportedLesson = { id: number; date: string; school: string; className: string; startTime: string; endTime: string; teacher: string | null; unavailable: boolean; confidence?: number; reviewReasons?: string[] };
 type PdfTextItem = { str: string; transform: number[]; width?: number; height?: number };
 type ExistingRow = { id: string; lesson_date: string; school: string; class_name: string; start_time: string; end_time: string; teacher_name: string | null; unavailable: boolean; cancelled: boolean; source: string; created_at: string; updated_at: string };
 type ImportStatus = 'new' | 'changed' | 'duplicate' | 'conflict' | 'review';
@@ -288,6 +288,8 @@ export default function ImportPage() {
     const analysed: PreviewLesson[] = detected.map((lesson) => {
       const issues: string[] = [];
       const sameTeacher = lesson.teacher?.trim().toLowerCase();
+      if (lesson.confidence !== undefined && lesson.confidence < 80) issues.push(`Image detection confidence is ${lesson.confidence}%. Review this row before importing.`);
+      if (lesson.reviewReasons?.length) issues.push(...lesson.reviewReasons);
 
       const pdfClashes = detected.filter((other) => other.id !== lesson.id && other.date === lesson.date && sameTeacher && other.teacher?.trim().toLowerCase() === sameTeacher && overlaps(lesson, other));
       if (pdfClashes.length) issues.push(`Overlaps another uploaded lesson for ${lesson.teacher}.`);
@@ -301,7 +303,7 @@ export default function ImportPage() {
       if (candidates.some((row) => row.cancelled)) issues.push('A matching cancelled class exists. Reactivate or review it manually.');
       if (candidates.length > 1) issues.push('Multiple teacher records match this class. Review them manually.');
       if (!lesson.teacher && candidates.some((row) => row.teacher_name)) issues.push('The PDF has no recognised teacher and cannot replace an assigned teacher automatically.');
-      const blockedChange = candidates.length > 1 || Boolean(changed?.cancelled) || (!lesson.teacher && Boolean(changed?.teacher_name));
+      const blockedChange = candidates.length > 1 || Boolean(changed?.cancelled) || (!lesson.teacher && Boolean(changed?.teacher_name)) || (lesson.confidence !== undefined && lesson.confidence < 80);
       let importStatus: ImportStatus = exact ? 'duplicate' : blockedChange ? 'review' : changed ? 'changed' : 'new';
       if (!exact && !blockedChange && (pdfClashes.length || databaseClashes.length)) importStatus = 'conflict';
 
@@ -375,7 +377,7 @@ export default function ImportPage() {
       if (!response.ok) throw new Error(body.error || 'Image timetable analysis failed.');
       const rows = Array.isArray(body.lessons) ? body.lessons : [];
       if (!rows.length) throw new Error('No confirmed dated lessons were detected. Use a clearer image or an Excel/PDF timetable.');
-      await analyseDetected({ monthName: body.monthName || 'Image timetable', lessons: rows.map((row: { date: string; startTime: string; endTime: string; className: string; teacher: string | null }, index: number) => ({ id: Date.now() + index, date: row.date, startTime: row.startTime, endTime: row.endTime, school: excelSchool.trim(), className: row.className, teacher: (row.teacher ?? excelTeacher.trim()) || null, unavailable: false })) });
+      await analyseDetected({ monthName: body.monthName || 'Image timetable', lessons: rows.map((row: { date: string; startTime: string; endTime: string; className: string; teacher: string | null; confidence?: number; reviewReasons?: string[] }, index: number) => ({ id: Date.now() + index, date: row.date, startTime: row.startTime, endTime: row.endTime, school: excelSchool.trim(), className: row.className, teacher: (row.teacher ?? excelTeacher.trim()) || null, unavailable: false, confidence: row.confidence, reviewReasons: row.reviewReasons })) });
     } catch (error) { setStatus('error'); setMessage(error instanceof Error ? error.message : 'The timetable image could not be read.'); }
   };
 

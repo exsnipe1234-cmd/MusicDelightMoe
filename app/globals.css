@@ -258,6 +258,8 @@ body.light-mode .portalShell .barColumn>div{background:#f1f5f9!important}
 body.light-mode .portalShell .barColumn>span,body.light-mode .portalShell .barColumn>small,body.light-mode .portalShell .upcomingGrid article>small,body.light-mode .portalShell .lessonTime span{color:#475569!important}
 body.light-mode .portalShell .quickCard button{color:#172033!important;border-color:#dbe2ee!important}
 body.light-mode .portalShell .quickCard button small,body.light-mode .portalShell .lessonDetails>span,body.light-mode .portalShell .todayLesson .lessonDetails small{color:#475569!important}
+.mobilePortalNav{display:none}
+@media(max-width:780px){.mobilePortalNav{display:flex;gap:8px;margin:0 0 16px;overflow-x:auto}.mobilePortalNav a,.mobilePortalNav button{flex:1;min-width:90px;padding:10px 13px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;color:#334155;text-align:center;text-decoration:none;font-size:12px;font-weight:800}.mobilePortalNav a:first-child{background:#eef2ff;color:#4338ca;border-color:#c7d2fe}}
 body.light-mode .workloadStats button{background:#f8fafc!important;color:#334155!important;border-color:#cbd5e1!important}
 body.light-mode .workloadStats button span,body.light-mode .workloadStats button small{color:#64748b!important}
 body.light-mode .workloadStats button strong{color:#172033!important}
