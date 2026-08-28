@@ -49,3 +49,4 @@ body.light-mode .filters{padding:12px;border:1px solid var(--premium-line);borde
 body.light-mode .taskTabs button{box-shadow:0 4px 12px rgba(30,41,59,.04);transition:transform .18s ease}
 body.light-mode .taskTabs button:hover{transform:translateY(-1px)}
 @media(max-width:900px){body.light-mode .editorHeader .headerActions{gap:7px}.editorHeader .headerActions>*{min-height:44px}.editorHeader .headerActions .conflictLink{grid-column:1/-1}.workloadPanel{border-radius:16px!important}.smartDashboard{border-radius:18px!important}}
+@media(max-width:900px){body.light-mode .editorHeader .headerActions{display:flex!important;flex-wrap:wrap;width:100%;justify-content:stretch}.editorHeader .headerActions>*{flex:1 1 calc(50% - 7px);min-width:0}.editorHeader .headerActions .conflictLink{flex:1 1 100%;width:100%;min-width:0}}
