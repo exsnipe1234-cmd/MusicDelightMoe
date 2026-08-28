@@ -248,6 +248,8 @@ body.light-mode .manageShell .summaryGrid strong,body.light-mode .requestShell .
 body.light-mode .manageShell .summaryGrid span,body.light-mode .requestShell .summaryGrid span{color:#475569!important}
 body.light-mode .manageShell .accountIdentity strong,body.light-mode .manageShell .accountIdentity span,body.light-mode .manageShell .fields label,body.light-mode .manageShell .timetableAccess>span{color:#334155!important}
 body.light-mode .requestShell .statusMessage{color:#334155!important;background:#fff!important;border-color:#dbe2ee!important}
+body.light-mode .manageShell .avatar{background:#e0e7ff!important;color:#312e81!important}
+body.light-mode .manageShell .teacherChips span{background:#eef2ff!important;color:#334155!important;border-color:#cbd5e1!important}
 body.light-mode .workloadStats button{background:#f8fafc!important;color:#334155!important;border-color:#cbd5e1!important}
 body.light-mode .workloadStats button span,body.light-mode .workloadStats button small{color:#64748b!important}
 body.light-mode .workloadStats button strong{color:#172033!important}
