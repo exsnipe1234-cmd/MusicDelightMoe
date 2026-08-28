@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import './dashboard-fix.css';
 import './fullcalendar-overrides.css';
+import './premium-ui.css';
 import AdminQuickLinks from './components/AdminQuickLinks';
 import CalendarAiAssistant from './components/CalendarAiAssistant';
 import NativeAppViewport from './components/NativeAppViewport';
