@@ -242,3 +242,14 @@ body.light-mode .importShell .statusBox.ready,body.light-mode .importShell .stat
 body.light-mode .importShell .statusBox.error{color:#be123c}
 body.light-mode .accountCard .timetableAccess label,body.light-mode .teacherChips span{background:#eef2ff;color:#334155;border-color:#cbd5e1}
 body.light-mode .accountCard .timetableAccess label.primaryTeacher{background:#e0e7ff;color:#312e81}
+body.light-mode .workloadStats button{background:#f8fafc!important;color:#334155!important;border-color:#cbd5e1!important}
+body.light-mode .workloadStats button span,body.light-mode .workloadStats button small{color:#64748b!important}
+body.light-mode .workloadStats button strong{color:#172033!important}
+body.light-mode .alertGrid a{background:#fff!important;color:#334155!important;border-color:#dbe2ee!important}
+body.light-mode .alertGrid a b,body.light-mode .alertGrid a span{color:#334155!important}
+body.light-mode .conflictShell .range,body.light-mode .conflictShell .bulk,body.light-mode .conflictShell .section,body.light-mode .conflictShell .conflictCard,body.light-mode .conflictShell .lesson,body.light-mode .conflictShell .choice,body.light-mode .conflictShell .choice select{background:#fff!important;color:#334155!important;border-color:#dbe2ee!important}
+body.light-mode .conflictShell .lesson h3,body.light-mode .conflictShell .lesson p,body.light-mode .conflictShell .lesson small,body.light-mode .conflictShell .conflictCard h3,body.light-mode .conflictShell .conflictCard p{color:#172033!important}
+body.light-mode .conflictShell .range span,body.light-mode .conflictShell .choice select{color:#64748b!important}
+body.light-mode .requestShell .toolbar button,body.light-mode .requestShell .statusMessage,body.light-mode .requestShell .requestList .emptyState{background:#fff!important;color:#334155!important;border-color:#dbe2ee!important}
+body.light-mode .requestShell .toolbar button:not(.active){color:#64748b!important}
+body.light-mode .smartActions>div{background:#fff!important;color:#64748b!important;border:1px solid #dbe2ee}
