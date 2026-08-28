@@ -250,6 +250,8 @@ body.light-mode .manageShell .accountIdentity strong,body.light-mode .manageShel
 body.light-mode .requestShell .statusMessage{color:#334155!important;background:#fff!important;border-color:#dbe2ee!important}
 body.light-mode .manageShell .avatar{background:#e0e7ff!important;color:#312e81!important}
 body.light-mode .manageShell .teacherChips span{background:#eef2ff!important;color:#334155!important;border-color:#cbd5e1!important}
+body.light-mode .teacherStrip button{background:#fff!important;color:#334155!important;border-color:#cbd5e1!important}
+body.light-mode .teacherStrip button.active{background:#eef2ff!important;color:#172033!important}
 body.light-mode .workloadStats button{background:#f8fafc!important;color:#334155!important;border-color:#cbd5e1!important}
 body.light-mode .workloadStats button span,body.light-mode .workloadStats button small{color:#64748b!important}
 body.light-mode .workloadStats button strong{color:#172033!important}
