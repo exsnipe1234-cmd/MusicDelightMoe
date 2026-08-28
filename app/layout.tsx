@@ -5,7 +5,6 @@ import './fullcalendar-overrides.css';
 import AdminQuickLinks from './components/AdminQuickLinks';
 import CalendarAiAssistant from './components/CalendarAiAssistant';
 import NativeAppViewport from './components/NativeAppViewport';
-import ThemeToggle from './components/ThemeToggle';
 import { AppDataProvider } from './providers/AppDataProvider';
 
 export const metadata: Metadata = {
@@ -16,9 +15,8 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>
+      <body className="light-mode">
         <AppDataProvider>
-          <ThemeToggle />
           <NativeAppViewport />
           {children}
           <AdminQuickLinks />
