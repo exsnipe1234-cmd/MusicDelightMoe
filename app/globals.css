@@ -232,3 +232,13 @@ body.light-mode .calendarAiIdentity strong,body.light-mode .calendarAiBubble h4{
 body.light-mode .calendarAiIdentity span,body.light-mode .calendarAiNotice,body.light-mode .calendarAiBubble,body.light-mode .calendarAiComposer small{color:#64748b}
 body.light-mode .calendarAiBubble{background:#eef2ff;border-color:#dbe2ee}
 body.light-mode .calendarAiComposer{background:#fff;border-color:#dbe2ee}
+body.light-mode .alertGrid a,body.light-mode .statusMessage,body.light-mode .emptyState,body.light-mode .tabs button,body.light-mode .toolbar button,body.light-mode .record,body.light-mode .auditShell article,body.light-mode .historyShell article,body.light-mode .conflictCard,body.light-mode .suggestions article{background:#fff!important;border-color:#dbe2ee!important;color:#334155}
+body.light-mode .alertGrid a span,body.light-mode .statusMessage,body.light-mode .emptyState span,body.light-mode .tabs button,body.light-mode .toolbar button,body.light-mode .record small,body.light-mode .auditShell article span,body.light-mode .historyShell article span,body.light-mode .conflictCard p,body.light-mode .suggestions article span{color:#64748b!important}
+body.light-mode .alertGrid a b,body.light-mode .emptyState strong,body.light-mode .record strong,body.light-mode .auditShell article strong,body.light-mode .historyShell article strong,body.light-mode .conflictCard h3,body.light-mode .suggestions article strong{color:#172033!important}
+body.light-mode .toolbar button.active,body.light-mode .tabs button.active{background:#6653de!important;color:#fff!important;border-color:#6653de!important}
+body.light-mode .toolbar button.active b{color:#fff!important}
+body.light-mode .importShell .statusBox{background:#f8fafc!important;border-color:#dbe2ee;color:#64748b}
+body.light-mode .importShell .statusBox.ready,body.light-mode .importShell .statusBox.saved{color:#15803d}
+body.light-mode .importShell .statusBox.error{color:#be123c}
+body.light-mode .accountCard .timetableAccess label,body.light-mode .teacherChips span{background:#eef2ff;color:#334155;border-color:#cbd5e1}
+body.light-mode .accountCard .timetableAccess label.primaryTeacher{background:#e0e7ff;color:#312e81}
