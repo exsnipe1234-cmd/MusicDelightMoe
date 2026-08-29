@@ -8,7 +8,7 @@ import * as XLSX from 'xlsx';
 import { createClient } from '../../utils/supabase/client';
 import { useAppData } from '../providers/AppDataProvider';
 
-type ImportedLesson = { id: number; date: string; school: string; className: string; startTime: string; endTime: string; teacher: string | null; unavailable: boolean; confidence?: number; reviewReasons?: string[]; suggestedTeacher?: string };
+type ImportedLesson = { id: number; date: string; school: string; className: string; startTime: string; endTime: string; teacher: string | null; unavailable: boolean; confidence?: number; reviewReasons?: string[]; suggestedTeacher?: string; autoAssignedTeacher?: string };
 type PdfTextItem = { str: string; transform: number[]; width?: number; height?: number };
 type ExistingRow = { id: string; lesson_date: string; school: string; class_name: string; start_time: string; end_time: string; teacher_name: string | null; unavailable: boolean; cancelled: boolean; source: string; created_at: string; updated_at: string };
 type ImportStatus = 'new' | 'changed' | 'duplicate' | 'conflict' | 'review';
@@ -338,12 +338,13 @@ export default function ImportPage() {
   const analyseImport = (detected: ImportedLesson[], existingRows: ExistingRow[], historyRows: ExistingRow[] = []) => {
     const teacherHistory = new Map<string, Map<string, number>>();
     historyRows.filter((row) => !row.cancelled && row.teacher_name).forEach((row) => { const matchKey = teacherMatchKey({ school: row.school, className: row.class_name, startTime: row.start_time, endTime: row.end_time }); const teachers = teacherHistory.get(matchKey) ?? new Map<string, number>(); teachers.set(row.teacher_name!, (teachers.get(row.teacher_name!) ?? 0) + 1); teacherHistory.set(matchKey, teachers); });
+    const inferred = detected.map((lesson) => { const historyTeachers = teacherHistory.get(teacherMatchKey(lesson)); if (lesson.teacher || !historyTeachers?.size) return lesson; const ordered = [...historyTeachers.entries()].sort((a, b) => b[1] - a[1]); if (ordered.length === 1 || ordered[0][1] > ordered[1][1]) return { ...lesson, teacher: ordered[0][0], autoAssignedTeacher: ordered[0][0] }; return lesson; });
     const exactExisting = new Set(existingRows.map((row) => lessonKey({ date: row.lesson_date, startTime: row.start_time, endTime: row.end_time, school: row.school, className: row.class_name, teacher: row.teacher_name })));
     const existingByBase = new Map<string, ExistingRow[]>();
     existingRows.forEach((row) => { const key = baseKey({date:row.lesson_date,startTime:row.start_time,endTime:row.end_time,school:row.school,className:row.class_name}); existingByBase.set(key, [...(existingByBase.get(key) ?? []), row]); });
-    const importedBase = new Set(detected.map(baseKey));
+    const importedBase = new Set(inferred.map(baseKey));
 
-    const analysed: PreviewLesson[] = detected.map((lesson) => {
+    const analysed: PreviewLesson[] = inferred.map((lesson) => {
       const issues: string[] = [];
       const sameTeacher = lesson.teacher?.trim().toLowerCase();
       if (lesson.confidence !== undefined && lesson.confidence < 80) issues.push(`Image detection confidence is ${lesson.confidence}%. Review this row before importing.`);
@@ -377,7 +378,7 @@ export default function ImportPage() {
       };
     });
 
-    const importedTeachers = new Set(detected.map((lesson) => lesson.teacher?.trim().toLowerCase()).filter(Boolean));
+    const importedTeachers = new Set(inferred.map((lesson) => lesson.teacher?.trim().toLowerCase()).filter(Boolean));
     const relevantExistingRows = importedTeachers.size ? existingRows.filter((row) => row.teacher_name && importedTeachers.has(row.teacher_name.trim().toLowerCase())) : existingRows;
     const removals = relevantExistingRows.filter((row) => !importedBase.has(baseKey({date:row.lesson_date,startTime:row.start_time,endTime:row.end_time,school:row.school,className:row.class_name})));
 
