@@ -256,6 +256,7 @@ body.light-mode .shell .card h1,body.light-mode .shell .card label,body.light-mo
 body.light-mode .shell .card>span,body.light-mode .shell .card .loading{color:#475569!important}
 body.light-mode .shell .card label>div{background:#f8fafc!important;border-color:#cbd5e1!important}
 body.light-mode .shell .card input{color:#172033!important}
+body.light-mode .shell:has(.card){display:grid!important;grid-template-columns:1fr!important;place-items:center!important;width:100%!important;min-height:100vh!important;margin:0!important;padding:24px!important}
 body.light-mode .teacherStrip button{background:#fff!important;color:#334155!important;border-color:#cbd5e1!important}
 body.light-mode .teacherStrip button.active{background:#eef2ff!important;color:#172033!important}
 body.light-mode .portalShell .weekCard,body.light-mode .portalShell .statGrid article,body.light-mode .portalShell .scheduleCard,body.light-mode .portalShell .quickCard,body.light-mode .portalShell .upcomingCard,body.light-mode .portalShell .requestsCard,body.light-mode .portalShell .nextCard{background:#fff!important;border-color:#dbe2ee!important;color:#172033!important;box-shadow:0 10px 28px rgba(30,41,59,.08)}
