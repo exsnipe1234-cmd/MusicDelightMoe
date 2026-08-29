@@ -49,6 +49,12 @@ body.light-mode .summaryCards article,body.light-mode .summaryCards a,body.light
 body.light-mode .searchBox,body.light-mode .filterBar select,body.light-mode .filterBar>button,body.light-mode input,body.light-mode select,body.light-mode textarea{background:#eef2f6!important}
 body.light-mode .importShell .dropZone{border-radius:16px!important;background:linear-gradient(145deg,#fff,#f8f9ff)!important;box-shadow:inset 0 0 0 1px rgba(102,83,222,.05)}
 body.light-mode .importShell .tableWrap{border-radius:14px;box-shadow:var(--premium-shadow)}
+body.light-mode .importShell .importStats article{background:#f1f4f8!important;border-color:#dbe2ee!important;color:#172033!important}
+body.light-mode .importShell .importStats article span{color:#52627a!important}
+body.light-mode .importShell .importStats article strong{color:#172033!important}
+body.light-mode .importShell .importStats article.new strong{color:#15803d!important}
+body.light-mode .importShell .importStats article.changed strong{color:#a16207!important}
+body.light-mode .importShell .importStats article.danger strong,body.light-mode .importShell .importStats article.removed strong{color:#be123c!important}
 body.light-mode .filters{padding:12px;border:1px solid var(--premium-line);border-radius:14px;background:#fff;box-shadow:0 5px 18px rgba(30,41,59,.04)}
 body.light-mode .adminPageContent main.shell{display:block!important;grid-template-columns:1fr!important;width:100%;min-width:0}
 body.light-mode .adminPageContent main.shell>.workspace{grid-template-columns:390px minmax(0,1fr)}
