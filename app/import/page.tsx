@@ -413,7 +413,7 @@ export default function ImportPage() {
     setMessage(`${result.lessons.length} lessons detected. ${analysis.summary.conflictCount} clash${analysis.summary.conflictCount === 1 ? '' : 'es'} and ${analysis.summary.reviewCount} item${analysis.summary.reviewCount === 1 ? '' : 's'} need review.`);
   };
 
-  const acceptTeacherSuggestion = (id: number) => { const corrected = detectedLessons.map((lesson) => lesson.id === id && lesson.suggestedTeacher ? { ...lesson, teacher: lesson.suggestedTeacher } : lesson); const analysis = analyseImport(corrected, comparisonRows, historicalRows); setDetectedLessons(corrected); setLessons(analysis.analysed); setRemovedCandidates(analysis.removals); setComparison(analysis.summary); };
+  const acceptTeacherSuggestion = (id: number) => { const source = detectedLessons.length ? detectedLessons : lessons; const suggested = source.find((lesson) => lesson.id === id)?.suggestedTeacher; if (!suggested) return; const corrected = source.map((lesson) => lesson.id === id ? { ...lesson, teacher: suggested, suggestedTeacher: undefined } : lesson); const analysis = analyseImport(corrected, comparisonRows, historicalRows); setDetectedLessons(corrected); setLessons(analysis.analysed); setRemovedCandidates(analysis.removals); setComparison(analysis.summary); setMessage(`${suggested} assigned to the selected import row. Review the updated result before importing.`); };
 
   const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
