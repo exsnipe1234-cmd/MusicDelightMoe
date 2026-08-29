@@ -54,6 +54,13 @@ body.light-mode .adminPageContent main.shell{display:block!important;grid-templa
 body.light-mode .adminPageContent main.shell>.workspace{grid-template-columns:390px minmax(0,1fr)}
 body.light-mode .taskTabs button{box-shadow:0 4px 12px rgba(30,41,59,.04);transition:transform .18s ease}
 body.light-mode .taskTabs button:hover{transform:translateY(-1px)}
+body.light-mode .quickPanel{background:#f8fafc!important;border-color:#dbe2ee!important;box-shadow:0 20px 55px rgba(30,41,59,.16)!important}
+body.light-mode .quickPanelHeader strong,body.light-mode .quickPanelHeader button{color:#334155!important}
+body.light-mode .quickPanelHeader button{background:#eef2f6!important}
+body.light-mode .quickLink{background:#fff!important;border-color:#dbe2ee!important;color:#334155!important}
+body.light-mode .quickLink.danger,body.light-mode .quickLink.warning,body.light-mode .quickLink.dangerSoft,body.light-mode .quickLink.info,body.light-mode .quickLink.purple{background:#fff!important;color:#334155!important}
+body.light-mode .quickLink svg{color:#6653de!important}
+body.light-mode .calendarAiTrigger{background:#fff!important;color:#334155!important;border-color:#dbe2ee!important}
 @media(max-width:900px){body.light-mode .editorHeader .headerActions{gap:7px}.editorHeader .headerActions>*{min-height:44px}.editorHeader .headerActions .conflictLink{grid-column:1/-1}.workloadPanel{border-radius:16px!important}.smartDashboard{border-radius:18px!important}}
 @media(max-width:900px){body.light-mode .editorHeader .headerActions{display:flex!important;flex-wrap:wrap;width:100%;justify-content:stretch}.editorHeader .headerActions>*{flex:1 1 calc(50% - 7px);min-width:0}.editorHeader .headerActions .conflictLink{flex:1 1 100%;width:100%;min-width:0}}
 body.light-mode .bulkToolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0;padding:10px 12px;border:1px solid var(--premium-line);border-radius:12px;background:#fff;color:#334155;box-shadow:0 4px 14px rgba(30,41,59,.04)}
