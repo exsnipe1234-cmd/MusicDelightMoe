@@ -8,7 +8,7 @@ import * as XLSX from 'xlsx';
 import { createClient } from '../../utils/supabase/client';
 import { useAppData } from '../providers/AppDataProvider';
 
-type ImportedLesson = { id: number; date: string; school: string; className: string; startTime: string; endTime: string; teacher: string | null; unavailable: boolean; confidence?: number; reviewReasons?: string[] };
+type ImportedLesson = { id: number; date: string; school: string; className: string; startTime: string; endTime: string; teacher: string | null; unavailable: boolean; confidence?: number; reviewReasons?: string[]; suggestedTeacher?: string };
 type PdfTextItem = { str: string; transform: number[]; width?: number; height?: number };
 type ExistingRow = { id: string; lesson_date: string; school: string; class_name: string; start_time: string; end_time: string; teacher_name: string | null; unavailable: boolean; cancelled: boolean; source: string; created_at: string; updated_at: string };
 type ImportStatus = 'new' | 'changed' | 'duplicate' | 'conflict' | 'review';
@@ -24,6 +24,8 @@ function splitSchoolAndClass(value: string) { const school = schoolNames.find((n
 function parseLessonLine(line: string, date: string, id: number): ImportedLesson | null { const normalized = line.replace(/\s+/g, ' ').trim(); const timeMatch = normalized.match(/(\d{1,2}[.:]?\d{2})\s*-\s*(\d{1,2}[.:]?\d{2})/); if (!timeMatch || timeMatch.index === undefined) return null; const beforeTime = normalized.slice(0, timeMatch.index).trim(); const afterTime = normalized.slice(timeMatch.index + timeMatch[0].length).trim(); const matchedTeacher = teacherNames.find((teacher) => afterTime.toLowerCase().endsWith(teacher.toLowerCase())); const teacher = matchedTeacher === 'Audrey Jansen' ? 'Audrey' : matchedTeacher ?? null; const { school, className } = splitSchoolAndClass(beforeTime); return { id, date, school, className, startTime: toTime(timeMatch[1]), endTime: toTime(timeMatch[2]), teacher, unavailable: false }; }
 function dateForCell(year: number, monthIndex: number, cellIndex: number) { const first = new Date(year, monthIndex, 1); const gridStart = new Date(year, monthIndex, 1 - first.getDay()); gridStart.setDate(gridStart.getDate() + cellIndex); return `${gridStart.getFullYear()}-${pad(gridStart.getMonth() + 1)}-${pad(gridStart.getDate())}`; }
 function lessonKey(lesson: Pick<ImportedLesson,'date'|'startTime'|'endTime'|'school'|'className'|'teacher'>) { return `${lesson.date}|${lesson.startTime.slice(0,5)}|${lesson.endTime.slice(0,5)}|${lesson.school.trim().toLowerCase()}|${lesson.className.trim().toLowerCase()}|${lesson.teacher ?? ''}`; }
+function schoolMatchKey(value: string) { return value.toLowerCase().replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\bpri\b/g, 'primary school').replace(/\bps\b(?!\s+school)/g, 'primary school').replace(/\s+\d{1,2}[a-z]{0,3}\s*$/i, '').replace(/\s+/g, ' ').trim(); }
+function teacherMatchKey(lesson: Pick<ImportedLesson, 'school'|'className'|'startTime'|'endTime'>) { return `${schoolMatchKey(lesson.school)}|${lesson.className.trim().toLowerCase()}|${lesson.startTime.slice(0,5)}|${lesson.endTime.slice(0,5)}`; }
 
 type PositionedItem = { text: string; x: number; top: number };
 const weekdayIndex: Record<string, number> = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
@@ -318,6 +320,9 @@ export default function ImportPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [excelSchool, setExcelSchool] = useState('');
   const [excelTeacher, setExcelTeacher] = useState('');
+  const [detectedLessons, setDetectedLessons] = useState<ImportedLesson[]>([]);
+  const [comparisonRows, setComparisonRows] = useState<ExistingRow[]>([]);
+  const [historicalRows, setHistoricalRows] = useState<ExistingRow[]>([]);
 
   const assignedCount = useMemo(() => lessons.filter((lesson) => lesson.teacher).length, [lessons]);
   const selectedLessons = useMemo(() => lessons.filter((lesson) => lesson.selected), [lessons]);
@@ -330,7 +335,9 @@ export default function ImportPage() {
   const minutes = (value: string) => { const [hour, minute] = value.slice(0,5).split(':').map(Number); return hour * 60 + minute; };
   const overlaps = (a: {startTime:string;endTime:string}, b: {startTime:string;endTime:string}) => minutes(a.startTime) < minutes(b.endTime) && minutes(b.startTime) < minutes(a.endTime);
 
-  const analyseImport = (detected: ImportedLesson[], existingRows: ExistingRow[]) => {
+  const analyseImport = (detected: ImportedLesson[], existingRows: ExistingRow[], historyRows: ExistingRow[] = []) => {
+    const teacherHistory = new Map<string, Map<string, number>>();
+    historyRows.filter((row) => !row.cancelled && row.teacher_name).forEach((row) => { const matchKey = teacherMatchKey({ school: row.school, className: row.class_name, startTime: row.start_time, endTime: row.end_time }); const teachers = teacherHistory.get(matchKey) ?? new Map<string, number>(); teachers.set(row.teacher_name!, (teachers.get(row.teacher_name!) ?? 0) + 1); teacherHistory.set(matchKey, teachers); });
     const exactExisting = new Set(existingRows.map((row) => lessonKey({ date: row.lesson_date, startTime: row.start_time, endTime: row.end_time, school: row.school, className: row.class_name, teacher: row.teacher_name })));
     const existingByBase = new Map<string, ExistingRow[]>();
     existingRows.forEach((row) => { const key = baseKey({date:row.lesson_date,startTime:row.start_time,endTime:row.end_time,school:row.school,className:row.class_name}); existingByBase.set(key, [...(existingByBase.get(key) ?? []), row]); });
@@ -354,6 +361,8 @@ export default function ImportPage() {
       if (candidates.some((row) => row.cancelled)) issues.push('A matching cancelled class exists. Reactivate or review it manually.');
       if (candidates.length > 1) issues.push('Multiple teacher records match this class. Review them manually.');
       if (!lesson.teacher && candidates.some((row) => row.teacher_name)) issues.push('The PDF has no recognised teacher and cannot replace an assigned teacher automatically.');
+      const historyTeachers = teacherHistory.get(teacherMatchKey(lesson));
+      const suggestedTeacher = !lesson.teacher && historyTeachers?.size ? [...historyTeachers.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] : undefined;
       const blockedChange = candidates.length > 1 || Boolean(changed?.cancelled) || (!lesson.teacher && Boolean(changed?.teacher_name)) || (lesson.confidence !== undefined && lesson.confidence < 80);
       let importStatus: ImportStatus = exact ? 'duplicate' : blockedChange ? 'review' : changed ? 'changed' : 'new';
       if (!exact && !blockedChange && (pdfClashes.length || databaseClashes.length)) importStatus = 'conflict';
@@ -364,6 +373,7 @@ export default function ImportPage() {
         selected: importStatus === 'new' || importStatus === 'changed',
         issues,
         existingTeacher: changed?.teacher_name,
+        suggestedTeacher,
       };
     });
 
@@ -389,12 +399,21 @@ export default function ImportPage() {
   const analyseDetected = async (result: { lessons: ImportedLesson[]; monthName: string }) => {
     setMonthName(result.monthName);
     const dates = [...new Set(result.lessons.map((lesson) => lesson.date))].sort();
-    const { data: existing, error: compareError } = await supabase.from('lessons').select('id,lesson_date,school,class_name,start_time,end_time,teacher_name,unavailable,cancelled,source,created_at,updated_at').gte('lesson_date', dates[0]).lte('lesson_date', dates[dates.length-1]);
+    const select = 'id,lesson_date,school,class_name,start_time,end_time,teacher_name,unavailable,cancelled,source,created_at,updated_at';
+    const [{ data: existing, error: compareError }, { data: history }] = await Promise.all([
+      supabase.from('lessons').select(select).gte('lesson_date', dates[0]).lte('lesson_date', dates[dates.length-1]),
+      supabase.from('lessons').select(select).lt('lesson_date', dates[0]).order('lesson_date', { ascending: false }).limit(1000),
+    ]);
     if (compareError) throw compareError;
-    const analysis = analyseImport(result.lessons, (existing ?? []) as ExistingRow[]);
+    const currentRows = (existing ?? []) as ExistingRow[];
+    const historical = (history ?? []) as ExistingRow[];
+    setDetectedLessons(result.lessons); setComparisonRows(currentRows); setHistoricalRows(historical);
+    const analysis = analyseImport(result.lessons, currentRows, historical);
     setLessons(analysis.analysed); setRemovedCandidates(analysis.removals); setComparison(analysis.summary); setStatus('ready');
     setMessage(`${result.lessons.length} lessons detected. ${analysis.summary.conflictCount} clash${analysis.summary.conflictCount === 1 ? '' : 'es'} and ${analysis.summary.reviewCount} item${analysis.summary.reviewCount === 1 ? '' : 's'} need review.`);
   };
+
+  const acceptTeacherSuggestion = (id: number) => { const corrected = detectedLessons.map((lesson) => lesson.id === id && lesson.suggestedTeacher ? { ...lesson, teacher: lesson.suggestedTeacher } : lesson); const analysis = analyseImport(corrected, comparisonRows, historicalRows); setDetectedLessons(corrected); setLessons(analysis.analysed); setRemovedCandidates(analysis.removals); setComparison(analysis.summary); };
 
   const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -503,7 +522,7 @@ export default function ImportPage() {
       <section className="importCard previewCard">
         <div className="previewHeader"><div><p>IMPORT PREVIEW</p><h2>Detected lessons</h2></div><div className="previewActions"><button className="secondary" onClick={selectSafe}><ShieldCheck size={16}/> Select safe changes</button><button onClick={saveImport} disabled={status === 'saving' || selectedLessons.length === 0}>{status === 'saving' ? 'Saving…' : unsafeSelected.length ? `Import ${selectedLessons.length} selected` : `Import ${selectedLessons.length} safe change${selectedLessons.length === 1 ? '' : 's'}`}</button></div></div>
         <div className="toolbar"><div className="filterTitle"><Filter size={15}/> Show</div>{filters.map((name) => <button key={name} className={filter === name ? 'active' : ''} onClick={() => setFilter(name)}>{name === 'all' ? `All ${lessons.length}` : `${statusLabel[name as ImportStatus]} ${lessons.filter((lesson) => lesson.importStatus === name).length}`}</button>)}<button className="removedToggle" onClick={() => setShowRemoved((value) => !value)}>Possible removals {removedCandidates.length}</button></div>
-        <div className="tableWrap"><table><thead><tr><th><span className="srOnly">Select</span></th><th>Status</th><th>Date</th><th>Time</th><th>School</th><th>Class / programme</th><th>Teacher</th><th>Checks</th></tr></thead><tbody>{filteredLessons.map((lesson) => <tr key={lesson.id} className={`row-${lesson.importStatus}`}><td>{lesson.importStatus === 'duplicate' ? <span className="lockedDuplicate" title="Already in database"><CheckCircle2 size={16}/></span> : <input type="checkbox" checked={lesson.selected} onChange={() => toggleLesson(lesson.id)}/>}</td><td><span className={`badge ${lesson.importStatus}`}>{statusLabel[lesson.importStatus]}</span></td><td>{lesson.date}</td><td>{lesson.startTime}–{lesson.endTime}</td><td>{lesson.school}</td><td>{lesson.className}</td><td>{lesson.importStatus === 'changed' ? <span>{lesson.existingTeacher || 'Unassigned'} → <strong>{lesson.teacher || 'Unassigned'}</strong></span> : lesson.teacher ?? <em>Unassigned</em>}</td><td className="checks">{lesson.importStatus === 'duplicate' ? <span className="existingCheck"><CheckCircle2 size={13}/>Matches an existing calendar record</span> : !lesson.teacher ? <span className="unassignedCheck"><AlertTriangle size={13}/>Will be imported under Unassigned and shown on the calendar</span> : lesson.issues.length ? lesson.issues.map((issue) => <span key={issue}><AlertTriangle size={13}/>{issue}</span>) : <span className="clearCheck"><CheckCircle2 size={13}/>No clash found</span>}</td></tr>)}</tbody></table></div>
+        <div className="tableWrap"><table><thead><tr><th><span className="srOnly">Select</span></th><th>Status</th><th>Date</th><th>Time</th><th>School</th><th>Class / programme</th><th>Teacher</th><th>Checks</th></tr></thead><tbody>{filteredLessons.map((lesson) => <tr key={lesson.id} className={`row-${lesson.importStatus}`}><td>{lesson.importStatus === 'duplicate' ? <span className="lockedDuplicate" title="Already in database"><CheckCircle2 size={16}/></span> : <input type="checkbox" checked={lesson.selected} onChange={() => toggleLesson(lesson.id)}/>}</td><td><span className={`badge ${lesson.importStatus}`}>{statusLabel[lesson.importStatus]}</span></td><td>{lesson.date}</td><td>{lesson.startTime}–{lesson.endTime}</td><td>{lesson.school}</td><td>{lesson.className}</td><td>{lesson.importStatus === 'changed' ? <span>{lesson.existingTeacher || 'Unassigned'} → <strong>{lesson.teacher || 'Unassigned'}</strong></span> : lesson.teacher ?? <em>Unassigned</em>}{lesson.suggestedTeacher && !lesson.teacher && <button type="button" onClick={() => acceptTeacherSuggestion(lesson.id)} style={{display:'block',marginTop:5,padding:'4px 7px',border:0,borderRadius:6,background:'#eef2ff',color:'#4338ca',fontSize:11,fontWeight:800,cursor:'pointer'}}>Use {lesson.suggestedTeacher}</button>}</td><td className="checks">{lesson.importStatus === 'duplicate' ? <span className="existingCheck"><CheckCircle2 size={13}/>Matches an existing calendar record</span> : !lesson.teacher ? <span className="unassignedCheck"><AlertTriangle size={13}/>Will be imported under Unassigned and shown on the calendar</span> : lesson.issues.length ? lesson.issues.map((issue) => <span key={issue}><AlertTriangle size={13}/>{issue}</span>) : <span className="clearCheck"><CheckCircle2 size={13}/>No clash found</span>}</td></tr>)}</tbody></table></div>
         {unsafeSelected.length > 0 && <label className="override"><input type="checkbox" checked={allowConflicts} onChange={(event) => setAllowConflicts(event.target.checked)}/><span>I reviewed the {unsafeSelected.length} selected warning item{unsafeSelected.length === 1 ? '' : 's'} and want to import them anyway.</span></label>}
         {showRemoved && <div className="removedPanel"><div><h3>Possible removals</h3><p>These records are in Supabase for the same teacher/date range but not in this PDF. They will not be deleted automatically.</p></div>{removedCandidates.length ? <div className="removedList">{removedCandidates.map((row) => <article key={row.id}><strong>{row.lesson_date} · {row.start_time.slice(0,5)}–{row.end_time.slice(0,5)}</strong><span>{row.school} · {row.class_name} · {row.teacher_name}</span></article>)}</div> : <p>No possible removals.</p>}</div>}
       </section>
