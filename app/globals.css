@@ -49,98 +49,12 @@ h3 { margin-bottom: 0; font-size: 16px; }
 
 .workspaceGrid { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 16px; }
 .glassPanel { border-radius: 18px; overflow: hidden; }
-.calendarToolbar { display: flex; align-items: center; justify-content: space-between; padding: 17px 18px; border-bottom: 1px solid rgba(148,163,184,.1); }
-.monthNavigation { display: flex; align-items: center; gap: 12px; }
-.monthNavigation h2 { min-width: 180px; text-align: center; }
-.monthNavigation button, .viewToggle button, .sectionHeading button, .todayButton { border: 0; background: transparent; color: #7f8ca5; }
-.monthNavigation button { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 8px; }
-.monthNavigation button:hover { background: rgba(148,163,184,.08); color: #fff; }
-.toolbarRight { display: flex; align-items: center; gap: 10px; }
-.todayButton { padding: 8px 11px; border: 1px solid rgba(148,163,184,.12); border-radius: 9px; }
-.todayButton:hover { color: #fff; background: rgba(148,163,184,.07); }
-.viewToggle { padding: 4px; border-radius: 10px; background: #0a1020; }
-.viewToggle button { padding: 7px 11px; border-radius: 8px; font-size: 12px; }
-.viewToggle .selected { background: #252044; color: #c8c2ff; }
-.calendarGrid { display: grid; grid-template-columns: repeat(7, minmax(125px, 1fr)); }
-.weekdayRow { background: rgba(7,11,22,.46); color: #6f7c95; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
-.weekdayRow div { padding: 10px 12px; border-right: 1px solid rgba(148,163,184,.08); }
-.daysGrid { grid-auto-rows: minmax(145px, auto); }
-.dayCell { position: relative; padding: 28px 6px 7px; border-top: 1px solid rgba(148,163,184,.08); border-right: 1px solid rgba(148,163,184,.08); min-height: 145px; background: rgba(7,11,22,.13); transition: background .18s ease; }
-.dayCell:hover { background: rgba(120,87,255,.045); }
-.dayCell.muted { opacity: .3; background: rgba(7,11,22,.5); }
-.dayNumber { position: absolute; top: 7px; right: 9px; color: #8894ab; font-size: 12px; font-weight: 700; }
-.dayAddButton { position: absolute; top: 5px; left: 7px; width: 22px; height: 22px; display: grid; place-items: center; border: 0; border-radius: 7px; background: transparent; color: transparent; }
-.dayCell:hover .dayAddButton { color: #8d82ff; background: rgba(120,87,255,.1); }
-.lessonStack { display: grid; gap: 5px; }
-.lessonCard { --teacher-colour: #94a3b8; width: 100%; position: relative; overflow: hidden; display: grid; gap: 2px; border: 1px solid color-mix(in srgb, var(--teacher-colour) 35%, transparent); border-left: 4px solid var(--teacher-colour); border-radius: 8px; padding: 6px 7px; background: color-mix(in srgb, var(--teacher-colour) 13%, #10172a); color: #f8fafc; cursor: grab; text-align: left; }
-.lessonCard:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(0,0,0,.2); }
-.lessonCard strong { color: var(--teacher-colour); font-size: 9px; }
-.lessonCard span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; font-weight: 700; }
-.lessonCard small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #aab4c8; font-size: 9px; }
-.lessonCard.unavailable { border-color: #fb7185; box-shadow: inset 0 0 0 1px rgba(251,113,133,.35); }
-.lessonCard.unavailable em { color: #fb7185; font-size: 8px; font-style: normal; font-weight: 800; text-transform: uppercase; }
-.lessonCard.unassigned { border-style: dashed; border-color: #fb7185; background: rgba(251,113,133,.09); }
-
-.rightRail { display: grid; align-content: start; gap: 16px; }
-.filterPanel, .unassignedPanel { padding: 16px; }
-.sectionHeading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-.sectionHeading p { margin-bottom: 3px; }
-.sectionHeading button { color: #887cf8; font-size: 12px; }
-.teacherList { display: grid; gap: 8px; }
-.teacherOption { display: grid; grid-template-columns: 18px 10px 1fr; align-items: center; gap: 9px; padding: 7px 8px; border-radius: 9px; color: #b9c2d4; font-size: 12px; }
-.teacherOption:hover { background: rgba(148,163,184,.06); }
-.teacherOption input { accent-color: #7367ef; }
-.colourDot { width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 12px currentColor; }
-.countBadge { min-width: 24px; height: 24px; border-radius: 8px; display: grid; place-items: center; background: rgba(251,113,133,.13); color: #fb7185; font-size: 12px; font-weight: 800; }
-.unassignedCard { display: grid; gap: 5px; margin-top: 10px; padding: 12px; border: 1px dashed rgba(251,113,133,.45); border-radius: 12px; background: rgba(251,113,133,.06); }
-.unassignedCard strong { font-size: 12px; }
-.unassignedCard span { color: #a8b1c5; font-size: 11px; }
-.unassignedCard small { display: flex; gap: 5px; align-items: center; color: #78859d; }
-.unassignedCard button { margin-top: 4px; padding: 8px; border: 0; border-radius: 8px; background: rgba(120,87,255,.16); color: #bdb4ff; font-size: 11px; }
-
-.weekGrid { display: grid; grid-template-columns: repeat(7, minmax(130px, 1fr)); min-height: 620px; }
-.weekColumn { border-right: 1px solid rgba(148,163,184,.08); }
-.weekHeading { width: 100%; display: grid; place-items: center; gap: 3px; padding: 14px; border: 0; border-bottom: 1px solid rgba(148,163,184,.08); background: rgba(7,11,22,.35); color: #8692aa; }
-.weekHeading strong { font-size: 20px; color: #fff; }
-.weekHeading:hover { background: rgba(120,87,255,.07); }
-.weekLessons { display: grid; align-content: start; gap: 8px; padding: 10px 7px; }
-.emptySlot { min-height: 80px; border: 1px dashed rgba(148,163,184,.13); border-radius: 10px; background: transparent; color: #667189; }
-.emptySlot:hover { border-color: rgba(120,87,255,.4); color: #a99fff; }
-
-.dayAgenda { min-height: 620px; padding: 22px; }
-.agendaHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.agendaItem { --teacher-colour: #94a3b8; width: 100%; display: grid; grid-template-columns: 78px 4px 1fr auto; align-items: center; gap: 15px; margin-bottom: 10px; padding: 16px; border: 1px solid rgba(148,163,184,.11); border-radius: 13px; background: rgba(10,16,32,.65); color: #fff; text-align: left; }
-.agendaItem:hover { transform: translateX(2px); border-color: color-mix(in srgb, var(--teacher-colour) 45%, transparent); }
-.agendaTime { display: grid; color: var(--teacher-colour); font-weight: 800; }
-.agendaTime small { color: #738098; font-weight: 500; }
-.agendaAccent { width: 4px; height: 42px; border-radius: 4px; background: var(--teacher-colour); }
-.agendaDetails { display: grid; gap: 4px; }
-.agendaDetails small { color: #8c98af; }
-.agendaItem em { color: #fb7185; font-size: 10px; font-style: normal; font-weight: 800; text-transform: uppercase; }
-.emptyAgenda { min-height: 420px; display: grid; place-items: center; align-content: center; gap: 8px; color: #728097; }
-.emptyAgenda strong { color: #c7cfdd; }
-
-.modalBackdrop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px; background: rgba(2,6,16,.72); backdrop-filter: blur(8px); }
-.lessonModal { width: min(560px, 100%); display: grid; gap: 15px; padding: 22px; border: 1px solid rgba(148,163,184,.18); border-radius: 20px; background: linear-gradient(145deg, #151d33, #0b1121); box-shadow: 0 30px 90px rgba(0,0,0,.5); }
-.modalHeader { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
-.closeButton { width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 10px; background: rgba(148,163,184,.08); color: #98a4ba; }
-.lessonModal label { display: grid; gap: 7px; color: #9aa6bc; font-size: 12px; font-weight: 700; }
-.lessonModal input, .lessonModal select { width: 100%; height: 42px; padding: 0 12px; border: 1px solid rgba(148,163,184,.16); border-radius: 10px; outline: 0; background: #0a1020; color: #fff; }
-.lessonModal input:focus, .lessonModal select:focus { border-color: #7568ed; box-shadow: 0 0 0 3px rgba(117,104,237,.12); }
-.formRow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.checkboxRow { display: flex !important; grid-template-columns: none; align-items: center; gap: 9px !important; }
-.checkboxRow input { width: 16px; height: 16px; accent-color: #7367ef; }
-.modalActions { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 9px; margin-top: 5px; }
-.secondaryButton, .deleteButton { height: 42px; display: flex; align-items: center; gap: 7px; padding: 0 15px; border-radius: 11px; }
-.secondaryButton { border: 1px solid rgba(148,163,184,.15); background: rgba(148,163,184,.06); color: #aeb8ca; }
-.deleteButton { border: 1px solid rgba(251,113,133,.22); background: rgba(251,113,133,.08); color: #fb7185; }
 
 @media (max-width: 1300px) {
   body { min-width: 1050px; }
   .shell { grid-template-columns: 210px 1fr; }
   .content { padding-left: 20px; padding-right: 20px; }
   .workspaceGrid { grid-template-columns: minmax(0, 1fr) 230px; }
-  .calendarGrid { grid-template-columns: repeat(7, minmax(110px, 1fr)); }
 }
 
 
@@ -157,26 +71,19 @@ body{min-width:0!important}
 @media(max-width:900px){
   .adminPageContent{margin-left:0;padding-bottom:90px}
   .content{padding:18px 14px 100px}
-  .topbar,.calendarToolbar,.toolbarRight,.manageHeader,.panelHeading{align-items:flex-start;flex-wrap:wrap}
-  .topActions,.toolbarRight{width:100%;overflow-x:auto;padding-bottom:4px}
+  .topbar,.manageHeader,.panelHeading{align-items:flex-start;flex-wrap:wrap}
+  .topActions{width:100%;overflow-x:auto;padding-bottom:4px}
   .searchBox{width:min(100%,360px)}
   .statsGrid,.summaryGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .workspaceGrid{grid-template-columns:1fr}
   .sidebar{display:none}
   .shell{display:block!important;min-height:100vh!important}
-  .calendarToolbar{gap:12px}
-  .calendarGrid,.weekGrid{min-width:840px}
   .glassPanel{overflow:auto}
-  .formRow,.modalActions{grid-template-columns:1fr}
-  .lessonModal{max-height:calc(100dvh - 24px);overflow:auto}
 }
 @media(max-width:600px){
   .statsGrid,.summaryGrid{grid-template-columns:1fr}
   .content{padding:14px 10px 96px}
   h1{font-size:24px}
-  .monthNavigation{width:100%;justify-content:space-between}.monthNavigation h2{min-width:0;font-size:16px}
-  .viewToggle{white-space:nowrap}
-  .agendaItem{grid-template-columns:64px 4px 1fr;padding:12px;gap:10px}.agendaItem>svg,.agendaItem em{display:none}
 }
 
 /* Light mode is the default. Keep the dark theme available through ThemeToggle. */
@@ -192,15 +99,7 @@ body.light-mode h1,body.light-mode h2,body.light-mode h3,body.light-mode strong,
 body.light-mode span,body.light-mode small,body.light-mode .editorHeader span,body.light-mode .manageHeader span,body.light-mode .panelHeading small{color:#64748b}
 body.light-mode input,body.light-mode select,body.light-mode textarea,body.light-mode .searchBox,body.light-mode .filterBar select,body.light-mode .formGrid input,body.light-mode .formGrid select{background:#f8fafc!important;color:#172033!important;border-color:#cbd5e1!important}
 body.light-mode .filterBar>button,body.light-mode .exportButton,body.light-mode .refreshButton,body.light-mode .secondary,body.light-mode .signOut,body.light-mode .changePassword,body.light-mode .quickRow{background:#f8fafc;color:#334155;border-color:#cbd5e1}
-body.light-mode .lessonCard,body.light-mode .agendaItem,body.light-mode .task,body.light-mode .upcomingGrid article,body.light-mode .requestList article,body.light-mode .quickLink{background:#f8fafc!important;color:#172033}
-body.light-mode .fc{--fc-page-bg-color:#fff;--fc-neutral-bg-color:#f8fafc;--fc-border-color:#dbe2ee;color:#172033}
-body.light-mode .fc .fc-daygrid-day,body.light-mode .fc .fc-timegrid-col{background:#fff!important}
-body.light-mode .fc .fc-col-header-cell{background:#eef2ff!important}
-body.light-mode .fc .fc-col-header-cell-cushion,body.light-mode .fc .fc-daygrid-day-number{color:#334155!important}
-body.light-mode .fc .fc-button{background:#eef2ff!important;color:#334155!important;border-color:#cbd5e1!important}
-body.light-mode .fc .fc-button:hover,body.light-mode .fc .fc-button-active{background:#6653de!important;color:#fff!important}
-body.light-mode .fc .fc-event-main,body.light-mode .fc .fc-event-main-frame,body.light-mode .fc .eventCard,body.light-mode .fc .eventCard strong,body.light-mode .fc .eventCard span,body.light-mode .fc .eventCard small{color:#172033!important}
-body.light-mode .fc .fc-event,body.light-mode .fc .fc-daygrid-event,body.light-mode .fc .fc-timegrid-event{color:#172033!important}
+body.light-mode .task,body.light-mode .upcomingGrid article,body.light-mode .requestList article,body.light-mode .quickLink{background:#f8fafc!important;color:#172033}
 body.light-mode .quickActions .quickTrigger{color:#fff}
 body.light-mode .loginShell,body.light-mode .passwordShell{background:linear-gradient(135deg,#f8fafc,#eef2ff);color:#172033}
 body.light-mode .loginCard,body.light-mode .passwordCard{background:#fff;border-color:#dbe2ee;box-shadow:0 20px 60px rgba(30,41,59,.12)}
@@ -281,7 +180,5 @@ body.light-mode .requestShell .toolbar button:not(.active){color:#64748b!importa
 body.light-mode .smartActions>div{background:#fff!important;color:#64748b!important;border:1px solid #dbe2ee}
 body.light-mode .editorShell,body.light-mode .editorShell p,body.light-mode .editorShell span,body.light-mode .editorShell small,body.light-mode .manageShell,body.light-mode .manageShell p,body.light-mode .manageShell span,body.light-mode .manageShell small,body.light-mode .importShell,body.light-mode .importShell p,body.light-mode .importShell span,body.light-mode .importShell small,body.light-mode .historyShell,body.light-mode .historyShell p,body.light-mode .historyShell span,body.light-mode .historyShell small,body.light-mode .auditShell,body.light-mode .auditShell p,body.light-mode .auditShell span,body.light-mode .auditShell small,body.light-mode .requestShell,body.light-mode .requestShell p,body.light-mode .requestShell span,body.light-mode .requestShell small,body.light-mode .conflictShell,body.light-mode .conflictShell p,body.light-mode .conflictShell span,body.light-mode .conflictShell small{color:#334155!important}
 body.light-mode .editorShell h1,body.light-mode .editorShell h2,body.light-mode .editorShell h3,body.light-mode .manageShell h1,body.light-mode .manageShell h2,body.light-mode .manageShell h3,body.light-mode .importShell h1,body.light-mode .importShell h2,body.light-mode .importShell h3,body.light-mode .historyShell h1,body.light-mode .historyShell h2,body.light-mode .auditShell h1,body.light-mode .auditShell h2,body.light-mode .requestShell h1,body.light-mode .requestShell h2,body.light-mode .requestShell h3,body.light-mode .conflictShell h1,body.light-mode .conflictShell h2,body.light-mode .conflictShell h3{color:#172033!important}
-body.light-mode .workloadStats button,body.light-mode .workloadStats button span,body.light-mode .workloadStats button small,body.light-mode .workloadStats button strong,body.light-mode .alertGrid a,body.light-mode .alertGrid a b,body.light-mode .alertGrid a span{color:#1e293b!important}
-body.light-mode .lessonCard,body.light-mode .lessonCard strong,body.light-mode .lessonCard span,body.light-mode .lessonCard small,body.light-mode .agendaItem,body.light-mode .agendaItem strong,body.light-mode .agendaItem span,body.light-mode .agendaItem small{color:#1e293b!important}
 body.light-mode .primary,body.light-mode .save,body.light-mode .approve,body.light-mode .assigned,body.light-mode .replacementButton,body.light-mode .submit,body.light-mode .quickTrigger,body.light-mode .loginButton{color:#fff!important}
 body.light-mode .eyebrow,body.light-mode .editorHeader p,body.light-mode .workloadHeading p,body.light-mode .drawerHeader p{color:#5b4bd6!important}

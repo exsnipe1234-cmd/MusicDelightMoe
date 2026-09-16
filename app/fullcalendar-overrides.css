@@ -82,3 +82,52 @@
     min-width: 135px;
   }
 }
+
+/* ── Light-mode FullCalendar overrides ── */
+body.light-mode .fc {
+  --fc-page-bg-color: #fff;
+  --fc-neutral-bg-color: #f8fafc;
+  --fc-border-color: #dbe2ee;
+  color: #172033;
+}
+
+body.light-mode .fc .fc-daygrid-day,
+body.light-mode .fc .fc-timegrid-col {
+  background: #fff !important;
+}
+
+body.light-mode .fc .fc-col-header-cell {
+  background: #eef2ff !important;
+}
+
+body.light-mode .fc .fc-col-header-cell-cushion,
+body.light-mode .fc .fc-daygrid-day-number {
+  color: #334155 !important;
+}
+
+body.light-mode .fc .fc-button {
+  background: #eef2ff !important;
+  color: #334155 !important;
+  border-color: #cbd5e1 !important;
+}
+
+body.light-mode .fc .fc-button:hover,
+body.light-mode .fc .fc-button-active {
+  background: #6653de !important;
+  color: #fff !important;
+}
+
+body.light-mode .fc .fc-event-main,
+body.light-mode .fc .fc-event-main-frame,
+body.light-mode .fc .eventCard,
+body.light-mode .fc .eventCard strong,
+body.light-mode .fc .eventCard span,
+body.light-mode .fc .eventCard small {
+  color: #172033 !important;
+}
+
+body.light-mode .fc .fc-event,
+body.light-mode .fc .fc-daygrid-event,
+body.light-mode .fc .fc-timegrid-event {
+  color: #172033 !important;
+}

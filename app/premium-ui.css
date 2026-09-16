@@ -31,7 +31,6 @@ body.light-mode .workloadStats button.active{background:#fff1f2!important;border
 body.light-mode .calendarCard{background:#fff!important;padding:16px!important}
 body.light-mode .fc .fc-toolbar-title{font-weight:850;letter-spacing:-.035em}
 body.light-mode .fc .fc-button{border-radius:10px!important;box-shadow:0 3px 10px rgba(30,41,59,.05)!important}
-body.light-mode .fc .fc-daygrid-day,body.light-mode .fc .fc-timegrid-col{background:#fff!important}
 body.light-mode .fc .fc-daygrid-day:hover{background:#f8f9ff!important}
 body.light-mode .fc .fc-day-today{background:#f1efff!important}
 body.light-mode .fc .fc-daygrid-event,body.light-mode .fc .fc-timegrid-event{box-shadow:0 3px 9px rgba(30,41,59,.08)!important;border-radius:8px!important}

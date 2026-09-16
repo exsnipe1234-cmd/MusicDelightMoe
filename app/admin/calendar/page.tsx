@@ -4,34 +4,52 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import FullCalendar from '@fullcalendar/react';
-import type { DatesSetArg } from '@fullcalendar/core';
-import dayGridPlugin from '@fullcalendar/daygrid';
-import timeGridPlugin from '@fullcalendar/timegrid';
-import interactionPlugin, { DateClickArg, EventDropArg } from '@fullcalendar/interaction';
-import { BarChart3, CalendarDays, CalendarPlus, Copy, List, Loader2, MapPin, Plus, Save, School, Search, X } from 'lucide-react';
+import type { DatesSetArg, EventChangeArg } from '@fullcalendar/core';
+import { CalendarDays, CalendarPlus, List, Plus, WifiOff } from 'lucide-react';
 import { createClient } from '../../../utils/supabase/client';
 import { LessonRow, useAppData } from '../../providers/AppDataProvider';
 import SmartDashboard from '../components/SmartDashboard';
+import CalendarView from './_components/CalendarView';
+import DayPanel from './_components/DayPanel';
+import LessonEditorDrawer from './_components/LessonEditorDrawer';
+import QuickAddDrawer from './_components/QuickAddDrawer';
+import RecurringDrawer from './_components/RecurringDrawer';
+import FilterBar from './_components/FilterBar';
+import BulkToolbar from './_components/BulkToolbar';
+import WorkloadPanels from './_components/WorkloadPanels';
+import UndoBanner from './_components/UndoBanner';
+import { openPrintPreview, buildCalendarPdfBody, buildSchedulePdfBody } from './_components/PdfExport';
+import {
+  type Draft, type Range, type QuickRow, type UndoAction, type RecurringDraft, type NativeWindow,
+  blankDraft, blankQuickRow, blankRecurring, key, currentMonthRange,
+  flatColour, normalizeSchool, defaultTeacherColours, colourFromName,
+} from './_components/calendarUtils';
+import { strings } from './_components/calendarStrings';
+import styles from './_components/calendar.module.css';
+import './_components/fullcalendar-global.css';
 
-type Draft = { id?: string; date: string; school: string; className: string; startTime: string; endTime: string; teacher: string; unavailable: boolean; cancelled: boolean };
-type Range = { start: string; end: string; view: string; currentStart: string; currentEnd: string };
-type QuickRow = { id: number; date: string; startTime: string; endTime: string; school: string; className: string; teacher: string };
-type NativeWindow = Window & { Capacitor?: { isNativePlatform?: () => boolean } };
-type UndoAction = { label: string; mode: 'update' | 'delete' | 'insert'; before: LessonRow[]; after: LessonRow[] };
-type RecurringDraft = { school: string; className: string; startTime: string; endTime: string; teacher: string; startDate: string; endDate: string; weekdays: number[] };
+const MAX_UNDO = 20;
+const RETRY_DELAYS = [1000, 2000, 4000];
+const DAY_MAX_EVENTS_KEY = 'music-delight-day-max-events';
 
-const blankDraft = (date = new Date().toISOString().slice(0, 10)): Draft => ({ date, school: '', className: '', startTime: '09:00', endTime: '10:00', teacher: '', unavailable: false, cancelled: false });
-const blankQuickRow = (date: string, teacher = ''): QuickRow => ({ id: Date.now(), date, startTime: '09:00', endTime: '10:00', school: '', className: '', teacher });
-const blankRecurring = (): RecurringDraft => ({ school: '', className: '', startTime: '09:00', endTime: '10:00', teacher: '', startDate: key(new Date()), endDate: key(new Date()), weekdays: [1] });
-const key = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-const currentMonthRange = (): Range => { const start = new Date(); start.setDate(1); const end = new Date(start); end.setMonth(end.getMonth() + 1); return { start: key(start), end: key(end), view: 'dayGridMonth', currentStart: key(start), currentEnd: key(end) }; };
-const pretty = (value: string) => new Intl.DateTimeFormat('en-SG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(`${value}T12:00:00`));
-const rgba = (hex: string, alpha: number) => { const safe = hex.replace('#', ''); const full = safe.length === 3 ? safe.split('').map((part) => part + part).join('') : safe; const value = Number.parseInt(full, 16); return Number.isFinite(value) ? `rgba(${(value >> 16) & 255},${(value >> 8) & 255},${value & 255},${alpha})` : `rgba(124,140,255,${alpha})`; };
-const flatColour = (hex: string) => { const safe = hex.replace('#', ''); const full = safe.length === 3 ? safe.split('').map((part) => part + part).join('') : safe; const value = Number.parseInt(full, 16); if (!Number.isFinite(value)) return '#eef0ff'; const mix = (channel: number) => Math.round(channel * 0.18 + 255 * 0.82); return `rgb(${mix((value >> 16) & 255)},${mix((value >> 8) & 255)},${mix(value & 255)})`; };
-const escapeHtml = (value: string) => value.replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character] ?? character);
-const mapsUrl = (school: string) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${mapsSchool(school)} Singapore`)}`;
-const mapsSchool = (value: string) => { let school = value.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\bcca\b/gi, '').replace(/\bpri\b/gi, 'primary school').replace(/\bps\b(?!\s+school)/gi, 'primary school').replace(/\bprimary school\b\s+primary school\b/gi, 'primary school').replace(/\s+/g, ' ').trim().toLowerCase(); if (!school.includes('school') && !school.includes('secondary') && !school.includes('junior')) school = `${school} primary school`; return school.replace(/\b\w/g, (char) => char.toUpperCase()); };
-const defaultTeacherColours: Record<string, string> = { ashley: '#d6b94c', audrey: '#c77bd5', claris: '#59b879', edward: '#55b9e6', gerald: '#45c7c0', joel: '#9ba3b1', 'shi yi': '#9878df', 'siew lynn': '#e49ab9', wero: '#cbb98d' };
+/** Retry a promise with exponential backoff. Returns the result or throws after all retries exhausted. */
+async function withRetry<T>(fn: () => Promise<T>, delays: number[] = RETRY_DELAYS): Promise<T> {
+  let lastError: unknown;
+  for (let i = 0; i <= delays.length; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      if (i < delays.length) await new Promise((r) => setTimeout(r, delays[i]));
+    }
+  }
+  throw lastError;
+}
+
+/** Generate a temporary ID for optimistic inserts. */
+function tempId(): string {
+  return `temp-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
 
 export default function CalendarPage() {
   const router = useRouter();
@@ -41,7 +59,8 @@ export default function CalendarPage() {
   const { teachers, ensureReferences, getLessons, upsertCachedLesson, removeCachedLesson } = useAppData();
   const [lessons, setLessons] = useState<LessonRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState('Loading calendar…');
+  const [message, setMessage] = useState('Loading calendar\u2026');
+  const [messageType, setMessageType] = useState<'info' | 'error'>('info');
   const [range, setRange] = useState<Range>(currentMonthRange);
   const [filter, setFilter] = useState('all');
   const [schoolFilter, setSchoolFilter] = useState('all');
@@ -54,7 +73,7 @@ export default function CalendarPage() {
   const [quickSaving, setQuickSaving] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkTeacher, setBulkTeacher] = useState('');
-  const [undoAction, setUndoAction] = useState<UndoAction | null>(null);
+  const [undoStack, setUndoStack] = useState<UndoAction[]>([]);
   const [undoing, setUndoing] = useState(false);
   const [recurringOpen, setRecurringOpen] = useState(false);
   const [recurringDraft, setRecurringDraft] = useState<RecurringDraft>(blankRecurring);
@@ -65,20 +84,79 @@ export default function CalendarPage() {
   const [copyDates, setCopyDates] = useState<string[]>([]);
   const [mobileCalendar, setMobileCalendar] = useState(false);
   const [nativeCalendar, setNativeCalendar] = useState(false);
+  const [connected, setConnected] = useState(true);
+  const [dayMaxEvents, setDayMaxEvents] = useState(() => {
+    if (typeof window === 'undefined') return 3;
+    const stored = window.localStorage.getItem(DAY_MAX_EVENTS_KEY);
+    const parsed = stored ? Number(stored) : NaN;
+    return Number.isFinite(parsed) && parsed >= 2 && parsed <= 6 ? parsed : 3;
+  });
+  const failedPayload = useRef<(() => Promise<void>) | null>(null);
 
-  useEffect(() => { void (async () => { const { data: sessionData } = await supabase.auth.getSession(); if (!sessionData.session) { router.replace('/login'); return; } const { data: profile } = await supabase.from('profiles').select('role,active').eq('id', sessionData.session.user.id).single(); if (!profile?.active || profile.role !== 'admin') { router.replace(profile?.role === 'teacher' ? '/teacher' : '/login'); return; } try { await ensureReferences(); } catch (error) { setMessage(error instanceof Error ? error.message : 'Could not load teachers.'); } })(); }, [ensureReferences, router, supabase]);
-  const loadRange = useCallback(async (next: Range, force = false) => { const id = ++requestId.current; setLoading(true); try { const rows = await getLessons(next, force); if (id !== requestId.current) return; setLessons(rows); setMessage(`${rows.length} lessons loaded for this view.`); } catch (error) { if (id !== requestId.current) return; setMessage(`Could not load calendar: ${error instanceof Error ? error.message : 'Unknown error'}`); } finally { if (id === requestId.current) setLoading(false); } }, [getLessons]);
+  // ── Helpers ──
+  const pushUndo = useCallback((action: UndoAction) => {
+    setUndoStack((prev) => [action, ...prev].slice(0, MAX_UNDO));
+  }, []);
+
+  const showError = useCallback((msg: string, retry?: () => Promise<void>) => {
+    setMessage(msg);
+    setMessageType('error');
+    failedPayload.current = retry ?? null;
+  }, []);
+
+  const showInfo = useCallback((msg: string) => {
+    setMessage(msg);
+    setMessageType('info');
+    failedPayload.current = null;
+  }, []);
+
+  // ── Auth & Data Loading ──
+  useEffect(() => { void (async () => { const { data: sessionData } = await supabase.auth.getSession(); if (!sessionData.session) { router.replace('/login'); return; } const { data: profile } = await supabase.from('profiles').select('role,active').eq('id', sessionData.session.user.id).single(); if (!profile?.active || profile.role !== 'admin') { router.replace(profile?.role === 'teacher' ? '/teacher' : '/login'); return; } try { await ensureReferences(); } catch (error) { showError(error instanceof Error ? error.message : 'Could not load teachers.'); } })(); }, [ensureReferences, router, supabase, showError]);
+
+  const loadRange = useCallback(async (next: Range, force = false) => {
+    const id = ++requestId.current;
+    setLoading(true);
+    try {
+      const rows = await withRetry(() => getLessons(next, force));
+      if (id !== requestId.current) return;
+      setLessons(rows);
+      showInfo(`${rows.length} lessons loaded for this view.`);
+    } catch (error) {
+      if (id !== requestId.current) return;
+      showError(`Could not load calendar: ${error instanceof Error ? error.message : 'Unknown error'}`, () => loadRange(next, true));
+    } finally {
+      if (id === requestId.current) setLoading(false);
+    }
+  }, [getLessons, showError, showInfo]);
+
   useEffect(() => { void loadRange(range); }, [range, loadRange]);
-  useEffect(() => { const channel = supabase.channel('admin-calendar-live').on('postgres_changes', { event: '*', schema: 'public', table: 'lessons' }, () => { void loadRange(range, true); }).subscribe(); return () => { void supabase.removeChannel(channel); }; }, [loadRange, range, supabase]);
+
+  // ── Real-time sync with connection monitoring ──
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-calendar-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lessons' }, () => { void loadRange(range, true); })
+      .subscribe((status) => {
+        setConnected(status === 'SUBSCRIBED');
+        if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+          showError('Live sync disconnected. Changes may not appear in real time.', () => loadRange(range, true));
+        }
+      });
+    return () => { void supabase.removeChannel(channel); };
+  }, [loadRange, range, supabase, showError]);
+
   useEffect(() => { const requested = new URLSearchParams(window.location.search).get('filter'); if (requested && (requested === 'unassigned' || requested === 'cancelled' || teachers.some((teacher) => teacher.name === requested))) setFilter(requested); }, [teachers]);
   useEffect(() => { const media = window.matchMedia('(max-width: 900px)'); const update = () => setMobileCalendar(media.matches); update(); media.addEventListener('change', update); return () => media.removeEventListener('change', update); }, []);
   useEffect(() => { const capacitor = (window as NativeWindow).Capacitor; setNativeCalendar(Boolean(capacitor?.isNativePlatform?.() || window.localStorage.getItem('music-delight-native-app') === '1')); }, []);
   useEffect(() => { if (mobileCalendar || nativeCalendar) calendarRef.current?.getApi().changeView('timeGridDay'); }, [mobileCalendar, nativeCalendar]);
 
-  const normalizeSchool = (value: string) => value.toLowerCase().replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\bpri\b/g, 'primary school').replace(/\bps\b(?!\s+school)/g, 'primary school').replace(/\bprimary school\b\s+primary school\b/g, 'primary school').replace(/\s+[a-z]?\d{1,2}[a-z]{0,3}\s*$/g, '').replace(/\s+/g, ' ').trim();
-  const schools = useMemo(() => { const seen = new Set<string>(); return lessons.map((lesson) => lesson.school).filter(Boolean).filter((school) => { const key = normalizeSchool(school); if (seen.has(key)) return false; seen.add(key); return true; }).sort((a, b) => a.localeCompare(b)); }, [lessons]);
-  const classesForSchool = (school: string) => Array.from(new Set(lessons.filter((lesson) => normalizeSchool(lesson.school) === normalizeSchool(school)).map((lesson) => lesson.class_name).filter(Boolean))).sort((a, b) => a.localeCompare(b));
-  const colour = useCallback((name: string | null) => teachers.find((teacher) => teacher.name.trim().toLowerCase() === name?.trim().toLowerCase())?.color ?? defaultTeacherColours[name?.trim().toLowerCase() ?? ''] ?? '#7c8cff', [teachers]);
+  // ── Derived State ──
+  const schools = useMemo(() => { const seen = new Set<string>(); return lessons.map((lesson) => lesson.school).filter(Boolean).filter((school) => { const k = normalizeSchool(school); if (seen.has(k)) return false; seen.add(k); return true; }).sort((a, b) => a.localeCompare(b)); }, [lessons]);
+  const classesForSchool = useCallback((school: string) => {
+    const key = normalizeSchool(school);
+    return Array.from(new Set(lessons.filter((lesson) => normalizeSchool(lesson.school) === key).map((lesson) => lesson.class_name).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+  }, [lessons]);
+  const colour = useCallback((name: string | null) => teachers.find((teacher) => teacher.name.trim().toLowerCase() === name?.trim().toLowerCase())?.color ?? defaultTeacherColours[name?.trim().toLowerCase() ?? ''] ?? colourFromName(name), [teachers]);
   const visible = useMemo(() => { const query = search.trim().toLowerCase(); return lessons.filter((lesson) => (filter === 'cancelled' ? lesson.cancelled : !lesson.cancelled && (filter === 'all' || (filter === 'unassigned' ? !lesson.teacher_name : lesson.teacher_name === filter))) && (schoolFilter === 'all' || normalizeSchool(lesson.school) === normalizeSchool(schoolFilter)) && (!query || `${lesson.school} ${lesson.class_name} ${lesson.teacher_name ?? 'unassigned'}`.toLowerCase().includes(query))); }, [lessons, filter, schoolFilter, search]);
   const selectedLessons = useMemo(() => lessons.filter((lesson) => selectedIds.includes(lesson.id)), [lessons, selectedIds]);
   const events = useMemo(() => visible.map((lesson) => { const teacherColour = lesson.cancelled ? '#f87171' : colour(lesson.teacher_name); return { id: lesson.id, title: lesson.school, start: `${lesson.lesson_date}T${lesson.start_time.slice(0, 5)}`, end: `${lesson.lesson_date}T${lesson.end_time.slice(0, 5)}`, backgroundColor: flatColour(teacherColour), borderColor: teacherColour, textColor: '#172033', extendedProps: { ...lesson, teacherColour } }; }), [visible, colour]);
@@ -86,92 +164,436 @@ export default function CalendarPage() {
   const schoolWorkload = useMemo(() => { const groups = new Map<string, { name: string; count: number }>(); lessons.filter((lesson) => !lesson.cancelled).forEach((lesson) => { const group = normalizeSchool(lesson.school); const current = groups.get(group); groups.set(group, { name: current?.name ?? lesson.school, count: (current?.count ?? 0) + 1 }); }); return [...groups.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)); }, [lessons]);
   const cancelledCount = useMemo(() => lessons.filter((lesson) => lesson.cancelled).length, [lessons]);
   const dayLessons = useMemo(() => day ? visible.filter((lesson) => lesson.lesson_date === day).sort((a, b) => a.start_time.localeCompare(b.start_time)) : [], [day, visible]);
-  const exportRange = useMemo(() => range.view === 'dayGridMonth'
-    ? { start: range.currentStart, end: range.currentEnd }
-    : { start: range.start, end: range.end }, [range]);
+  const exportRange = useMemo(() => range.view === 'dayGridMonth' ? { start: range.currentStart, end: range.currentEnd } : { start: range.start, end: range.end }, [range]);
   const exportLessons = useMemo(() => visible.filter((lesson) => lesson.lesson_date >= exportRange.start && lesson.lesson_date < exportRange.end), [visible, exportRange]);
 
-  const openPrintPreview = (title: string, body: string, landscape: boolean) => {
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>@page{size:A4 ${landscape ? 'landscape' : 'portrait'};margin:5mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#172033;margin:0;padding:22px;background:#e8edf5}.page{max-width:${landscape ? '1200px' : '850px'};margin:auto;background:white;padding:24px;box-shadow:0 12px 36px rgba(15,23,42,.16)}header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #6556d9;padding:0 0 13px;margin-bottom:16px}h1{margin:0;color:#17214a;font-size:25px;letter-spacing:-.02em}header p{margin:5px 0 0;color:#60708a;font-size:12px;font-weight:600}.actions{display:flex;gap:8px}.actions button{border:0;border-radius:8px;padding:9px 13px;background:#5546cb;color:white;font-weight:700;cursor:pointer}.actions button.secondary{background:#e8edf5;color:#334155}@media print{body{padding:0;background:white}.page{max-width:none;box-shadow:none;padding:0}.actions{display:none}}</style></head><body><div class="page"><header><div><h1>${escapeHtml(title)}</h1><p>${escapeHtml(pretty(exportRange.start))} to ${escapeHtml(pretty(exportRange.end))} · ${exportLessons.length} lessons</p></div><div class="actions"><button onclick="window.print()">Print / Save PDF</button><button class="secondary" onclick="window.close()">Close</button></div></header>${body}</div></body></html>`;
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const popup = window.open(url, '_blank');
-    if (!popup) { URL.revokeObjectURL(url); setMessage('Please allow pop-ups to open the export preview.'); return; }
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
-    setMessage(`${title} preview opened. Click “Print / Save PDF”.`);
-  };
-
-  const exportCalendarPdf = () => {
-    if (!exportLessons.length) { setMessage('There are no visible lessons to export.'); return; }
-    const byDate = new Map<string, LessonRow[]>();
-    exportLessons.forEach((lesson) => byDate.set(lesson.lesson_date, [...(byDate.get(lesson.lesson_date) ?? []), lesson]));
-    const start = new Date(`${exportRange.start}T12:00:00`); const end = new Date(`${exportRange.end}T12:00:00`); const cells: string[] = Array.from({ length: start.getDay() }, () => '<section class="day empty"></section>');
-    for (const cursor = new Date(start); cursor < end; cursor.setDate(cursor.getDate() + 1)) { const date = key(cursor); const items = (byDate.get(date) ?? []).sort((a, b) => a.start_time.localeCompare(b.start_time)); cells.push(`<section class="day"><div class="date"><strong>${cursor.getDate()}</strong><span>${cursor.toLocaleDateString('en-SG', { weekday: 'short' })}</span></div>${items.map((lesson) => { const c = colour(lesson.teacher_name); return `<div class="lesson" style="border-left-color:${escapeHtml(c)};background:${escapeHtml(rgba(c, .13))}"><b>${escapeHtml(lesson.start_time.slice(0,5))}–${escapeHtml(lesson.end_time.slice(0,5))}</b><span>${escapeHtml(lesson.school)}</span><small>${escapeHtml(lesson.class_name)} - ${escapeHtml(lesson.teacher_name ?? 'Unassigned')}</small></div>`; }).join('')}</section>`); }
-    const body = `<style>.weekdays,.grid{display:grid;grid-template-columns:repeat(7,1fr)}.weekdays div{padding:6px 5px;text-align:center;background:#1d2753;border-right:1px solid rgba(255,255,255,.16);color:#fff;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase}.weekdays div:first-child{border-radius:7px 0 0 0}.weekdays div:last-child{border:0;border-radius:0 7px 0 0}.day{min-height:92px;border-right:1px solid #d7deeb;border-bottom:1px solid #d7deeb;padding:4px;background:#fff}.day:nth-child(7n+1){border-left:1px solid #d7deeb}.day.empty{background:#f4f6fa}.date{display:flex;justify-content:space-between;align-items:center;color:#66738b;font-size:8px;font-weight:700;margin:0 1px 4px}.date strong{display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#eef1fb;color:#27345f;font-size:10px}.lesson{display:grid;gap:1px;margin-bottom:3px;padding:3px 4px;border-left:3px solid;border-radius:4px;box-shadow:0 1px 2px rgba(15,23,42,.08);font-size:8px;line-height:1.15}.lesson b{color:#24304b;font-size:7px;white-space:nowrap}.lesson span{color:#16213d;font-weight:800;overflow-wrap:anywhere}.lesson small{color:#56647b;font-size:7px;font-weight:600;overflow-wrap:anywhere}</style><div class="weekdays"><div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div></div><div class="grid">${cells.join('')}</div>`;
-    openPrintPreview(filter === 'all' ? 'Music Delight Calendar' : filter === 'unassigned' ? 'Unassigned Lessons Calendar' : filter === 'cancelled' ? 'Cancelled Classes Calendar' : `${filter} Calendar`, body, true);
-  };
-
-  const exportSchedulePdf = () => {
-    if (!exportLessons.length) { setMessage('There are no visible lessons to export.'); return; }
-    const groups = new Map<string, LessonRow[]>(); exportLessons.forEach((lesson) => { const name = lesson.teacher_name ?? 'Unassigned'; groups.set(name, [...(groups.get(name) ?? []), lesson]); });
-    const sections = [...groups.entries()].sort((a,b) => a[0].localeCompare(b[0])).map(([name, rows]) => { const c = colour(name === 'Unassigned' ? null : name); const list = rows.sort((a,b) => a.lesson_date.localeCompare(b.lesson_date) || a.start_time.localeCompare(b.start_time)).map((lesson) => `<tr><td>${escapeHtml(pretty(lesson.lesson_date))}</td><td>${escapeHtml(lesson.start_time.slice(0,5))}–${escapeHtml(lesson.end_time.slice(0,5))}</td><td>${escapeHtml(lesson.school)}</td><td>${escapeHtml(lesson.class_name)}</td></tr>`).join(''); return `<section class="teacher"><h2 style="border-left-color:${escapeHtml(c)}">${escapeHtml(name)} <small>${rows.length} lesson${rows.length === 1 ? '' : 's'}</small></h2><table><thead><tr><th>Date</th><th>Time</th><th>School</th><th>Class / Programme</th></tr></thead><tbody>${list}</tbody></table></section>`; }).join('');
-    const body = `<style>.teacher{break-inside:avoid;margin-bottom:18px}.teacher h2{border-left:6px solid;padding:8px 10px;margin:0 0 8px;background:#f8fafc;font-size:16px}.teacher h2 small{color:#64748b;font-size:11px;font-weight:500;margin-left:8px}table{width:100%;border-collapse:collapse;font-size:10px}th{background:#e2e8f0;text-align:left}th,td{padding:7px;border:1px solid #cbd5e1;vertical-align:top}</style>${sections}`;
-    openPrintPreview('Music Delight Teacher Schedule PDF', body, false);
-  };
-
+  // ── CRUD Operations ──
   const openLesson = (lesson: LessonRow) => { setDraft({ id: lesson.id, date: lesson.lesson_date, school: lesson.school, className: lesson.class_name, startTime: lesson.start_time.slice(0, 5), endTime: lesson.end_time.slice(0, 5), teacher: lesson.teacher_name ?? '', unavailable: lesson.unavailable, cancelled: lesson.cancelled }); setDay(null); setDrawer(true); };
   const addLesson = (date: string) => { setDraft(blankDraft(date)); setDay(null); setDrawer(true); };
   const onDatesSet = (arg: DatesSetArg) => { const next = { start: key(arg.start), end: key(arg.end), view: arg.view.type, currentStart: key(arg.view.currentStart), currentEnd: key(arg.view.currentEnd) }; setRange((current) => current.start === next.start && current.end === next.end && current.view === next.view && current.currentStart === next.currentStart && current.currentEnd === next.currentEnd ? current : next); };
-  const move = async (arg: EventDropArg) => { const startDate = arg.event.start; const endDate = arg.event.end; const moved = lessons.find((lesson) => lesson.id === arg.event.id); if (!startDate || !endDate || !moved) { arg.revert(); return; } const before = moved; const date = key(startDate); const start = startDate.toTimeString().slice(0, 5); const end = endDate.toTimeString().slice(0, 5); const { error } = await supabase.from('lessons').update({ lesson_date: date, start_time: start, end_time: end }).eq('id', moved.id); if (error) { arg.revert(); setMessage(error.message); return; } const updated = { ...moved, lesson_date: date, start_time: start, end_time: end }; setLessons((current) => current.map((lesson) => lesson.id === moved.id ? updated : lesson)); upsertCachedLesson(updated); setUndoAction({ label: 'moved', mode: 'update', before: [before], after: [updated] }); setMessage('Lesson moved and saved.'); };
-  const save = async () => { if (!draft.school.trim() || !draft.className.trim()) return; const before = draft.id ? lessons.find((lesson) => lesson.id === draft.id) : undefined; const payload = { lesson_date: draft.date, school: draft.school.trim(), class_name: draft.className.trim(), start_time: draft.startTime, end_time: draft.endTime, teacher_name: draft.teacher || null, unavailable: draft.unavailable, cancelled: draft.cancelled, source: draft.id ? 'manual' : 'calendar-editor' }; const result = draft.id ? await supabase.from('lessons').update(payload).eq('id', draft.id).select().single() : await supabase.from('lessons').insert(payload).select().single(); if (result.error) { setMessage(result.error.message); return; } const saved = result.data as LessonRow; setLessons((current) => [...current.filter((lesson) => lesson.id !== saved.id), saved].sort((a, b) => a.lesson_date.localeCompare(b.lesson_date) || a.start_time.localeCompare(b.start_time))); upsertCachedLesson(saved); setUndoAction({ label: draft.id ? 'updated' : 'added', mode: draft.id ? 'update' : 'insert', before: before ? [before] : [], after: [saved] }); setDrawer(false); setMessage(saved.cancelled ? 'Lesson cancelled.' : 'Lesson saved.'); };
-  const remove = async () => { if (!draft.id || !window.confirm('Delete this lesson?')) return; const before = lessons.find((lesson) => lesson.id === draft.id); const { error } = await supabase.from('lessons').delete().eq('id', draft.id); if (error) { setMessage(error.message); return; } setLessons((current) => current.filter((lesson) => lesson.id !== draft.id)); removeCachedLesson(draft.id); if (before) setUndoAction({ label: 'deleted', mode: 'delete', before: [before], after: [] }); setDrawer(false); setMessage('Lesson deleted.'); };
+
+  // move() already has optimistic-like behavior (local state updated after server confirms, but revert on error)
+  const move = async (arg: EventChangeArg) => {
+    const startDate = arg.event.start; const endDate = arg.event.end;
+    const moved = lessons.find((lesson) => lesson.id === arg.event.id);
+    if (!startDate || !endDate || !moved) { arg.revert(); return; }
+    const before = moved;
+    const date = key(startDate); const start = startDate.toTimeString().slice(0, 5); const end = endDate.toTimeString().slice(0, 5);
+
+    // Optimistic: update local state immediately
+    const optimistic: LessonRow = { ...moved, lesson_date: date, start_time: start, end_time: end };
+    setLessons((current) => current.map((l) => l.id === moved.id ? optimistic : l));
+    upsertCachedLesson(optimistic);
+
+    const { error } = await supabase.from('lessons').update({ lesson_date: date, start_time: start, end_time: end }).eq('id', moved.id);
+    if (error) {
+      // Revert
+      setLessons((current) => current.map((l) => l.id === moved.id ? moved : l));
+      upsertCachedLesson(moved);
+      arg.revert();
+      showError(error.message, () => move(arg));
+      return;
+    }
+    pushUndo({ label: 'moved', mode: 'update', before: [before], after: [optimistic] });
+    showInfo('Lesson moved and saved.');
+  };
+
+  const save = async () => {
+    if (!draft.school.trim() || !draft.className.trim()) return;
+    const isUpdate = Boolean(draft.id);
+    const before = isUpdate ? lessons.find((l) => l.id === draft.id) : undefined;
+    const payload = { lesson_date: draft.date, school: draft.school.trim(), class_name: draft.className.trim(), start_time: draft.startTime, end_time: draft.endTime, teacher_name: draft.teacher || null, unavailable: draft.unavailable, cancelled: draft.cancelled, source: isUpdate ? 'manual' : 'calendar-editor' };
+
+    // Optimistic
+    const optimisticId = isUpdate ? draft.id! : tempId();
+    const optimistic: LessonRow = {
+      id: optimisticId, lesson_date: payload.lesson_date, school: payload.school, class_name: payload.class_name,
+      start_time: payload.start_time, end_time: payload.end_time, teacher_name: payload.teacher_name,
+      unavailable: payload.unavailable, cancelled: payload.cancelled, source: payload.source,
+    };
+    const previousLessons = lessons;
+    setLessons((current) => {
+      const next = current.filter((l) => l.id !== optimisticId);
+      next.push(optimistic);
+      return next.sort((a, b) => a.lesson_date.localeCompare(b.lesson_date) || a.start_time.localeCompare(b.start_time));
+    });
+    upsertCachedLesson(optimistic);
+    setDrawer(false);
+
+    const result = isUpdate
+      ? await supabase.from('lessons').update(payload).eq('id', draft.id).select().single()
+      : await supabase.from('lessons').insert(payload).select().single();
+
+    if (result.error) {
+      setLessons(previousLessons);
+      if (!isUpdate) removeCachedLesson(optimisticId);
+      showError(result.error.message, () => save());
+      return;
+    }
+    const saved = result.data as LessonRow;
+    setLessons((current) => {
+      const next = current.filter((l) => l.id !== optimisticId);
+      next.push(saved);
+      return next.sort((a, b) => a.lesson_date.localeCompare(b.lesson_date) || a.start_time.localeCompare(b.start_time));
+    });
+    upsertCachedLesson(saved);
+    if (optimisticId !== saved.id) removeCachedLesson(optimisticId);
+    pushUndo({ label: isUpdate ? 'updated' : 'added', mode: isUpdate ? 'update' : 'insert', before: before ? [before] : [], after: [saved] });
+    showInfo(saved.cancelled ? 'Lesson cancelled.' : 'Lesson saved.');
+  };
+
+  const remove = async () => {
+    if (!draft.id || !window.confirm('Delete this lesson?')) return;
+    const before = lessons.find((l) => l.id === draft.id);
+    if (!before) return;
+
+    // Optimistic
+    const previousLessons = lessons;
+    setLessons((current) => current.filter((l) => l.id !== draft.id));
+    removeCachedLesson(draft.id!);
+    setDrawer(false);
+
+    const { error } = await supabase.from('lessons').delete().eq('id', draft.id);
+    if (error) {
+      setLessons(previousLessons);
+      upsertCachedLesson(before);
+      showError(error.message, () => remove());
+      return;
+    }
+    pushUndo({ label: 'deleted', mode: 'delete', before: [before], after: [] });
+    showInfo('Lesson deleted.');
+  };
+
   const setSelection = (id: string) => setSelectedIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
   const selectVisible = () => setSelectedIds((current) => current.length === visible.length ? [] : visible.map((lesson) => lesson.id));
-  const bulkUpdate = async (changes: Partial<LessonRow>, label: string) => { if (!selectedLessons.length) return; const before = selectedLessons; const { data, error } = await supabase.from('lessons').update(changes).in('id', selectedIds).select(); if (error) { setMessage(`Could not ${label.toLowerCase()}: ${error.message}`); return; } const after = (data ?? []) as LessonRow[]; setLessons((current) => current.map((lesson) => after.find((item) => item.id === lesson.id) ?? lesson)); after.forEach(upsertCachedLesson); setSelectedIds([]); setUndoAction({ label, mode: 'update', before, after }); setMessage(`${after.length} lessons ${label.toLowerCase()}.`); };
+
+  const bulkUpdate = async (changes: Partial<LessonRow>, label: string) => {
+    if (!selectedLessons.length) return;
+    const before = selectedLessons;
+    const previousLessons = lessons;
+
+    // Optimistic
+    setLessons((current) => current.map((l) => selectedIds.includes(l.id) ? { ...l, ...changes } : l));
+    setSelectedIds([]);
+
+    const { data, error } = await supabase.from('lessons').update(changes).in('id', selectedIds).select();
+    if (error) {
+      setLessons(previousLessons);
+      showError(`Could not ${label.toLowerCase()}: ${error.message}`, () => bulkUpdate(changes, label));
+      return;
+    }
+    const after = (data ?? []) as LessonRow[];
+    setLessons((current) => current.map((l) => after.find((item) => item.id === l.id) ?? l));
+    after.forEach(upsertCachedLesson);
+    pushUndo({ label, mode: 'update', before, after });
+    showInfo(`${after.length} lessons ${label.toLowerCase()}.`);
+  };
+
   const bulkMove = async () => { if (!selectedLessons.length || !bulkDate) return; await bulkUpdate({ lesson_date: bulkDate }, 'moved'); };
-  const bulkDelete = async () => { if (!selectedLessons.length || !window.confirm(`Delete ${selectedLessons.length} selected lessons?`)) return; const { error } = await supabase.from('lessons').delete().in('id', selectedIds); if (error) { setMessage(`Could not delete lessons: ${error.message}`); return; } setLessons((current) => current.filter((lesson) => !selectedIds.includes(lesson.id))); selectedLessons.forEach((lesson) => removeCachedLesson(lesson.id)); setUndoAction({ label: 'deleted', mode: 'delete', before: selectedLessons, after: [] }); setSelectedIds([]); setMessage(`${selectedLessons.length} lessons deleted.`); };
-  const undoLast = async () => { if (!undoAction) return; setUndoing(true); let error: { message: string } | null = null; if (undoAction.mode === 'update') { const result = await Promise.all(undoAction.before.map((lesson) => supabase.from('lessons').update({ lesson_date: lesson.lesson_date, school: lesson.school, class_name: lesson.class_name, start_time: lesson.start_time, end_time: lesson.end_time, teacher_name: lesson.teacher_name, unavailable: lesson.unavailable, cancelled: lesson.cancelled, source: lesson.source }).eq('id', lesson.id))); error = result.find((item) => item.error)?.error ?? null; } else if (undoAction.mode === 'delete') { const result = await supabase.from('lessons').insert(undoAction.before); error = result.error; } else { const result = await supabase.from('lessons').delete().in('id', undoAction.after.map((lesson) => lesson.id)); error = result.error; } if (error) { setMessage(`Undo failed: ${error.message}`); } else { setLessons((current) => undoAction.mode === 'delete' ? [...current, ...undoAction.before].sort((a, b) => a.lesson_date.localeCompare(b.lesson_date) || a.start_time.localeCompare(b.start_time)) : undoAction.mode === 'insert' ? current.filter((lesson) => !undoAction.after.some((item) => item.id === lesson.id)) : current.map((lesson) => undoAction.before.find((item) => item.id === lesson.id) ?? lesson)); undoAction.before.forEach(upsertCachedLesson); setUndoAction(null); setMessage('Last change undone.'); } setUndoing(false); };
-  const saveRecurring = async () => { if (!recurringDraft.school.trim() || !recurringDraft.className.trim() || !recurringDraft.weekdays.length || recurringDraft.endDate < recurringDraft.startDate) { setMessage('Complete the recurring lesson details, choose at least one weekday, and check the date range.'); return; } const rows: Array<{ lesson_date: string; school: string; class_name: string; start_time: string; end_time: string; teacher_name: string | null; unavailable: boolean; cancelled: boolean; source: string }> = []; const cursor = new Date(`${recurringDraft.startDate}T12:00:00`); const end = new Date(`${recurringDraft.endDate}T12:00:00`); while (cursor <= end) { if (recurringDraft.weekdays.includes(cursor.getDay())) rows.push({ lesson_date: key(cursor), school: recurringDraft.school.trim(), class_name: recurringDraft.className.trim(), start_time: recurringDraft.startTime, end_time: recurringDraft.endTime, teacher_name: recurringDraft.teacher || null, unavailable: false, cancelled: false, source: 'recurring-calendar' }); cursor.setDate(cursor.getDate() + 1); } if (!rows.length) { setMessage('No selected weekdays fall inside this date range.'); return; } setRecurringSaving(true); const { data, error } = await supabase.from('lessons').insert(rows).select(); setRecurringSaving(false); if (error) { setMessage(`Could not create recurring lessons: ${error.message}`); return; } const saved = (data ?? []) as LessonRow[]; setLessons((current) => [...current, ...saved].sort((a, b) => a.lesson_date.localeCompare(b.lesson_date) || a.start_time.localeCompare(b.start_time))); saved.forEach(upsertCachedLesson); setUndoAction({ label: 'added recurring lessons', mode: 'insert', before: [], after: saved }); setRecurringOpen(false); setRecurringDraft(blankRecurring()); setMessage(`${saved.length} recurring lessons added.`); };
+
+  const bulkDelete = async () => {
+    if (!selectedLessons.length || !window.confirm(`Delete ${selectedLessons.length} selected lessons?`)) return;
+    const before = selectedLessons;
+    const previousLessons = lessons;
+
+    // Optimistic
+    setLessons((current) => current.filter((l) => !selectedIds.includes(l.id)));
+    selectedLessons.forEach((l) => removeCachedLesson(l.id));
+    setSelectedIds([]);
+
+    const { error } = await supabase.from('lessons').delete().in('id', selectedIds);
+    if (error) {
+      setLessons(previousLessons);
+      before.forEach(upsertCachedLesson);
+      showError(`Could not delete lessons: ${error.message}`, () => bulkDelete());
+      return;
+    }
+    pushUndo({ label: 'deleted', mode: 'delete', before, after: [] });
+    showInfo(`${before.length} lessons deleted.`);
+  };
+
+  const undoLast = async () => {
+    if (!undoStack.length) return;
+    const action = undoStack[0];
+    setUndoing(true);
+    let error: { message: string } | null = null;
+    if (action.mode === 'update') {
+      const result = await Promise.all(action.before.map((lesson) => supabase.from('lessons').update({ lesson_date: lesson.lesson_date, school: lesson.school, class_name: lesson.class_name, start_time: lesson.start_time, end_time: lesson.end_time, teacher_name: lesson.teacher_name, unavailable: lesson.unavailable, cancelled: lesson.cancelled, source: lesson.source }).eq('id', lesson.id)));
+      error = result.find((item) => item.error)?.error ?? null;
+    } else if (action.mode === 'delete') {
+      const result = await supabase.from('lessons').insert(action.before);
+      error = result.error;
+    } else {
+      const result = await supabase.from('lessons').delete().in('id', action.after.map((lesson) => lesson.id));
+      error = result.error;
+    }
+    if (error) {
+      showError(`Undo failed: ${error.message}`, () => undoLast());
+    } else {
+      setLessons((current) => {
+        if (action.mode === 'delete') return [...current, ...action.before].sort((a, b) => a.lesson_date.localeCompare(b.lesson_date) || a.start_time.localeCompare(b.start_time));
+        if (action.mode === 'insert') return current.filter((l) => !action.after.some((item) => item.id === l.id));
+        return current.map((l) => action.before.find((item) => item.id === l.id) ?? l);
+      });
+      action.before.forEach(upsertCachedLesson);
+      setUndoStack((prev) => prev.slice(1));
+      showInfo('Last change undone.');
+    }
+    setUndoing(false);
+  };
+
+  const dismissAllUndo = () => setUndoStack([]);
+
+  const saveRecurring = async () => {
+    if (!recurringDraft.school.trim() || !recurringDraft.className.trim() || !recurringDraft.weekdays.length || recurringDraft.endDate < recurringDraft.startDate) { showError('Complete the recurring lesson details, choose at least one weekday, and check the date range.'); return; }
+    const rows: Array<{ lesson_date: string; school: string; class_name: string; start_time: string; end_time: string; teacher_name: string | null; unavailable: boolean; cancelled: boolean; source: string }> = [];
+    const cursor = new Date(`${recurringDraft.startDate}T12:00:00`); const end = new Date(`${recurringDraft.endDate}T12:00:00`);
+    while (cursor <= end) { if (recurringDraft.weekdays.includes(cursor.getDay())) rows.push({ lesson_date: key(cursor), school: recurringDraft.school.trim(), class_name: recurringDraft.className.trim(), start_time: recurringDraft.startTime, end_time: recurringDraft.endTime, teacher_name: recurringDraft.teacher || null, unavailable: false, cancelled: false, source: 'recurring-calendar' }); cursor.setDate(cursor.getDate() + 1); }
+    if (!rows.length) { showError('No selected weekdays fall inside this date range.'); return; }
+
+    // Optimistic: create temp rows
+    const tempRows: LessonRow[] = rows.map((r) => ({ id: tempId(), ...r }));
+    const previousLessons = lessons;
+    setLessons((current) => [...current, ...tempRows].sort((a, b) => a.lesson_date.localeCompare(b.lesson_date) || a.start_time.localeCompare(b.start_time)));
+    tempRows.forEach(upsertCachedLesson);
+    setRecurringSaving(true);
+    setRecurringOpen(false);
+
+    const { data, error } = await supabase.from('lessons').insert(rows).select();
+    setRecurringSaving(false);
+    if (error) {
+      setLessons(previousLessons);
+      tempRows.forEach((r) => removeCachedLesson(r.id));
+      showError(`Could not create recurring lessons: ${error.message}`, () => saveRecurring());
+      return;
+    }
+    const saved = (data ?? []) as LessonRow[];
+    setLessons((current) => [...current.filter((l) => !tempRows.some((t) => t.id === l.id)), ...saved].sort((a, b) => a.lesson_date.localeCompare(b.lesson_date) || a.start_time.localeCompare(b.start_time)));
+    tempRows.forEach((r) => removeCachedLesson(r.id));
+    saved.forEach(upsertCachedLesson);
+    pushUndo({ label: 'added recurring lessons', mode: 'insert', before: [], after: saved });
+    setRecurringDraft(blankRecurring());
+    showInfo(`${saved.length} recurring lessons added.`);
+  };
+
   const openQuickAdd = () => { const teacher = filter !== 'all' && filter !== 'unassigned' && filter !== 'cancelled' ? filter : ''; setQuickRows([blankQuickRow(day ?? key(new Date()), teacher)]); setQuickAdd(true); };
   const copyDayLessons = () => { if (!day || !dayLessons.length) return; setQuickRows(dayLessons.map((lesson, index) => ({ id: Date.now() + index, date: day, startTime: lesson.start_time.slice(0, 5), endTime: lesson.end_time.slice(0, 5), school: lesson.school, className: lesson.class_name, teacher: lesson.teacher_name ?? '' }))); setQuickAdd(true); };
   const copyDayToDates = () => { if (!day || !dayLessons.length) return; setCopySourceLessons(dayLessons); setCopyDates([]); setCopyDateInput(day); setQuickAdd(true); };
   const addCopyDate = () => { if (copyDateInput && !copyDates.includes(copyDateInput)) setCopyDates((current) => [...current, copyDateInput].sort()); };
-  const saveCopyDates = async () => { if (!copySourceLessons.length || !copyDates.length) return; const payload = copyDates.flatMap((date) => copySourceLessons.map((lesson) => ({ lesson_date: date, school: lesson.school, class_name: lesson.class_name, start_time: lesson.start_time, end_time: lesson.end_time, teacher_name: lesson.teacher_name, unavailable: false, cancelled: false, source: 'calendar-copy' }))); setQuickSaving(true); const { data, error } = await supabase.from('lessons').insert(payload).select(); setQuickSaving(false); if (error) { setMessage(`Could not copy lessons: ${error.message}`); return; } const saved = (data ?? []) as LessonRow[]; setLessons((current) => [...current, ...saved].sort((a, b) => a.lesson_date.localeCompare(b.lesson_date) || a.start_time.localeCompare(b.start_time))); saved.forEach(upsertCachedLesson); setUndoAction({ label: 'copied lessons', mode: 'insert', before: [], after: saved }); setCopySourceLessons([]); setCopyDates([]); setQuickRows([]); setQuickAdd(false); setMessage(`${saved.length} lesson copies added.`); };
+
+  const saveCopyDates = async () => {
+    if (!copySourceLessons.length || !copyDates.length) return;
+    const payload = copyDates.flatMap((date) => copySourceLessons.map((lesson) => ({ lesson_date: date, school: lesson.school, class_name: lesson.class_name, start_time: lesson.start_time, end_time: lesson.end_time, teacher_name: lesson.teacher_name, unavailable: false, cancelled: false, source: 'calendar-copy' })));
+    const tempRows: LessonRow[] = payload.map((r) => ({ id: tempId(), ...r }));
+    const previousLessons = lessons;
+    setLessons((current) => [...current, ...tempRows].sort((a, b) => a.lesson_date.localeCompare(b.lesson_date) || a.start_time.localeCompare(b.start_time)));
+    tempRows.forEach(upsertCachedLesson);
+    setQuickSaving(true);
+
+    const { data, error } = await supabase.from('lessons').insert(payload).select();
+    setQuickSaving(false);
+    if (error) {
+      setLessons(previousLessons);
+      tempRows.forEach((r) => removeCachedLesson(r.id));
+      showError(`Could not copy lessons: ${error.message}`, () => saveCopyDates());
+      return;
+    }
+    const saved = (data ?? []) as LessonRow[];
+    setLessons((current) => [...current.filter((l) => !tempRows.some((t) => t.id === l.id)), ...saved].sort((a, b) => a.lesson_date.localeCompare(b.lesson_date) || a.start_time.localeCompare(b.start_time)));
+    tempRows.forEach((r) => removeCachedLesson(r.id));
+    saved.forEach(upsertCachedLesson);
+    pushUndo({ label: 'copied lessons', mode: 'insert', before: [], after: saved });
+    setCopySourceLessons([]); setCopyDates([]); setQuickRows([]); setQuickAdd(false);
+    showInfo(`${saved.length} lesson copies added.`);
+  };
+
   const duplicateLesson = () => { setDraft((current) => ({ ...current, id: undefined })); setDrawer(true); };
   const addQuickRow = () => { const last = quickRows[quickRows.length - 1]; setQuickRows((current) => [...current, blankQuickRow(last?.date ?? day ?? key(new Date()), last?.teacher ?? (filter !== 'all' && filter !== 'unassigned' && filter !== 'cancelled' ? filter : ''))]); };
   const updateQuickRow = (id: number, patch: Partial<QuickRow>) => setQuickRows((current) => current.map((row) => row.id === id ? { ...row, ...patch } : row));
   const removeQuickRow = (id: number) => setQuickRows((current) => current.filter((row) => row.id !== id));
+
   const saveQuickRows = async () => {
     if (!quickRows.length) return;
-    if (quickRows.some((row) => !row.school.trim() || !row.className.trim())) { setMessage('Complete the school and class for every lesson before saving.'); return; }
-    setQuickSaving(true);
+    if (quickRows.some((row) => !row.school.trim() || !row.className.trim())) { showError('Complete the school and class for every lesson before saving.'); return; }
     const payload = quickRows.map((row) => ({ lesson_date: row.date, school: row.school.trim(), class_name: row.className.trim(), start_time: row.startTime, end_time: row.endTime, teacher_name: row.teacher || null, unavailable: false, cancelled: false, source: 'calendar-editor' }));
+    const tempRows: LessonRow[] = payload.map((r) => ({ id: tempId(), ...r }));
+    const previousLessons = lessons;
+    setLessons((current) => [...current, ...tempRows].sort((a, b) => a.lesson_date.localeCompare(b.lesson_date) || a.start_time.localeCompare(b.start_time)));
+    tempRows.forEach(upsertCachedLesson);
+    setQuickSaving(true);
+
     const { data, error } = await supabase.from('lessons').insert(payload).select();
     setQuickSaving(false);
-    if (error) { setMessage(`Could not save quick add: ${error.message}`); return; }
+    if (error) {
+      setLessons(previousLessons);
+      tempRows.forEach((r) => removeCachedLesson(r.id));
+      showError(`Could not save quick add: ${error.message}`, () => saveQuickRows());
+      return;
+    }
     const saved = (data ?? []) as LessonRow[];
-    setLessons((current) => [...current, ...saved].sort((a, b) => a.lesson_date.localeCompare(b.lesson_date) || a.start_time.localeCompare(b.start_time)));
-    setUndoAction({ label: 'added quick lessons', mode: 'insert', before: [], after: saved });
+    setLessons((current) => [...current.filter((l) => !tempRows.some((t) => t.id === l.id)), ...saved].sort((a, b) => a.lesson_date.localeCompare(b.lesson_date) || a.start_time.localeCompare(b.start_time)));
+    tempRows.forEach((r) => removeCachedLesson(r.id));
     saved.forEach(upsertCachedLesson);
+    pushUndo({ label: 'added quick lessons', mode: 'insert', before: [], after: saved });
     setQuickRows([]); setQuickAdd(false);
-    setMessage(`${saved.length} lessons added.`);
+    showInfo(`${saved.length} lessons added.`);
   };
 
-  return <main className="editorShell">
-    <SmartDashboard />
-    <datalist id="calendar-school-options">{schools.map((school) => <option key={school} value={school}/>)}</datalist>
-    <datalist id="calendar-class-options">{classesForSchool(draft.school).map((className) => <option key={className} value={className}/>)}</datalist>
-    <header className="editorHeader"><div><p>MOE SCHEDULE</p><h1>Calendar</h1><span>{loading ? 'Loading…' : message}</span></div><div className="headerActions"><button className="quickAddButton" onClick={openQuickAdd}><Plus size={17}/> Quick add</button><button className="exportButton" onClick={() => { setRecurringDraft(blankRecurring()); setRecurringOpen(true); }}><CalendarPlus size={17}/> Recurring</button><button className="exportButton" onClick={exportCalendarPdf}><CalendarDays size={17}/> Calendar PDF</button><button className="exportButton" onClick={exportSchedulePdf}><List size={17}/> Schedule PDF</button><Link href="/admin/conflicts" className="conflictLink">Conflicts</Link></div></header>
-    {undoAction && <div className="undoBanner"><span>Last change: {undoAction.label}</span><button onClick={() => void undoLast()} disabled={undoing}>{undoing ? 'Undoing...' : 'Undo'}</button><button className="dismissUndo" onClick={() => setUndoAction(null)} aria-label="Dismiss undo notification">Dismiss</button></div>}
-    <section className="filterBar"><div className="searchBox"><Search size={17}/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search school, class or teacher"/></div><select value={filter} onChange={(event) => setFilter(event.target.value)} aria-label="Teacher filter"><option value="all">All teachers</option><option value="unassigned">Unassigned</option><option value="cancelled">Cancelled classes</option>{teachers.map((teacher) => <option key={teacher.name}>{teacher.name}</option>)}</select><select value={schoolFilter} onChange={(event) => setSchoolFilter(event.target.value)} aria-label="School filter"><option value="all">All schools</option>{schools.map((school) => <option key={school}>{school}</option>)}</select><button onClick={() => { setSearch(''); setFilter('all'); setSchoolFilter('all'); setSelectedIds([]); }}>Clear</button><span>{visible.length} lessons</span></section>
-    <section className="bulkToolbar"><label><input type="checkbox" checked={visible.length > 0 && selectedIds.length === visible.length} onChange={selectVisible}/> Select visible lessons</label>{selectedLessons.length > 0 && <><strong>{selectedLessons.length} selected</strong><input type="date" value={bulkDate} onChange={(event) => setBulkDate(event.target.value)} aria-label="Move selected lessons to date"/><button onClick={() => void bulkMove()}>Move</button><select value={bulkTeacher} onChange={(event) => setBulkTeacher(event.target.value)} aria-label="Assign selected lessons"><option value="">Assign teacher...</option>{teachers.map((teacher) => <option key={teacher.name}>{teacher.name}</option>)}</select><button disabled={!bulkTeacher} onClick={() => void bulkUpdate({ teacher_name: bulkTeacher, unavailable: false }, 'assigned')}>Assign</button><button onClick={() => void bulkUpdate({ cancelled: true }, 'cancelled')}>Cancel classes</button><button className="dangerAction" onClick={() => void bulkDelete()}>Delete</button></>}</section>
-    <section className="workloadPanel"><div className="workloadHeading"><BarChart3 size={18}/><div><p>VISIBLE RANGE</p><h2>Teacher workload</h2></div></div><div className="workloadStats">{workload.length === 0 ? <span className="empty">No lessons match the current filters.</span> : workload.map(([name, count]) => <button key={name} onClick={() => setFilter(name === 'Unassigned' ? 'unassigned' : name)}><i style={{ background: colour(name === 'Unassigned' ? null : name) }}/><span>{name}</span><strong>{count}</strong><small>lesson{count === 1 ? '' : 's'}</small></button>)}<button className={filter === 'cancelled' ? 'active' : ''} onClick={() => setFilter('cancelled')}><i style={{ background: '#f87171' }}/><span>Cancelled</span><strong>{cancelledCount}</strong><small>class{cancelledCount === 1 ? '' : 'es'}</small></button></div></section>
-    <section className="workloadPanel"><div className="workloadHeading"><School size={18}/><div><p>VISIBLE RANGE</p><h2>Lessons by school</h2></div></div><div className="workloadStats">{schoolWorkload.length === 0 ? <span className="empty">No school lessons in this range.</span> : schoolWorkload.map(({ name, count }) => <button key={normalizeSchool(name)} onClick={() => setSchoolFilter(name)}><i style={{ background: '#55d6cf' }}/><span>{name}</span><strong>{count}</strong><small>lesson{count === 1 ? '' : 's'}</small></button>)}</div></section>
-    <section className="calendarCard">{loading && lessons.length === 0 ? <div className="loading"><Loader2 className="spin"/> Loading calendar…</div> : <FullCalendar ref={calendarRef} plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]} initialView="dayGridMonth" headerToolbar={{ left: 'prev,next today', center: 'title', right: mobileCalendar || nativeCalendar ? 'dayGridMonth,timeGridDay' : 'dayGridMonth,timeGridWeek,timeGridDay' }} buttonText={{ today: 'Today', month: 'Month', week: 'Week', day: 'Day' }} editable selectable height="auto" fixedWeekCount={false} showNonCurrentDates={false} dayMaxEvents={3} lazyFetching events={events} datesSet={onDatesSet} dateClick={(arg: DateClickArg) => setDay(arg.dateStr.slice(0, 10))} eventClick={(arg) => openLesson(arg.event.extendedProps as LessonRow)} eventDrop={move} eventResize={move} eventDidMount={(info) => { const lesson = info.event.extendedProps as LessonRow & { teacherColour?: string }; const teacherColour = lesson.teacherColour ?? colour(lesson.teacher_name); info.el.style.setProperty('--fc-event-bg-color', flatColour(teacherColour)); info.el.style.setProperty('--fc-event-border-color', teacherColour); info.el.style.backgroundColor = flatColour(teacherColour); info.el.style.borderColor = teacherColour; info.el.style.borderLeftWidth = '4px'; info.el.style.borderLeftColor = teacherColour; }} eventContent={(arg) => { const lesson = arg.event.extendedProps as LessonRow; const month = arg.view.type === 'dayGridMonth'; return month ? <div className="eventCard compact" title={`${lesson.school} · ${lesson.class_name} · ${lesson.teacher_name ?? 'Unassigned'}`}><span>{lesson.start_time.slice(0, 5)}</span><span style={{display:'flex',alignItems:'center',gap:3,minWidth:0}}><strong style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{lesson.school}</strong><a href={mapsUrl(lesson.school)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} style={{flexShrink:0,color:'inherit',opacity:.65,display:'flex'}} title="Open in Google Maps"><MapPin size={10}/></a></span><small>{lesson.teacher_name ?? 'Unassigned'}</small></div> : <div className="eventCard detailed"><span style={{display:'flex',alignItems:'center',gap:4}}><strong>{lesson.school}</strong><a href={mapsUrl(lesson.school)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} style={{color:'inherit',opacity:.65,display:'flex'}} title="Open in Google Maps"><MapPin size={11}/></a></span><span>{lesson.class_name}</span><small>{lesson.start_time.slice(0, 5)}–{lesson.end_time.slice(0, 5)} · {lesson.teacher_name ?? 'Unassigned'}</small></div>; }} nowIndicator slotMinTime="06:00:00" slotMaxTime="22:00:00"/>}</section>
-    {day && <div className="drawerBackdrop" onMouseDown={() => setDay(null)}><aside className="dayPanel" onMouseDown={(event) => event.stopPropagation()}><div className="drawerHeader"><div><p>DAILY SCHEDULE</p><h2>{pretty(day)}</h2><span>{dayLessons.length} lesson{dayLessons.length === 1 ? '' : 's'}</span></div><button onClick={() => setDay(null)}><X/></button></div><button className="addLesson" onClick={() => addLesson(day)}><CalendarPlus size={17}/> Add lesson</button>{dayLessons.length > 0 && <><button className="copyLessons" onClick={copyDayLessons}><Copy size={17}/> Copy all to Quick Add</button><button className="copyLessons" onClick={copyDayToDates}><Copy size={17}/> Copy to multiple dates</button></>}<div className="dayLessonList">{dayLessons.length === 0 ? <div className="noDayLessons">No lessons for this date.</div> : dayLessons.map((lesson) => <button key={lesson.id} onClick={() => openLesson(lesson)} style={{ borderLeftColor: colour(lesson.teacher_name) }}><strong>{lesson.start_time.slice(0,5)}–{lesson.end_time.slice(0,5)}</strong><span style={{display:'flex',alignItems:'center',gap:4,minWidth:0}}><span style={{flex:1}}>{lesson.school}</span><a href={mapsUrl(lesson.school)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} style={{flexShrink:0,color:'inherit',opacity:.65,display:'flex'}} title="Open in Google Maps"><MapPin size={11}/></a></span><small>{lesson.class_name} · {lesson.teacher_name ?? 'Unassigned'}</small></button>)}</div></aside></div>}
-    {drawer && <div className="drawerBackdrop" onMouseDown={() => setDrawer(false)}><aside className="lessonDrawer" onMouseDown={(event) => event.stopPropagation()}><div className="drawerHeader"><div><p>{draft.id ? 'EDIT LESSON' : 'NEW LESSON'}</p><h2>{draft.id ? draft.school || 'Lesson' : 'Add lesson'}</h2></div><button onClick={() => setDrawer(false)}><X/></button></div><div className="formGrid"><label>Date<input type="date" value={draft.date} onChange={(event) => setDraft((current) => ({ ...current, date: event.target.value }))}/></label><label>School<input list="calendar-school-options" value={draft.school} onChange={(event) => setDraft((current) => ({ ...current, school: event.target.value }))}/></label><label>Class / programme<input list="calendar-class-options" value={draft.className} onChange={(event) => setDraft((current) => ({ ...current, className: event.target.value }))}/></label><div className="timeRow"><label>Start<input type="time" value={draft.startTime} onChange={(event) => setDraft((current) => ({ ...current, startTime: event.target.value }))}/></label><label>End<input type="time" value={draft.endTime} onChange={(event) => setDraft((current) => ({ ...current, endTime: event.target.value }))}/></label></div><label>Teacher<select value={draft.teacher} onChange={(event) => setDraft((current) => ({ ...current, teacher: event.target.value }))}><option value="">Unassigned</option>{teachers.map((teacher) => <option key={teacher.name}>{teacher.name}</option>)}</select></label><label className="checkbox"><input type="checkbox" checked={draft.unavailable} onChange={(event) => setDraft((current) => ({ ...current, unavailable: event.target.checked }))}/> Mark as unavailable</label><label className="checkbox"><input type="checkbox" checked={draft.cancelled} onChange={(event) => setDraft((current) => ({ ...current, cancelled: event.target.checked }))}/> Class cancelled</label></div><div className="drawerActions"><button className="save" onClick={() => void save()}><Save size={17}/> Save lesson</button>{draft.id && <button className="duplicate" onClick={duplicateLesson}><Copy size={17}/> Duplicate</button>}{draft.id && <button className="delete" onClick={() => void remove()}>Delete</button>}</div></aside></div>}
-    {recurringOpen && <div className="drawerBackdrop" onMouseDown={() => setRecurringOpen(false)}><aside className="quickDrawer" onMouseDown={(event) => event.stopPropagation()}><div className="drawerHeader"><div><p>RECURRING LESSONS</p><h2>Create weekly lessons</h2><span>One class across a date range</span></div><button onClick={() => setRecurringOpen(false)}><X/></button></div><div className="formGrid"><label>School<input list="calendar-school-options" value={recurringDraft.school} onChange={(event) => setRecurringDraft((current) => ({ ...current, school: event.target.value }))}/></label><label>Class / programme<input list="calendar-class-options" value={recurringDraft.className} onChange={(event) => setRecurringDraft((current) => ({ ...current, className: event.target.value }))}/></label><div className="timeRow"><label>Start<input type="time" value={recurringDraft.startTime} onChange={(event) => setRecurringDraft((current) => ({ ...current, startTime: event.target.value }))}/></label><label>End<input type="time" value={recurringDraft.endTime} onChange={(event) => setRecurringDraft((current) => ({ ...current, endTime: event.target.value }))}/></label></div><div className="timeRow"><label>From<input type="date" value={recurringDraft.startDate} onChange={(event) => setRecurringDraft((current) => ({ ...current, startDate: event.target.value }))}/></label><label>To<input type="date" value={recurringDraft.endDate} onChange={(event) => setRecurringDraft((current) => ({ ...current, endDate: event.target.value }))}/></label></div><label>Teacher<select value={recurringDraft.teacher} onChange={(event) => setRecurringDraft((current) => ({ ...current, teacher: event.target.value }))}><option value="">Unassigned</option>{teachers.map((teacher) => <option key={teacher.name}>{teacher.name}</option>)}</select></label><div className="weekdayPicker"><span>Repeat on</span>{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((name, index) => <label key={name}><input type="checkbox" checked={recurringDraft.weekdays.includes(index)} onChange={() => setRecurringDraft((current) => ({ ...current, weekdays: current.weekdays.includes(index) ? current.weekdays.filter((day) => day !== index) : [...current.weekdays, index] }))}/>{name}</label>)}</div></div><div className="drawerActions"><button className="save" onClick={() => void saveRecurring()} disabled={recurringSaving}>{recurringSaving ? <Loader2 className="spin" size={17}/> : <Save size={17}/>} Create recurring lessons</button></div></aside></div>}
-    {quickAdd && <div className="drawerBackdrop" onMouseDown={() => setQuickAdd(false)}><aside className="quickDrawer" onMouseDown={(event) => event.stopPropagation()}><div className="drawerHeader"><div><p>QUICK ADD</p><h2>Add multiple lessons</h2><span>{quickRows.length} draft lesson{quickRows.length === 1 ? '' : 's'}</span></div><button onClick={() => setQuickAdd(false)}><X/></button></div>{copySourceLessons.length > 0 && <div className="copyDatePanel"><strong>Select dates for these {copySourceLessons.length} classes</strong><div><input type="date" value={copyDateInput} onChange={(event) => setCopyDateInput(event.target.value)}/><button onClick={addCopyDate}>Add date</button></div><span>{copyDates.length ? copyDates.join(', ') : 'No dates selected yet.'}</span><button className="save" onClick={() => void saveCopyDates()} disabled={!copyDates.length || quickSaving}>Create copies</button></div>}<div className="quickList">{quickRows.map((row, index) => <div className="quickRow" key={row.id}><div className="quickRowHead"><strong>Lesson {index + 1}</strong><button onClick={() => removeQuickRow(row.id)}>Remove</button></div><div className="formGrid"><label>Date<input type="date" value={row.date} onChange={(event) => updateQuickRow(row.id, { date: event.target.value })}/></label><div className="timeRow"><label>Start<input type="time" value={row.startTime} onChange={(event) => updateQuickRow(row.id, { startTime: event.target.value })}/></label><label>End<input type="time" value={row.endTime} onChange={(event) => updateQuickRow(row.id, { endTime: event.target.value })}/></label></div><label>School<input list="calendar-school-options" value={row.school} onChange={(event) => updateQuickRow(row.id, { school: event.target.value })} placeholder="School name"/></label><label>Class / programme<input list={`quick-class-options-${row.id}`} value={row.className} onChange={(event) => updateQuickRow(row.id, { className: event.target.value })} placeholder="e.g. 4IN, Keyboard"/><datalist id={`quick-class-options-${row.id}`}>{classesForSchool(row.school).map((className) => <option key={className} value={className}/>)}</datalist></label><label>Teacher<select value={row.teacher} onChange={(event) => updateQuickRow(row.id, { teacher: event.target.value })}><option value="">Unassigned</option>{teachers.map((teacher) => <option key={teacher.name}>{teacher.name}</option>)}</select></label></div></div>)}<button className="addAnother" onClick={addQuickRow}><Plus size={16}/> Add another lesson</button></div><div className="drawerActions"><button className="save" onClick={() => void saveQuickRows()} disabled={quickSaving || !quickRows.length}>{quickSaving ? <Loader2 className="spin" size={17}/> : <Save size={17}/>} Save {quickRows.length} lesson{quickRows.length === 1 ? '' : 's'}</button></div></aside></div>}
-    <style jsx>{`.editorShell{min-height:100vh;padding:24px;max-width:1700px;margin:auto;color:#eef2fb}.editorHeader{display:flex;align-items:end;justify-content:space-between;gap:20px;margin-bottom:16px}.editorHeader p,.workloadHeading p,.drawerHeader p{margin:0 0 5px;color:#8b7cff;font-size:11px;font-weight:900;letter-spacing:.15em}.editorHeader h1{margin:0 0 5px;font-size:32px}.editorHeader span{color:#8995ad;font-size:13px}.headerActions{display:flex;gap:9px}.quickAddButton,.conflictLink,.exportButton{display:flex;align-items:center;justify-content:center;gap:7px;padding:10px 14px;border-radius:10px;color:#fff;text-decoration:none;font-weight:800;font-size:14px}.quickAddButton{border:1px solid rgba(52,211,153,.35);background:rgba(52,211,153,.12);color:#7ee7b4;cursor:pointer}.conflictLink{background:#6653de}.exportButton{border:1px solid rgba(148,163,184,.18);background:#17233a;cursor:pointer}.filterBar{display:flex;align-items:center;gap:10px;margin-bottom:12px}.searchBox{display:flex;align-items:center;gap:8px;flex:1;min-width:220px;padding:0 12px;border:1px solid rgba(148,163,184,.16);border-radius:10px;background:#0b1222;color:#7f8ca4}.searchBox input,.filterBar select{width:100%;padding:10px 0;border:0;outline:0;background:transparent;color:#eef2fb}.filterBar select{width:auto;min-width:165px;padding:10px 12px;border:1px solid rgba(148,163,184,.16);border-radius:10px;background:#0b1222}.filterBar>button{padding:10px 13px;border:1px solid rgba(148,163,184,.16);border-radius:10px;background:#0b1222;color:#aeb8ca;cursor:pointer}.filterBar>span{color:#8995ad;font-size:12px;white-space:nowrap}.workloadPanel{display:flex;align-items:center;gap:18px;margin-bottom:12px;padding:13px 15px;border:1px solid rgba(148,163,184,.14);border-radius:14px;background:#0d1425}.workloadHeading{display:flex;align-items:center;gap:9px;min-width:170px}.workloadHeading h2{margin:0;font-size:16px}.workloadStats{display:flex;gap:8px;overflow-x:auto;padding:2px}.workloadStats button{display:grid;grid-template-columns:9px auto auto;align-items:center;gap:5px 7px;min-width:116px;padding:8px 10px;border:1px solid rgba(148,163,184,.12);border-radius:10px;background:#111a2d;color:#eef2fb;text-align:left;cursor:pointer}.workloadStats button.active{border-color:#f87171;background:rgba(248,113,113,.12)}.workloadStats i{width:9px;height:9px;border-radius:50%;grid-row:1/3}.workloadStats span{font-size:12px;font-weight:750}.workloadStats strong{font-size:15px}.workloadStats small{grid-column:2/4;color:#8995ad;font-size:10px}.empty{color:#8995ad;font-size:12px}.calendarCard{border:1px solid rgba(148,163,184,.14);background:#0d1425;border-radius:16px;padding:14px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.18)}.loading{min-height:580px;display:flex;align-items:center;justify-content:center;gap:9px;color:#8995ad}.eventCard{min-width:0;overflow:hidden}.eventCard.compact{display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;gap:5px;width:100%;padding:1px 3px;font-size:11px;line-height:1.45}.eventCard.compact span{font-variant-numeric:tabular-nums;opacity:.9}.eventCard.compact strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:800}.eventCard.compact small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:52px;opacity:.85;font-size:10px}.eventCard.detailed{display:grid;gap:2px;padding:2px}.eventCard.detailed span,.eventCard.detailed small{opacity:.85}.drawerBackdrop{position:fixed;inset:0;z-index:50;background:rgba(3,7,18,.7);backdrop-filter:blur(4px);display:flex;justify-content:flex-end}.dayPanel,.lessonDrawer{width:min(440px,100%);height:100%;overflow:auto;padding:24px;background:#0b1222;border-left:1px solid rgba(148,163,184,.14);box-shadow:-24px 0 70px rgba(0,0,0,.35)}.quickDrawer{width:min(680px,100%);height:100%;overflow:auto;padding:24px;background:#0b1222;border-left:1px solid rgba(148,163,184,.14);box-shadow:-24px 0 70px rgba(0,0,0,.35)}.drawerHeader{display:flex;align-items:start;justify-content:space-between;gap:16px;margin-bottom:18px}.drawerHeader h2{margin:0;font-size:25px}.drawerHeader span{color:#8995ad}.drawerHeader button{border:0;background:transparent;color:#aeb8ca;cursor:pointer}.addLesson,.save{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:0;border-radius:11px;background:#6653de;color:#fff;font-weight:800;cursor:pointer}.copyLessons{margin-top:9px;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:1px solid rgba(148,163,184,.18);border-radius:11px;background:#17233a;color:#cbd5e1;font-weight:800;cursor:pointer}.dayLessonList{display:grid;gap:9px;margin-top:14px}.dayLessonList>button{display:grid;gap:4px;padding:13px;border:1px solid rgba(148,163,184,.12);border-left:4px solid;border-radius:12px;background:#111a2d;color:#eef2fb;text-align:left;cursor:pointer}.dayLessonList small,.noDayLessons{color:#8995ad}.formGrid{display:grid;gap:12px}.formGrid label{display:grid;gap:7px;color:#aeb8ca;font-size:13px;font-weight:700}.formGrid input,.formGrid select{padding:11px 12px;border-radius:10px;border:1px solid rgba(148,163,184,.16);background:#111a2d;color:#eef2fb}.timeRow{display:grid;grid-template-columns:1fr 1fr;gap:10px}.checkbox{display:flex!important;grid-template-columns:auto 1fr;align-items:center}.checkbox input{width:auto}.drawerActions{display:grid;gap:9px;margin-top:18px}.delete{padding:11px;border:1px solid rgba(251,113,133,.25);border-radius:11px;background:rgba(251,113,133,.09);color:#fb7185;cursor:pointer}.quickList{display:grid;gap:14px}.quickRow{padding:15px;border:1px solid rgba(148,163,184,.14);border-radius:13px;background:#0d1425}.quickRowHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.quickRowHead strong{color:#eef2fb;font-size:14px}.quickRowHead button{border:0;background:transparent;color:#fb7185;font-size:12px;font-weight:800;cursor:pointer}.addAnother{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:1px dashed rgba(129,116,255,.45);border-radius:11px;background:rgba(120,87,255,.06);color:#c8c2ff;font-weight:800;cursor:pointer}.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}:global(.fc){--fc-border-color:rgba(148,163,184,.18);--fc-page-bg-color:#0d1425;--fc-neutral-bg-color:#111a2d;--fc-list-event-hover-bg-color:#17233a;color:#eef2fb}:global(.fc .fc-toolbar){gap:12px;margin-bottom:14px}:global(.fc .fc-toolbar-title){font-size:24px;font-weight:850}:global(.fc .fc-button){border:1px solid rgba(148,163,184,.16)!important;background:#17233a!important;color:#eef2fb!important;border-radius:8px!important;box-shadow:none!important;text-transform:capitalize;padding:.45em .75em!important}:global(.fc .fc-button:hover),:global(.fc .fc-button-active){background:#6653de!important}:global(.fc .fc-col-header-cell){background:#121b2e}:global(.fc .fc-col-header-cell-cushion){padding:10px 4px;color:#dbe4f3;text-decoration:none}:global(.fc .fc-daygrid-day){background:#0d1425}:global(.fc .fc-daygrid-day:hover){background:#101a2d}:global(.fc .fc-day-today){background:rgba(102,83,222,.12)!important}:global(.fc .fc-daygrid-day-number){padding:8px;color:#dbe4f3;text-decoration:none;font-weight:700}:global(.fc .fc-daygrid-day-frame){min-height:145px}:global(.fc .fc-daygrid-event){margin:2px 4px;border-radius:7px;padding:1px 2px;box-shadow:0 2px 8px rgba(0,0,0,.15);overflow:hidden}:global(.fc .fc-daygrid-more-link){margin:4px;color:#a99cff;font-weight:800}:global(.fc .fc-day-other .fc-daygrid-day-number){color:#56627a}:global(.fc .fc-timegrid-slot){height:2.8em}@media(max-width:900px){.editorShell{padding:16px}.editorHeader,.filterBar{display:grid}.headerActions{display:grid;grid-template-columns:1fr 1fr}.conflictLink{grid-column:1/3}.filterBar select{width:100%}.workloadPanel{display:grid}.workloadHeading{min-width:0}:global(.fc .fc-toolbar){display:grid;grid-template-columns:1fr}:global(.fc .fc-toolbar-chunk){display:flex;justify-content:center}:global(.fc .fc-daygrid-day-frame){min-height:110px}.eventCard.compact{grid-template-columns:34px minmax(0,1fr)}.eventCard.compact small{display:none}}`}</style>
-  </main>;
+  const retryFailed = async () => {
+    if (failedPayload.current) {
+      const fn = failedPayload.current;
+      failedPayload.current = null;
+      await fn();
+    }
+  };
+
+  // ── PDF Export ──
+  const exportCalendarPdf = () => {
+    if (!exportLessons.length) { showError('There are no visible lessons to export.'); return; }
+    const body = buildCalendarPdfBody(exportLessons, exportRange, colour);
+    openPrintPreview(filter === 'all' ? 'Music Delight Calendar' : filter === 'unassigned' ? 'Unassigned Lessons Calendar' : filter === 'cancelled' ? 'Cancelled Classes Calendar' : `${filter} Calendar`, body, true, exportRange, exportLessons, showInfo);
+  };
+
+  const exportSchedulePdf = () => {
+    if (!exportLessons.length) { showError('There are no visible lessons to export.'); return; }
+    const body = buildSchedulePdfBody(exportLessons, colour);
+    openPrintPreview('Music Delight Teacher Schedule PDF', body, false, exportRange, exportLessons, showInfo);
+  };
+
+  // ── Render ──
+  const topAction = undoStack[0] ?? null;
+
+  return (
+    <main className={styles.editorShell}>
+      <SmartDashboard />
+      <datalist id="calendar-school-options">{schools.map((school) => <option key={school} value={school} />)}</datalist>
+      <datalist id="calendar-class-options">{classesForSchool(draft.school).map((className) => <option key={className} value={className} />)}</datalist>
+
+      <header className={styles.editorHeader}>
+        <div>
+          <p>MOE SCHEDULE</p>
+          <h1>Calendar</h1>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }} aria-live="polite" role={messageType === 'error' ? 'alert' : 'status'}>
+            {!connected && <span title="Live sync disconnected"><WifiOff size={14} style={{ color: '#fb7185', flexShrink: 0 }} /></span>}
+            {loading ? 'Loading\u2026' : (
+              <>
+                {message}
+                {messageType === 'error' && failedPayload.current && (
+                  <button onClick={() => void retryFailed()} style={{ marginLeft: 8, padding: '3px 8px', border: '1px solid #fb7185', borderRadius: 6, background: 'rgba(251,113,133,.12)', color: '#fb7185', cursor: 'pointer', fontSize: 11, fontWeight: 800 }}>
+                    Retry
+                  </button>
+                )}
+              </>
+            )}
+          </span>
+        </div>
+        <div className={styles.headerActions}>
+          <button className={styles.quickAddButton} onClick={openQuickAdd}><Plus size={17} /> Quick add</button>
+          <button className={styles.exportButton} onClick={() => { setRecurringDraft(blankRecurring()); setRecurringOpen(true); }}><CalendarPlus size={17} /> Recurring</button>
+          <button className={styles.exportButton} onClick={exportCalendarPdf}><CalendarDays size={17} /> Calendar PDF</button>
+          <button className={styles.exportButton} onClick={exportSchedulePdf}><List size={17} /> Schedule PDF</button>
+          <Link href="/admin/conflicts" className={styles.conflictLink}>Conflicts</Link>
+        </div>
+      </header>
+
+      <UndoBanner action={topAction} stackDepth={undoStack.length} undoing={undoing} onUndo={() => void undoLast()} onDismiss={dismissAllUndo} />
+
+      <FilterBar
+        search={search} onSearchChange={setSearch}
+        filter={filter} onFilterChange={setFilter}
+        schoolFilter={schoolFilter} onSchoolFilterChange={setSchoolFilter}
+        teachers={teachers} schools={schools}
+        visibleCount={visible.length}
+        onClear={() => { setSearch(''); setFilter('all'); setSchoolFilter('all'); setSelectedIds([]); }}
+      />
+
+      <BulkToolbar
+        selectedCount={selectedLessons.length} visibleCount={visible.length}
+        onSelectVisible={selectVisible}
+        bulkDate={bulkDate} onBulkDateChange={setBulkDate}
+        bulkTeacher={bulkTeacher} onBulkTeacherChange={setBulkTeacher}
+        teachers={teachers}
+        onMove={() => void bulkMove()}
+        onAssign={() => void bulkUpdate({ teacher_name: bulkTeacher, unavailable: false }, 'assigned')}
+        onCancel={() => { if (!selectedLessons.length || !window.confirm(`Cancel ${selectedLessons.length} selected lessons?`)) return; void bulkUpdate({ cancelled: true }, 'cancelled'); }}
+        onDelete={() => void bulkDelete()}
+      />
+
+      <WorkloadPanels
+        teacherWorkload={workload} schoolWorkload={schoolWorkload}
+        cancelledCount={cancelledCount} filter={filter}
+        onTeacherFilter={(name) => setFilter(name)}
+        onSchoolFilter={setSchoolFilter}
+        onCancelledFilter={() => setFilter('cancelled')}
+        teacherColour={colour}
+      />
+
+      <CalendarView
+        calendarRef={calendarRef}
+        events={events}
+        loading={loading}
+        mobileCalendar={mobileCalendar}
+        nativeCalendar={nativeCalendar}
+        onDatesSet={onDatesSet}
+        onDateClick={setDay}
+        onEventClick={openLesson}
+        onMove={move}
+        dayMaxEvents={dayMaxEvents}
+      />
+
+      {day && (
+        <DayPanel
+          day={day} dayLessons={dayLessons}
+          onClose={() => setDay(null)}
+          onAddLesson={addLesson}
+          onOpenLesson={openLesson}
+          onCopyToQuickAdd={copyDayLessons}
+          onCopyToDates={copyDayToDates}
+          teacherColour={colour}
+        />
+      )}
+
+      {drawer && (
+        <LessonEditorDrawer
+          draft={draft}
+          onDraftChange={setDraft}
+          teachers={teachers}
+          onSave={() => void save()}
+          onDelete={() => void remove()}
+          onDuplicate={duplicateLesson}
+          onClose={() => setDrawer(false)}
+        />
+      )}
+
+      {recurringOpen && (
+        <RecurringDrawer
+          draft={recurringDraft}
+          onDraftChange={setRecurringDraft}
+          teachers={teachers}
+          onSave={() => void saveRecurring()}
+          saving={recurringSaving}
+          onClose={() => setRecurringOpen(false)}
+        />
+      )}
+
+      {quickAdd && (
+        <QuickAddDrawer
+          quickRows={quickRows}
+          onUpdateRow={updateQuickRow}
+          onRemoveRow={removeQuickRow}
+          onAddRow={addQuickRow}
+          onSave={() => void saveQuickRows()}
+          saving={quickSaving}
+          onClose={() => setQuickAdd(false)}
+          teachers={teachers}
+          copySourceCount={copySourceLessons.length}
+          copyDateInput={copyDateInput}
+          onCopyDateInputChange={setCopyDateInput}
+          onAddCopyDate={addCopyDate}
+          copyDates={copyDates}
+          onSaveCopies={() => void saveCopyDates()}
+        />
+      )}
+    </main>
+  );
 }

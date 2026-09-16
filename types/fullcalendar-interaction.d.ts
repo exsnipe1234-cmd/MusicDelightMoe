@@ -1,9 +1,3 @@
-import '@fullcalendar/interaction';
-import type { EventApi } from '@fullcalendar/core';
-
-declare module '@fullcalendar/interaction' {
-  export type EventDropArg = {
-    event: EventApi;
-    revert: () => void;
-  };
-}
+// FullCalendar's event types are defined in @fullcalendar/core.
+// Import them directly from there rather than augmenting the interaction module.
+export type { EventChangeArg, EventDropArg } from '@fullcalendar/core';
