@@ -156,10 +156,8 @@ export default function CalendarPage() {
     return Array.from(new Set(lessons.filter((lesson) => normalizeSchool(lesson.school) === key).map((lesson) => lesson.class_name).filter(Boolean))).sort((a, b) => a.localeCompare(b));
   }, [lessons]);
   const colour = useCallback((name: string | null) => {
-    const dbColour = teachers.find((teacher) => teacher.name.trim().toLowerCase() === name?.trim().toLowerCase())?.color;
-    if (dbColour && dbColour !== '#7c8cff') return dbColour;
     return defaultTeacherColours[name?.trim().toLowerCase() ?? ''] ?? colourFromName(name);
-  }, [teachers]);
+  }, []);
   const visible = useMemo(() => { const query = search.trim().toLowerCase(); return lessons.filter((lesson) => (filter === 'cancelled' ? lesson.cancelled : !lesson.cancelled && (filter === 'all' || (filter === 'unassigned' ? !lesson.teacher_name : lesson.teacher_name === filter))) && (schoolFilter === 'all' || normalizeSchool(lesson.school) === normalizeSchool(schoolFilter)) && (!query || `${lesson.school} ${lesson.class_name} ${lesson.teacher_name ?? 'unassigned'}`.toLowerCase().includes(query))); }, [lessons, filter, schoolFilter, search]);
   const selectedLessons = useMemo(() => lessons.filter((lesson) => selectedIds.includes(lesson.id)), [lessons, selectedIds]);
   const events = useMemo(() => visible.map((lesson) => { const teacherColour = lesson.cancelled ? '#f87171' : colour(lesson.teacher_name); return { id: lesson.id, title: lesson.school, start: `${lesson.lesson_date}T${lesson.start_time.slice(0, 5)}`, end: `${lesson.lesson_date}T${lesson.end_time.slice(0, 5)}`, backgroundColor: teacherColour, borderColor: teacherColour, textColor: '#fff', extendedProps: { ...lesson, teacherColour } }; }), [visible, colour]);
