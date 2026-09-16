@@ -50,8 +50,7 @@ export const mapsUrl = (school: string) => `https://www.google.com/maps/search/?
 export const normalizeSchool = (value: string) => value.toLowerCase().replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\bpri\b/g, 'primary school').replace(/\bps\b(?!\s+school)/g, 'primary school').replace(/\bprimary school\b\s+primary school\b/g, 'primary school').replace(/\s+[a-z]?\d{1,2}[a-z]{0,3}\s*$/g, '').replace(/\s+/g, ' ').trim();
 
 /**
- * Generate a deterministic colour from a teacher name using a simple hash.
- * Produces HSL colours at 55% saturation and 58% lightness for consistent contrast.
+ * Generate a deterministic hex colour from a teacher name using a simple hash.
  * Falls back to #7c8cff for empty/null names.
  */
 export function colourFromName(name: string | null): string {
@@ -62,7 +61,20 @@ export function colourFromName(name: string | null): string {
     hash = hash & hash; // Convert to 32-bit integer
   }
   const hue = Math.abs(hash) % 360;
-  return `hsl(${hue}, 55%, 58%)`;
+  return hslToHex(hue, 55, 58);
+}
+
+/** Convert HSL to hex colour string. */
+function hslToHex(h: number, s: number, l: number): string {
+  const sNorm = s / 100;
+  const lNorm = l / 100;
+  const a = sNorm * Math.min(lNorm, 1 - lNorm);
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12;
+    const colour = lNorm - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    return Math.round(255 * colour).toString(16).padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
 }
 
 /**
