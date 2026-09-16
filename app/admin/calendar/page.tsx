@@ -26,7 +26,6 @@ import {
 } from './_components/calendarUtils';
 import { strings } from './_components/calendarStrings';
 import styles from './_components/calendar.module.css';
-import './_components/fullcalendar-global.css';
 
 const MAX_UNDO = 20;
 const RETRY_DELAYS = [1000, 2000, 4000];

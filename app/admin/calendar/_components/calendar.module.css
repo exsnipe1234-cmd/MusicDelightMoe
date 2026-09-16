@@ -3,7 +3,7 @@
   padding: 24px;
   max-width: 1700px;
   margin: auto;
-  color: #eef2fb;
+  color: var(--cal-text-primary);
 }
 
 .editorHeader {
@@ -18,7 +18,7 @@
 .workloadHeading p,
 .drawerHeader p {
   margin: 0 0 5px;
-  color: #8b7cff;
+  color: var(--cal-text-accent);
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.15em;
@@ -30,7 +30,7 @@
 }
 
 .editorHeader span {
-  color: #8995ad;
+  color: var(--cal-text-muted);
   font-size: 13px;
 }
 
@@ -66,8 +66,8 @@
 }
 
 .exportButton {
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background: #17233a;
+  border: 1px solid var(--cal-border-export);
+  background: var(--cal-bg-button-secondary);
   cursor: pointer;
 }
 
@@ -86,9 +86,9 @@
   flex: 1;
   min-width: 220px;
   padding: 0 12px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid var(--cal-border-input);
   border-radius: 10px;
-  background: #0b1222;
+  background: var(--cal-bg-input);
   color: #7f8ca4;
 }
 
@@ -99,29 +99,29 @@
   border: 0;
   outline: 0;
   background: transparent;
-  color: #eef2fb;
+  color: var(--cal-text-primary);
 }
 
 .filterBar select {
   width: auto;
   min-width: 165px;
   padding: 10px 12px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid var(--cal-border-input);
   border-radius: 10px;
-  background: #0b1222;
+  background: var(--cal-bg-input);
 }
 
 .filterBar > button {
   padding: 10px 13px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid var(--cal-border-input);
   border-radius: 10px;
-  background: #0b1222;
-  color: #aeb8ca;
+  background: var(--cal-bg-input);
+  color: var(--cal-text-filter-btn);
   cursor: pointer;
 }
 
 .filterBar > span {
-  color: #8995ad;
+  color: var(--cal-text-filter-muted);
   font-size: 12px;
   white-space: nowrap;
 }
@@ -134,10 +134,10 @@
   flex-wrap: wrap;
   margin: 10px 0;
   padding: 10px 12px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid var(--cal-border-input);
   border-radius: 12px;
-  background: #0d1425;
-  color: #eef2fb;
+  background: var(--cal-bg-card);
+  color: var(--cal-text-primary);
 }
 
 .bulkToolbar label {
@@ -151,24 +151,24 @@
 
 .bulkToolbar strong {
   font-size: 13px;
-  color: #cbd5e1;
+  color: var(--cal-text-bulk-strong);
 }
 
 .bulkToolbar input[type="date"] {
   padding: 7px 10px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid var(--cal-border-input);
   border-radius: 9px;
-  background: #0b1222;
-  color: #eef2fb;
+  background: var(--cal-bg-input);
+  color: var(--cal-text-primary);
   font-size: 12px;
 }
 
 .bulkToolbar select {
   padding: 7px 10px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid var(--cal-border-input);
   border-radius: 9px;
-  background: #0b1222;
-  color: #eef2fb;
+  background: var(--cal-bg-input);
+  color: var(--cal-text-primary);
   font-size: 12px;
 }
 
@@ -201,9 +201,9 @@
   gap: 18px;
   margin-bottom: 12px;
   padding: 13px 15px;
-  border: 1px solid rgba(148, 163, 184, 0.14);
+  border: 1px solid var(--cal-border-card);
   border-radius: 14px;
-  background: #0d1425;
+  background: var(--cal-bg-card);
 }
 
 .workloadHeading {
@@ -233,7 +233,7 @@
   right: 0;
   min-width: 32px;
   height: 100%;
-  background: linear-gradient(to right, transparent, #0d1425);
+  background: linear-gradient(to right, transparent, var(--cal-gradient-fade));
   pointer-events: none;
   flex-shrink: 0;
 }
@@ -245,10 +245,10 @@
   gap: 5px 7px;
   min-width: 116px;
   padding: 8px 10px;
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  border: 1px solid var(--cal-border-workload-btn);
   border-radius: 10px;
-  background: #111a2d;
-  color: #eef2fb;
+  background: var(--cal-bg-workload-btn);
+  color: var(--cal-text-primary);
   text-align: left;
   cursor: pointer;
 }
@@ -276,12 +276,12 @@
 
 .workloadStats small {
   grid-column: 2 / 4;
-  color: #8995ad;
+  color: var(--cal-text-muted);
   font-size: 10px;
 }
 
 .empty {
-  color: #8995ad;
+  color: var(--cal-text-muted);
   font-size: 12px;
 }
 
@@ -292,17 +292,17 @@
   gap: 10px;
   margin: 10px 0;
   padding: 10px 13px;
-  border: 1px solid rgba(129, 116, 255, 0.25);
+  border: 1px solid var(--cal-border-undo);
   border-radius: 12px;
-  background: rgba(120, 87, 255, 0.08);
-  color: #c8c2ff;
+  background: var(--cal-bg-undo);
+  color: var(--cal-text-undo);
   font-size: 12px;
   font-weight: 800;
 }
 
 .undoBanner span {
   margin-right: auto;
-  color: #c8c2ff;
+  color: var(--cal-text-undo);
 }
 
 .undoBanner button {
@@ -318,17 +318,17 @@
 
 .undoBanner .dismissUndo {
   background: transparent;
-  color: #a99cff;
+  color: var(--cal-text-undo-dismiss);
 }
 
 /* ── Calendar Card ── */
 .calendarCard {
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  background: #0d1425;
+  border: 1px solid var(--cal-border-card);
+  background: var(--cal-bg-card);
   border-radius: 16px;
   padding: 14px;
   overflow: hidden;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--cal-shadow-card);
 }
 
 .loading {
@@ -337,7 +337,7 @@
   align-items: center;
   justify-content: center;
   gap: 9px;
-  color: #8995ad;
+  color: var(--cal-text-muted);
 }
 
 /* ── Event Cards ── */
@@ -406,9 +406,9 @@
   height: 100%;
   overflow: auto;
   padding: 24px;
-  background: #0b1222;
-  border-left: 1px solid rgba(148, 163, 184, 0.14);
-  box-shadow: -24px 0 70px rgba(0, 0, 0, 0.35);
+  background: var(--cal-bg-drawer);
+  border-left: 1px solid var(--cal-border-card);
+  box-shadow: var(--cal-shadow-drawer);
 }
 
 .quickDrawer {
@@ -416,9 +416,9 @@
   height: 100%;
   overflow: auto;
   padding: 24px;
-  background: #0b1222;
-  border-left: 1px solid rgba(148, 163, 184, 0.14);
-  box-shadow: -24px 0 70px rgba(0, 0, 0, 0.35);
+  background: var(--cal-bg-drawer);
+  border-left: 1px solid var(--cal-border-card);
+  box-shadow: var(--cal-shadow-drawer);
 }
 
 .drawerHeader {
@@ -435,13 +435,13 @@
 }
 
 .drawerHeader span {
-  color: #8995ad;
+  color: var(--cal-text-muted);
 }
 
 .drawerHeader button {
   border: 0;
   background: transparent;
-  color: #aeb8ca;
+  color: var(--cal-text-drawer-header-btn);
   cursor: pointer;
 }
 
@@ -470,10 +470,10 @@
   justify-content: center;
   gap: 8px;
   padding: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  border: 1px solid var(--cal-border-copy-lessons);
   border-radius: 11px;
-  background: #17233a;
-  color: #cbd5e1;
+  background: var(--cal-bg-button-secondary);
+  color: var(--cal-text-copy-lessons);
   font-weight: 800;
   cursor: pointer;
 }
@@ -488,18 +488,18 @@
   display: grid;
   gap: 4px;
   padding: 13px;
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  border: 1px solid var(--cal-border-day-lesson);
   border-left: 4px solid;
   border-radius: 12px;
-  background: #111a2d;
-  color: #eef2fb;
+  background: var(--cal-bg-day-lesson);
+  color: var(--cal-text-primary);
   text-align: left;
   cursor: pointer;
 }
 
 .dayLessonList small,
 .noDayLessons {
-  color: #8995ad;
+  color: var(--cal-text-muted);
 }
 
 /* ── Lesson Editor ── */
@@ -511,7 +511,7 @@
 .formGrid label {
   display: grid;
   gap: 7px;
-  color: #aeb8ca;
+  color: var(--cal-text-form-label);
   font-size: 13px;
   font-weight: 700;
 }
@@ -520,9 +520,9 @@
 .formGrid select {
   padding: 11px 12px;
   border-radius: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  background: #111a2d;
-  color: #eef2fb;
+  border: 1px solid var(--cal-border-input);
+  background: var(--cal-bg-form-input);
+  color: var(--cal-text-primary);
 }
 
 .timeRow {
@@ -578,9 +578,9 @@
 
 .quickRow {
   padding: 15px;
-  border: 1px solid rgba(148, 163, 184, 0.14);
+  border: 1px solid var(--cal-border-quick-row);
   border-radius: 13px;
-  background: #0d1425;
+  background: var(--cal-bg-quick-row);
 }
 
 .quickRowHead {
@@ -592,7 +592,7 @@
 }
 
 .quickRowHead strong {
-  color: #eef2fb;
+  color: var(--cal-text-primary);
   font-size: 14px;
 }
 
@@ -627,7 +627,7 @@
   gap: 7px;
   flex-wrap: wrap;
   padding: 10px 0;
-  color: #eef2fb;
+  color: var(--cal-text-primary);
   font-size: 12px;
   font-weight: 800;
 }
@@ -636,7 +636,7 @@
   width: 100%;
   font-size: 12px;
   font-weight: 800;
-  color: #eef2fb;
+  color: var(--cal-text-primary);
   padding: 0;
   margin-bottom: 4px;
 }
@@ -646,10 +646,10 @@
   align-items: center;
   gap: 4px;
   padding: 7px 9px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid var(--cal-border-weekday);
   border-radius: 8px;
-  background: #111a2d;
-  color: #aeb8ca;
+  background: var(--cal-bg-weekday);
+  color: var(--cal-text-weekday);
 }
 
 /* ── Copy Date Panel ── */
@@ -658,10 +658,10 @@
   gap: 10px;
   margin-bottom: 14px;
   padding: 14px;
-  border: 1px solid rgba(129, 116, 255, 0.25);
+  border: 1px solid var(--cal-border-copy-panel);
   border-radius: 13px;
-  background: rgba(120, 87, 255, 0.08);
-  color: #c8c2ff;
+  background: var(--cal-bg-copy-panel);
+  color: var(--cal-text-copy-panel);
 }
 
 .copyDatePanel > div {
@@ -673,10 +673,10 @@
   flex: 1;
   min-width: 0;
   padding: 9px 11px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid var(--cal-border-input);
   border-radius: 9px;
-  background: #0b1222;
-  color: #eef2fb;
+  background: var(--cal-bg-input);
+  color: var(--cal-text-primary);
 }
 
 .copyDatePanel button {
@@ -691,7 +691,7 @@
 
 .copyDatePanel span {
   font-size: 12px;
-  color: #8995ad;
+  color: var(--cal-text-muted);
 }
 
 /* ── Spinner ── */

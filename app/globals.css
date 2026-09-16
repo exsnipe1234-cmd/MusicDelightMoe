@@ -86,8 +86,93 @@ body{min-width:0!important}
   h1{font-size:24px}
 }
 
+/* ── Calendar CSS module theme tokens ── */
+/* Dark defaults on body, overridden by body.light-mode below */
+body {
+  --cal-bg-page: #0d1425;
+  --cal-bg-card: #0d1425;
+  --cal-bg-input: #0b1222;
+  --cal-bg-button-secondary: #17233a;
+  --cal-bg-drawer: #0b1222;
+  --cal-bg-workload-btn: #111a2d;
+  --cal-bg-day-lesson: #111a2d;
+  --cal-bg-quick-row: #0d1425;
+  --cal-bg-form-input: #111a2d;
+  --cal-bg-weekday: #111a2d;
+  --cal-bg-undo: rgba(120, 87, 255, 0.08);
+  --cal-bg-copy-panel: rgba(120, 87, 255, 0.08);
+  --cal-text-primary: #eef2fb;
+  --cal-text-muted: #8995ad;
+  --cal-text-accent: #8b7cff;
+  --cal-text-undo: #c8c2ff;
+  --cal-text-undo-dismiss: #a99cff;
+  --cal-text-copy-panel: #c8c2ff;
+  --cal-text-weekday: #aeb8ca;
+  --cal-text-form-label: #aeb8ca;
+  --cal-text-drawer-header-btn: #aeb8ca;
+  --cal-text-bulk-strong: #cbd5e1;
+  --cal-text-copy-lessons: #cbd5e1;
+  --cal-text-filter-btn: #aeb8ca;
+  --cal-text-filter-muted: #8995ad;
+  --cal-border-card: rgba(148, 163, 184, 0.14);
+  --cal-border-input: rgba(148, 163, 184, 0.16);
+  --cal-border-workload-btn: rgba(148, 163, 184, 0.12);
+  --cal-border-day-lesson: rgba(148, 163, 184, 0.12);
+  --cal-border-quick-row: rgba(148, 163, 184, 0.14);
+  --cal-border-undo: rgba(129, 116, 255, 0.25);
+  --cal-border-copy-panel: rgba(129, 116, 255, 0.25);
+  --cal-border-weekday: rgba(148, 163, 184, 0.16);
+  --cal-border-copy-lessons: rgba(148, 163, 184, 0.18);
+  --cal-border-export: rgba(148, 163, 184, 0.18);
+  --cal-shadow-card: 0 18px 50px rgba(0, 0, 0, 0.18);
+  --cal-shadow-drawer: -24px 0 70px rgba(0, 0, 0, 0.35);
+  --cal-gradient-fade: #0d1425;
+}
+
 /* Light mode is the default. Keep the dark theme available through ThemeToggle. */
 body.light-mode{background:linear-gradient(135deg,#f8fafc,#eef2ff);color:#172033}
+
+/* Calendar CSS module light-mode overrides (CSS modules hash class names, so we use custom properties) */
+body.light-mode {
+  --cal-bg-page: #fff;
+  --cal-bg-card: #fff;
+  --cal-bg-input: #f8fafc;
+  --cal-bg-button-secondary: #f8fafc;
+  --cal-bg-drawer: #fff;
+  --cal-bg-workload-btn: #f8fafc;
+  --cal-bg-day-lesson: #f8fafc;
+  --cal-bg-quick-row: #f8fafc;
+  --cal-bg-form-input: #f8fafc;
+  --cal-bg-weekday: #fff;
+  --cal-bg-undo: #eef2ff;
+  --cal-bg-copy-panel: #eef2ff;
+  --cal-text-primary: #172033;
+  --cal-text-muted: #64748b;
+  --cal-text-accent: #5b4bd6;
+  --cal-text-undo: #312e81;
+  --cal-text-undo-dismiss: #4338ca;
+  --cal-text-copy-panel: #312e81;
+  --cal-text-weekday: #475569;
+  --cal-text-form-label: #334155;
+  --cal-text-drawer-header-btn: #64748b;
+  --cal-text-bulk-strong: #334155;
+  --cal-text-copy-lessons: #334155;
+  --cal-text-filter-btn: #334155;
+  --cal-text-filter-muted: #64748b;
+  --cal-border-card: #dbe2ee;
+  --cal-border-input: #cbd5e1;
+  --cal-border-workload-btn: #dbe2ee;
+  --cal-border-day-lesson: #dbe2ee;
+  --cal-border-quick-row: #dbe2ee;
+  --cal-border-undo: #c7d2fe;
+  --cal-border-copy-panel: #c7d2fe;
+  --cal-border-weekday: #dbe2ee;
+  --cal-border-copy-lessons: #cbd5e1;
+  --cal-border-export: #cbd5e1;
+  --cal-shadow-card: 0 10px 28px rgba(30, 41, 59, 0.08);
+  --cal-shadow-drawer: -18px 0 55px rgba(30, 41, 59, 0.16);
+  --cal-gradient-fade: #fff;
+}
 body.light-mode .adminSidebar,body.light-mode .adminMobileBar{background:rgba(255,255,255,.96);border-color:#dbe2ee}
 body.light-mode .adminBrand strong,body.light-mode .adminMobileBar strong{color:#172033}
 body.light-mode .adminBrand span,body.light-mode .adminSidebarFooter span,body.light-mode .adminSidebarFooter strong{color:#64748b}
