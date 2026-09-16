@@ -256,21 +256,6 @@ body.light-mode .fc .fc-button-active {
   color: #fff !important;
 }
 
-body.light-mode .fc .fc-event-main,
-body.light-mode .fc .fc-event-main-frame,
-body.light-mode .fc .eventCard,
-body.light-mode .fc .eventCard strong,
-body.light-mode .fc .eventCard span,
-body.light-mode .fc .eventCard small {
-  color: #172033 !important;
-}
-
-body.light-mode .fc .fc-event,
-body.light-mode .fc .fc-daygrid-event,
-body.light-mode .fc .fc-timegrid-event {
-  color: #172033 !important;
-}
-
 body.light-mode .fc .fc-daygrid-day {
   background: #fff !important;
 }
