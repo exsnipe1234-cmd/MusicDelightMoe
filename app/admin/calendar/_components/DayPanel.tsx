@@ -62,7 +62,7 @@ export default function DayPanel({ day, dayLessons, onClose, onAddLesson, onOpen
                     </a>
                   </span>
                   <small style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span className={styles.teacherBadge} aria-hidden="true">{initials}</span>
+                    <span className="teacherBadge" aria-hidden="true">{initials}</span>
                     {lesson.class_name} \u00b7 {teacherName}
                   </small>
                 </button>

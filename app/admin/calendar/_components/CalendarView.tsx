@@ -61,7 +61,7 @@ export default function CalendarView({ calendarRef, events, loading, mobileCalen
             const initials = teacherInitials(lesson.teacher_name);
             const teacherName = lesson.teacher_name ?? 'Unassigned';
             return month ? (
-              <div className={`${styles.eventCard} ${styles.compact}`} title={`${lesson.school} \u00b7 ${lesson.class_name} \u00b7 ${teacherName}`}>
+              <div className="eventCard compact" title={`${lesson.school} \u00b7 ${lesson.class_name} \u00b7 ${teacherName}`}>
                 <span>{lesson.start_time.slice(0, 5)}</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 3, minWidth: 0 }}>
                   <strong style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lesson.school}</strong>
@@ -70,12 +70,12 @@ export default function CalendarView({ calendarRef, events, loading, mobileCalen
                   </a>
                 </span>
                 <small style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                  <span className={styles.teacherBadge} aria-hidden="true">{initials}</span>
+                  <span className="teacherBadge" aria-hidden="true">{initials}</span>
                   {teacherName}
                 </small>
               </div>
             ) : (
-              <div className={`${styles.eventCard} ${styles.detailed}`}>
+              <div className="eventCard detailed">
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <strong>{lesson.school}</strong>
                   <a href={mapsUrl(lesson.school)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: 'inherit', opacity: 0.65, display: 'flex' }} aria-label={`Open ${lesson.school} in Google Maps`}>
@@ -84,7 +84,7 @@ export default function CalendarView({ calendarRef, events, loading, mobileCalen
                 </span>
                 <span>{lesson.class_name}</span>
                 <small style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <span className={styles.teacherBadge} aria-hidden="true">{initials}</span>
+                  <span className="teacherBadge" aria-hidden="true">{initials}</span>
                   {lesson.start_time.slice(0, 5)}-{lesson.end_time.slice(0, 5)} \u00b7 {teacherName}
                 </small>
               </div>

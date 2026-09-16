@@ -340,56 +340,12 @@
   color: var(--cal-text-muted);
 }
 
-/* ── Event Cards ── */
-.eventCard {
-  min-width: 0;
-  overflow: hidden;
-}
-
-.eventCard.compact {
-  display: grid;
-  grid-template-columns: 38px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 5px;
-  width: 100%;
-  padding: 1px 3px;
+/* ── Accessibility ── */
+.fieldError {
+  color: #fb7185;
   font-size: 11px;
-  line-height: 1.45;
+  font-weight: 600;
 }
-
-.eventCard.compact span {
-  font-variant-numeric: tabular-nums;
-  opacity: 0.9;
-}
-
-.eventCard.compact strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 800;
-}
-
-.eventCard.compact small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 52px;
-  opacity: 0.85;
-  font-size: 10px;
-}
-
-.eventCard.detailed {
-  display: grid;
-  gap: 2px;
-  padding: 2px;
-}
-
-.eventCard.detailed span,
-.eventCard.detailed small {
-  opacity: 0.85;
-}
-
-/* ── Drawers ── */
 .drawerBackdrop {
   position: fixed;
   inset: 0;
@@ -736,31 +692,9 @@
   .workloadHeading {
     min-width: 0;
   }
-
-  .eventCard.compact {
-    grid-template-columns: 34px minmax(0, 1fr);
-  }
-
-  .eventCard.compact small {
-    display: none;
-  }
 }
 
 /* ── Accessibility ── */
-.teacherBadge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.15);
-  font-size: 8px;
-  font-weight: 800;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
 .fieldError {
   color: #fb7185;
   font-size: 11px;
