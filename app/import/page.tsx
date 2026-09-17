@@ -3,32 +3,169 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChangeEvent, useMemo, useState } from 'react';
-import { AlertTriangle, ArrowLeft, CheckCircle2, Filter, Loader2, ShieldCheck, Upload, XCircle } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
+  Filter,
+  Loader2,
+  ShieldCheck,
+  Upload,
+  XCircle,
+} from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { createClient } from '../../utils/supabase/client';
 import { useAppData } from '../providers/AppDataProvider';
 
-type ImportedLesson = { id: number; date: string; school: string; className: string; startTime: string; endTime: string; teacher: string | null; unavailable: boolean; confidence?: number; reviewReasons?: string[]; suggestedTeacher?: string; autoAssignedTeacher?: string };
+type ImportedLesson = {
+  id: number;
+  date: string;
+  school: string;
+  className: string;
+  startTime: string;
+  endTime: string;
+  teacher: string | null;
+  unavailable: boolean;
+  confidence?: number;
+  reviewReasons?: string[];
+  suggestedTeacher?: string;
+  autoAssignedTeacher?: string;
+};
 type PdfTextItem = { str: string; transform: number[]; width?: number; height?: number };
-type ExistingRow = { id: string; lesson_date: string; school: string; class_name: string; start_time: string; end_time: string; teacher_name: string | null; unavailable: boolean; cancelled: boolean; source: string; created_at: string; updated_at: string };
+type ExistingRow = {
+  id: string;
+  lesson_date: string;
+  school: string;
+  class_name: string;
+  start_time: string;
+  end_time: string;
+  teacher_name: string | null;
+  unavailable: boolean;
+  cancelled: boolean;
+  source: string;
+  created_at: string;
+  updated_at: string;
+};
 type ImportStatus = 'new' | 'changed' | 'duplicate' | 'conflict' | 'review';
-type PreviewLesson = ImportedLesson & { importStatus: ImportStatus; selected: boolean; issues: string[]; existingTeacher?: string | null };
+type PreviewLesson = ImportedLesson & {
+  importStatus: ImportStatus;
+  selected: boolean;
+  issues: string[];
+  existingTeacher?: string | null;
+};
 type RemovedCandidate = ExistingRow;
-type Comparison = { newCount: number; duplicateCount: number; changedCount: number; possibleRemovedCount: number; conflictCount: number; reviewCount: number };
+type Comparison = {
+  newCount: number;
+  duplicateCount: number;
+  changedCount: number;
+  possibleRemovedCount: number;
+  conflictCount: number;
+  reviewCount: number;
+};
 type FilterName = 'all' | ImportStatus;
-const teacherNames = ['Audrey Jansen', 'Siew Lynn', 'Shi Yi', 'Claris', 'Gerald', 'Edward', 'Wero', 'Joel', 'Audrey', 'Ashley'];
-const schoolNames = ['Compassvale Primary School','Meridian Primary School','Chongfu Primary School','Valour Primary School','Rulang Primary School','Bukit Timah Primary School','Bukit Timah PS','Farrer Park CCA','Monfort Junior','River Valley','Rulang Pri'];
+const teacherNames = [
+  'Audrey Jansen',
+  'Siew Lynn',
+  'Shi Yi',
+  'Claris',
+  'Gerald',
+  'Edward',
+  'Wero',
+  'Joel',
+  'Audrey',
+  'Ashley',
+];
+const schoolNames = [
+  'Compassvale Primary School',
+  'Meridian Primary School',
+  'Chongfu Primary School',
+  'Valour Primary School',
+  'Rulang Primary School',
+  'Bukit Timah Primary School',
+  'Bukit Timah PS',
+  'Farrer Park CCA',
+  'Monfort Junior',
+  'River Valley',
+  'Rulang Pri',
+];
 const pad = (value: number) => String(value).padStart(2, '0');
-function toTime(value: string) { const cleaned = value.replace('.', '').replace(':', '').padStart(4, '0'); return `${cleaned.slice(0, 2)}:${cleaned.slice(2, 4)}`; }
-function splitSchoolAndClass(value: string) { const school = schoolNames.find((name) => value.toLowerCase().startsWith(name.toLowerCase())); if (!school) { const words = value.trim().split(/\s+/); return { school: words.slice(0, Math.min(3, words.length)).join(' '), className: words.slice(Math.min(3, words.length)).join(' ') || 'Programme' }; } return { school, className: value.slice(school.length).trim() || 'Programme' }; }
-function parseLessonLine(line: string, date: string, id: number): ImportedLesson | null { const normalized = line.replace(/\s+/g, ' ').trim(); const timeMatch = normalized.match(/(\d{1,2}[.:]?\d{2})\s*-\s*(\d{1,2}[.:]?\d{2})/); if (!timeMatch || timeMatch.index === undefined) return null; const beforeTime = normalized.slice(0, timeMatch.index).trim(); const afterTime = normalized.slice(timeMatch.index + timeMatch[0].length).trim(); const matchedTeacher = teacherNames.find((teacher) => afterTime.toLowerCase().endsWith(teacher.toLowerCase())); const teacher = matchedTeacher === 'Audrey Jansen' ? 'Audrey' : matchedTeacher ?? null; const { school, className } = splitSchoolAndClass(beforeTime); return { id, date, school, className, startTime: toTime(timeMatch[1]), endTime: toTime(timeMatch[2]), teacher, unavailable: false }; }
-function dateForCell(year: number, monthIndex: number, cellIndex: number) { const first = new Date(year, monthIndex, 1); const gridStart = new Date(year, monthIndex, 1 - first.getDay()); gridStart.setDate(gridStart.getDate() + cellIndex); return `${gridStart.getFullYear()}-${pad(gridStart.getMonth() + 1)}-${pad(gridStart.getDate())}`; }
-function lessonKey(lesson: Pick<ImportedLesson,'date'|'startTime'|'endTime'|'school'|'className'|'teacher'>) { return `${lesson.date}|${lesson.startTime.slice(0,5)}|${lesson.endTime.slice(0,5)}|${lesson.school.trim().toLowerCase()}|${lesson.className.trim().toLowerCase()}|${lesson.teacher ?? ''}`; }
-function schoolMatchKey(value: string) { return value.toLowerCase().replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\bpri\b/g, 'primary school').replace(/\bps\b(?!\s+school)/g, 'primary school').replace(/\s+\d{1,2}[a-z]{0,3}\s*$/i, '').replace(/\s+/g, ' ').trim(); }
-function teacherMatchKey(lesson: Pick<ImportedLesson, 'school'|'className'|'startTime'|'endTime'>) { return `${schoolMatchKey(lesson.school)}|${lesson.className.trim().toLowerCase()}|${lesson.startTime.slice(0,5)}|${lesson.endTime.slice(0,5)}`; }
+function toTime(value: string) {
+  const cleaned = value.replace('.', '').replace(':', '').padStart(4, '0');
+  return `${cleaned.slice(0, 2)}:${cleaned.slice(2, 4)}`;
+}
+function splitSchoolAndClass(value: string) {
+  const school = schoolNames.find((name) => value.toLowerCase().startsWith(name.toLowerCase()));
+  if (!school) {
+    const words = value.trim().split(/\s+/);
+    return {
+      school: words.slice(0, Math.min(3, words.length)).join(' '),
+      className: words.slice(Math.min(3, words.length)).join(' ') || 'Programme',
+    };
+  }
+  return { school, className: value.slice(school.length).trim() || 'Programme' };
+}
+function parseLessonLine(line: string, date: string, id: number): ImportedLesson | null {
+  const normalized = line.replace(/\s+/g, ' ').trim();
+  const timeMatch = normalized.match(/(\d{1,2}[.:]?\d{2})\s*-\s*(\d{1,2}[.:]?\d{2})/);
+  if (!timeMatch || timeMatch.index === undefined) return null;
+  const beforeTime = normalized.slice(0, timeMatch.index).trim();
+  const afterTime = normalized.slice(timeMatch.index + timeMatch[0].length).trim();
+  const matchedTeacher = teacherNames.find((teacher) =>
+    afterTime.toLowerCase().endsWith(teacher.toLowerCase()),
+  );
+  const teacher = matchedTeacher === 'Audrey Jansen' ? 'Audrey' : (matchedTeacher ?? null);
+  const { school, className } = splitSchoolAndClass(beforeTime);
+  return {
+    id,
+    date,
+    school,
+    className,
+    startTime: toTime(timeMatch[1]),
+    endTime: toTime(timeMatch[2]),
+    teacher,
+    unavailable: false,
+  };
+}
+function dateForCell(year: number, monthIndex: number, cellIndex: number) {
+  const first = new Date(year, monthIndex, 1);
+  const gridStart = new Date(year, monthIndex, 1 - first.getDay());
+  gridStart.setDate(gridStart.getDate() + cellIndex);
+  return `${gridStart.getFullYear()}-${pad(gridStart.getMonth() + 1)}-${pad(gridStart.getDate())}`;
+}
+function lessonKey(
+  lesson: Pick<
+    ImportedLesson,
+    'date' | 'startTime' | 'endTime' | 'school' | 'className' | 'teacher'
+  >,
+) {
+  return `${lesson.date}|${lesson.startTime.slice(0, 5)}|${lesson.endTime.slice(0, 5)}|${lesson.school.trim().toLowerCase()}|${lesson.className.trim().toLowerCase()}|${lesson.teacher ?? ''}`;
+}
+function schoolMatchKey(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/\s*\([^)]*\)\s*/g, ' ')
+    .replace(/\bpri\b/g, 'primary school')
+    .replace(/\bps\b(?!\s+school)/g, 'primary school')
+    .replace(/\s+\d{1,2}[a-z]{0,3}\s*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function teacherMatchKey(
+  lesson: Pick<ImportedLesson, 'school' | 'className' | 'startTime' | 'endTime'>,
+) {
+  return `${schoolMatchKey(lesson.school)}|${lesson.className.trim().toLowerCase()}|${lesson.startTime.slice(0, 5)}|${lesson.endTime.slice(0, 5)}`;
+}
 
 type PositionedItem = { text: string; x: number; top: number };
-const weekdayIndex: Record<string, number> = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+const weekdayIndex: Record<string, number> = {
+  sunday: 0,
+  monday: 1,
+  tuesday: 2,
+  wednesday: 3,
+  thursday: 4,
+  friday: 5,
+  saturday: 6,
+};
 
 function groupByTop<T extends { top: number }>(items: T[], tolerance = 6) {
   const groups: { top: number; items: T[] }[] = [];
@@ -36,7 +173,8 @@ function groupByTop<T extends { top: number }>(items: T[], tolerance = 6) {
     const existing = groups.find((group) => Math.abs(group.top - item.top) <= tolerance);
     if (existing) {
       existing.items.push(item);
-      existing.top = existing.items.reduce((sum, entry) => sum + entry.top, 0) / existing.items.length;
+      existing.top =
+        existing.items.reduce((sum, entry) => sum + entry.top, 0) / existing.items.length;
     } else groups.push({ top: item.top, items: [item] });
   }
   return groups.sort((a, b) => a.top - b.top);
@@ -51,11 +189,16 @@ function columnLayout(items: PositionedItem[], viewportWidth: number) {
   weekdayItems.forEach((item) => centres.set(weekdayIndex[item.text.toLowerCase()], item.x));
 
   if (centres.size < 5) {
-    const dateGroups = groupByTop(items.filter((item) => /^\d{1,2}$/.test(item.text) && item.top > 50), 6)
-      .filter((group) => group.items.length >= 5);
+    const dateGroups = groupByTop(
+      items.filter((item) => /^\d{1,2}$/.test(item.text) && item.top > 50),
+      6,
+    ).filter((group) => group.items.length >= 5);
     const widest = dateGroups.sort((a, b) => b.items.length - a.items.length)[0];
     if (widest) {
-      widest.items.sort((a, b) => a.x - b.x).slice(0, 7).forEach((item, index) => centres.set(index, item.x));
+      widest.items
+        .sort((a, b) => a.x - b.x)
+        .slice(0, 7)
+        .forEach((item, index) => centres.set(index, item.x));
     }
   }
 
@@ -66,30 +209,58 @@ function columnLayout(items: PositionedItem[], viewportWidth: number) {
     const dayGap = known[i][0] - known[i - 1][0];
     if (dayGap > 0) gaps.push((known[i][1] - known[i - 1][1]) / dayGap);
   }
-  const averageGap = gaps.length ? gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length : viewportWidth / 7;
+  const averageGap = gaps.length
+    ? gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length
+    : viewportWidth / 7;
   const first = known[0];
-  const projected = Array.from({ length: 7 }, (_, day) => centres.get(day) ?? first[1] + (day - first[0]) * averageGap);
+  const projected = Array.from(
+    { length: 7 },
+    (_, day) => centres.get(day) ?? first[1] + (day - first[0]) * averageGap,
+  );
   const bounds = projected.map((centre, index) => {
-    const left = index === 0 ? Math.max(0, centre - averageGap / 2) : (projected[index - 1] + centre) / 2;
-    const right = index === 6 ? Math.min(viewportWidth, centre + averageGap / 2) : (centre + projected[index + 1]) / 2;
+    const left =
+      index === 0 ? Math.max(0, centre - averageGap / 2) : (projected[index - 1] + centre) / 2;
+    const right =
+      index === 6
+        ? Math.min(viewportWidth, centre + averageGap / 2)
+        : (centre + projected[index + 1]) / 2;
     return { left, right };
   });
   return bounds;
 }
 
 function calendarRows(items: PositionedItem[]) {
-  return groupByTop(items.filter((item) => /^\d{1,2}$/.test(item.text) && item.top > 55), 7)
+  return groupByTop(
+    items.filter((item) => /^\d{1,2}$/.test(item.text) && item.top > 55),
+    7,
+  )
     .filter((group) => group.items.length >= 4)
     .sort((a, b) => a.top - b.top)
     .slice(0, 6);
 }
 
-async function extractLessons(file: File): Promise<{ lessons: ImportedLesson[]; monthName: string }> {
+async function extractLessons(
+  file: File,
+): Promise<{ lessons: ImportedLesson[]; monthName: string }> {
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
-  pdfjs.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.10.38/legacy/build/pdf.worker.min.mjs';
+  pdfjs.GlobalWorkerOptions.workerSrc =
+    'https://unpkg.com/pdfjs-dist@4.10.38/legacy/build/pdf.worker.min.mjs';
   const data = new Uint8Array(await file.arrayBuffer());
   const document = await pdfjs.getDocument({ data }).promise;
-  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const monthNames = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
   const lessons: ImportedLesson[] = [];
   let detectedMonth = -1;
   let detectedYear = 0;
@@ -101,10 +272,16 @@ async function extractLessons(file: File): Promise<{ lessons: ImportedLesson[]; 
     const content = await page.getTextContent();
     const items: PositionedItem[] = (content.items as PdfTextItem[])
       .filter((item) => item.str.trim())
-      .map((item) => ({ text: item.str.replace(/\s+/g, ' ').trim(), x: item.transform[4], top: viewport.height - item.transform[5] }));
+      .map((item) => ({
+        text: item.str.replace(/\s+/g, ' ').trim(),
+        x: item.transform[4],
+        top: viewport.height - item.transform[5],
+      }));
 
     const fullText = items.map((item) => item.text).join(' ');
-    const title = fullText.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})/i);
+    const title = fullText.match(
+      /(January|February|March|April|May|June|July|August|September|October|November|December)\s+(20\d{2})/i,
+    );
     if (title) {
       detectedMonth = monthNames.findIndex((name) => name.toLowerCase() === title[1].toLowerCase());
       detectedYear = Number(title[2]);
@@ -120,12 +297,20 @@ async function extractLessons(file: File): Promise<{ lessons: ImportedLesson[]; 
     const linesByCell = new Map<number, Map<number, { x: number; text: string }[]>>();
 
     for (const item of items) {
-      if (item.top < rowStarts[0] + 4 || /^(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)$/i.test(item.text) || /^\d{1,2}$/.test(item.text)) continue;
+      if (
+        item.top < rowStarts[0] + 4 ||
+        /^(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)$/i.test(item.text) ||
+        /^\d{1,2}$/.test(item.text)
+      )
+        continue;
       const column = columns.findIndex((bound) => item.x >= bound.left && item.x < bound.right);
       let row = -1;
       for (let index = 0; index < rowStarts.length; index += 1) {
         const end = index === rowStarts.length - 1 ? pageBottom : rowStarts[index + 1];
-        if (item.top >= rowStarts[index] && item.top < end) { row = index; break; }
+        if (item.top >= rowStarts[index] && item.top < end) {
+          row = index;
+          break;
+        }
       }
       if (column < 0 || row < 0) continue;
       const cell = row * 7 + column;
@@ -141,7 +326,12 @@ async function extractLessons(file: File): Promise<{ lessons: ImportedLesson[]; 
       const date = dateForCell(detectedYear, detectedMonth, cell);
       const lines = [...lineMap.entries()]
         .sort(([a], [b]) => a - b)
-        .map(([, parts]) => parts.sort((a, b) => a.x - b.x).map((part) => part.text).join(' '));
+        .map(([, parts]) =>
+          parts
+            .sort((a, b) => a.x - b.x)
+            .map((part) => part.text)
+            .join(' '),
+        );
       for (const line of lines) {
         const parsed = parseLessonLine(line, date, id++);
         if (parsed) lessons.push(parsed);
@@ -149,13 +339,50 @@ async function extractLessons(file: File): Promise<{ lessons: ImportedLesson[]; 
     }
   }
 
-  if (detectedMonth < 0 || !detectedYear) throw new Error('The month and year could not be detected from this PDF.');
-  if (!lessons.length) throw new Error('No lessons could be detected. This PDF may be scanned or use an unsupported layout.');
-  const unique = lessons.filter((lesson, index, all) => all.findIndex((candidate) => lessonKey(candidate) === lessonKey(lesson)) === index);
-  return { lessons: unique.sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`)), monthName: `${monthNames[detectedMonth]} ${detectedYear}` };
+  if (detectedMonth < 0 || !detectedYear)
+    throw new Error('The month and year could not be detected from this PDF.');
+  if (!lessons.length)
+    throw new Error(
+      'No lessons could be detected. This PDF may be scanned or use an unsupported layout.',
+    );
+  const unique = lessons.filter(
+    (lesson, index, all) =>
+      all.findIndex((candidate) => lessonKey(candidate) === lessonKey(lesson)) === index,
+  );
+  return {
+    lessons: unique.sort((a, b) =>
+      `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`),
+    ),
+    monthName: `${monthNames[detectedMonth]} ${detectedYear}`,
+  };
 }
 
-const excelMonths: Record<string, number> = { jan: 0, january: 0, feb: 1, february: 1, mar: 2, march: 2, apr: 3, april: 3, may: 4, jun: 5, june: 5, jul: 6, july: 6, aug: 7, august: 7, sep: 8, sept: 8, september: 8, oct: 9, october: 9, nov: 10, november: 10, dec: 11, december: 11 };
+const excelMonths: Record<string, number> = {
+  jan: 0,
+  january: 0,
+  feb: 1,
+  february: 1,
+  mar: 2,
+  march: 2,
+  apr: 3,
+  april: 3,
+  may: 4,
+  jun: 5,
+  june: 5,
+  jul: 6,
+  july: 6,
+  aug: 7,
+  august: 7,
+  sep: 8,
+  sept: 8,
+  september: 8,
+  oct: 9,
+  october: 9,
+  nov: 10,
+  november: 10,
+  dec: 11,
+  december: 11,
+};
 
 function excelClock(hour: string, minute: string | undefined, meridiem: string) {
   let value = Number(hour);
@@ -166,26 +393,40 @@ function excelClock(hour: string, minute: string | undefined, meridiem: string) 
 }
 
 function parseExcelSession(value: string, year: number) {
-  const text = value.replace(/\s+/g, ' ').replace(/\.{2,}/g, '.').trim();
-  const dateMatch = [...text.matchAll(/\b(\d{1,2})\s+([a-z]{3,9})\b/gi)].find((match) => excelMonths[match[2].toLowerCase()] !== undefined);
+  const text = value
+    .replace(/\s+/g, ' ')
+    .replace(/\.{2,}/g, '.')
+    .trim();
+  const dateMatch = [...text.matchAll(/\b(\d{1,2})\s+([a-z]{3,9})\b/gi)].find(
+    (match) => excelMonths[match[2].toLowerCase()] !== undefined,
+  );
   const times = [...text.matchAll(/(\d{1,2})(?:[.:](\d{2}))?\s*(a\.?m\.?|p\.?m\.?)/gi)];
   if (!dateMatch || times.length < 2) return null;
   const month = excelMonths[dateMatch[2].toLowerCase()];
   if (month === undefined) return null;
   const date = `${year}-${pad(month + 1)}-${pad(Number(dateMatch[1]))}`;
-  return { date, startTime: excelClock(times[0][1], times[0][2], times[0][3]), endTime: excelClock(times[1][1], times[1][2], times[1][3]) };
+  return {
+    date,
+    startTime: excelClock(times[0][1], times[0][2], times[0][3]),
+    endTime: excelClock(times[1][1], times[1][2], times[1][3]),
+  };
 }
 
 function parseExcelTiming(value: string) {
-  const match = value.replace(/\s+/g, ' ').match(/(\d{1,2}[.:]?\d{2})\s*(?:-|–|to)\s*(\d{1,2}[.:]?\d{2})/i);
+  const match = value
+    .replace(/\s+/g, ' ')
+    .match(/(\d{1,2}[.:]?\d{2})\s*(?:-|–|to)\s*(\d{1,2}[.:]?\d{2})/i);
   if (!match) return null;
   return { startTime: toTime(match[1]), endTime: toTime(match[2]) };
 }
 
 function parseExcelDateCell(cell: XLSX.CellObject | undefined, year: number) {
   if (!cell) return null;
-  if (cell.v instanceof Date && !Number.isNaN(cell.v.getTime())) return `${cell.v.getFullYear()}-${pad(cell.v.getMonth() + 1)}-${pad(cell.v.getDate())}`;
-  const value = String(cell.w ?? cell.v ?? '').replace(/\s+/g, ' ').trim();
+  if (cell.v instanceof Date && !Number.isNaN(cell.v.getTime()))
+    return `${cell.v.getFullYear()}-${pad(cell.v.getMonth() + 1)}-${pad(cell.v.getDate())}`;
+  const value = String(cell.w ?? cell.v ?? '')
+    .replace(/\s+/g, ' ')
+    .trim();
   const dateMatch = value.match(/\b(\d{1,2})\s*[-/]?\s*([a-z]{3,9})(?:\s*[,/-]?\s*(20\d{2}))?\b/i);
   if (!dateMatch) return null;
   const month = excelMonths[dateMatch[2].toLowerCase()];
@@ -196,21 +437,36 @@ function parseExcelDateCell(cell: XLSX.CellObject | undefined, year: number) {
 function parseExcelTimeCell(value: string) {
   const text = value.replace(/\s+/g, ' ').trim();
   const twelveHour = [...text.matchAll(/(\d{1,2})(?:[.:](\d{2}))?\s*(a\.?m\.?|p\.?m\.?)/gi)];
-  if (twelveHour.length >= 2) return { startTime: excelClock(twelveHour[0][1], twelveHour[0][2], twelveHour[0][3]), endTime: excelClock(twelveHour[1][1], twelveHour[1][2], twelveHour[1][3]) };
+  if (twelveHour.length >= 2)
+    return {
+      startTime: excelClock(twelveHour[0][1], twelveHour[0][2], twelveHour[0][3]),
+      endTime: excelClock(twelveHour[1][1], twelveHour[1][2], twelveHour[1][3]),
+    };
   const twentyFourHour = text.match(/(\d{1,2}:\d{2})\s*(?:-|–|to)\s*(\d{1,2}:\d{2})/i);
-  if (twentyFourHour) return { startTime: toTime(twentyFourHour[1]), endTime: toTime(twentyFourHour[2]) };
+  if (twentyFourHour)
+    return { startTime: toTime(twentyFourHour[1]), endTime: toTime(twentyFourHour[2]) };
   return null;
 }
 
-function extractExcelTableLessons(workbook: XLSX.WorkBook, school: string, defaultTeacher: string | null) {
+function extractExcelTableLessons(
+  workbook: XLSX.WorkBook,
+  school: string,
+  defaultTeacher: string | null,
+) {
   for (const name of workbook.SheetNames) {
     const sheet = workbook.Sheets[name];
     if (!sheet['!ref']) continue;
     const range = XLSX.utils.decode_range(sheet['!ref']);
-    for (let headerRow = range.s.r; headerRow <= Math.min(range.e.r, range.s.r + 20); headerRow += 1) {
+    for (
+      let headerRow = range.s.r;
+      headerRow <= Math.min(range.e.r, range.s.r + 20);
+      headerRow += 1
+    ) {
       const columns: Record<string, number> = {};
       for (let column = range.s.c; column <= range.e.c; column += 1) {
-        const value = String(sheet[XLSX.utils.encode_cell({ r: headerRow, c: column })]?.w ?? '').toLowerCase().trim();
+        const value = String(sheet[XLSX.utils.encode_cell({ r: headerRow, c: column })]?.w ?? '')
+          .toLowerCase()
+          .trim();
         if (/^date$|lesson date/.test(value)) columns.date = column;
         if (/^start$|start time|from/.test(value)) columns.start = column;
         if (/^end$|end time|to/.test(value)) columns.end = column;
@@ -219,20 +475,61 @@ function extractExcelTableLessons(workbook: XLSX.WorkBook, school: string, defau
         if (/class|programme|program/.test(value)) columns.className = column;
         if (/teacher|coach|instructor/.test(value)) columns.teacher = column;
       }
-      if (columns.date === undefined || columns.className === undefined || (columns.time === undefined && (columns.start === undefined || columns.end === undefined))) continue;
+      if (
+        columns.date === undefined ||
+        columns.className === undefined ||
+        (columns.time === undefined && (columns.start === undefined || columns.end === undefined))
+      )
+        continue;
       const year = Number(workbook.Props?.CreatedDate?.getFullYear?.() ?? new Date().getFullYear());
-      const lessons: ImportedLesson[] = []; let id = Date.now();
+      const lessons: ImportedLesson[] = [];
+      let id = Date.now();
       for (let row = headerRow + 1; row <= range.e.r; row += 1) {
-        const date = parseExcelDateCell(sheet[XLSX.utils.encode_cell({ r: row, c: columns.date })], year);
-        const className = String(sheet[XLSX.utils.encode_cell({ r: row, c: columns.className })]?.w ?? '').replace(/\s+/g, ' ').trim();
+        const date = parseExcelDateCell(
+          sheet[XLSX.utils.encode_cell({ r: row, c: columns.date })],
+          year,
+        );
+        const className = String(
+          sheet[XLSX.utils.encode_cell({ r: row, c: columns.className })]?.w ?? '',
+        )
+          .replace(/\s+/g, ' ')
+          .trim();
         if (!date || !className) continue;
-        const timing = columns.time !== undefined
-          ? parseExcelTimeCell(String(sheet[XLSX.utils.encode_cell({ r: row, c: columns.time })]?.w ?? ''))
-          : { startTime: toTime(String(sheet[XLSX.utils.encode_cell({ r: row, c: columns.start })]?.w ?? '')), endTime: toTime(String(sheet[XLSX.utils.encode_cell({ r: row, c: columns.end })]?.w ?? '')) };
+        const timing =
+          columns.time !== undefined
+            ? parseExcelTimeCell(
+                String(sheet[XLSX.utils.encode_cell({ r: row, c: columns.time })]?.w ?? ''),
+              )
+            : {
+                startTime: toTime(
+                  String(sheet[XLSX.utils.encode_cell({ r: row, c: columns.start })]?.w ?? ''),
+                ),
+                endTime: toTime(
+                  String(sheet[XLSX.utils.encode_cell({ r: row, c: columns.end })]?.w ?? ''),
+                ),
+              };
         if (!timing || timing.startTime === '00:00' || timing.endTime === '00:00') continue;
-        const rowSchool = columns.school === undefined ? school : String(sheet[XLSX.utils.encode_cell({ r: row, c: columns.school })]?.w ?? school).trim() || school;
-        const rowTeacher = columns.teacher === undefined ? defaultTeacher : String(sheet[XLSX.utils.encode_cell({ r: row, c: columns.teacher })]?.w ?? '').trim() || defaultTeacher;
-        lessons.push({ id: id++, date, ...timing, school: rowSchool, className, teacher: rowTeacher, unavailable: false });
+        const rowSchool =
+          columns.school === undefined
+            ? school
+            : String(
+                sheet[XLSX.utils.encode_cell({ r: row, c: columns.school })]?.w ?? school,
+              ).trim() || school;
+        const rowTeacher =
+          columns.teacher === undefined
+            ? defaultTeacher
+            : String(
+                sheet[XLSX.utils.encode_cell({ r: row, c: columns.teacher })]?.w ?? '',
+              ).trim() || defaultTeacher;
+        lessons.push({
+          id: id++,
+          date,
+          ...timing,
+          school: rowSchool,
+          className,
+          teacher: rowTeacher,
+          unavailable: false,
+        });
       }
       if (lessons.length) return { lessons, monthName: `Excel timetable ${year}` };
     }
@@ -240,13 +537,22 @@ function extractExcelTableLessons(workbook: XLSX.WorkBook, school: string, defau
   return null;
 }
 
-async function extractExcelLessons(file: File, school: string, defaultTeacher: string | null): Promise<{ lessons: ImportedLesson[]; monthName: string }> {
+async function extractExcelLessons(
+  file: File,
+  school: string,
+  defaultTeacher: string | null,
+): Promise<{ lessons: ImportedLesson[]; monthName: string }> {
   const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
-  const worksheet = workbook.SheetNames.map((name) => ({ name, sheet: workbook.Sheets[name] })).find(({ sheet }) => {
+  const worksheet = workbook.SheetNames.map((name) => ({
+    name,
+    sheet: workbook.Sheets[name],
+  })).find(({ sheet }) => {
     const range = sheet['!ref'] ? XLSX.utils.decode_range(sheet['!ref']) : null;
     if (!range) return false;
     for (let row = range.s.r; row <= Math.min(range.e.r, range.s.r + 10); row += 1) {
-      const values = Array.from({ length: range.e.c - range.s.c + 1 }, (_, index) => String(sheet[XLSX.utils.encode_cell({ r: row, c: range.s.c + index })]?.w ?? '')).join(' ');
+      const values = Array.from({ length: range.e.c - range.s.c + 1 }, (_, index) =>
+        String(sheet[XLSX.utils.encode_cell({ r: row, c: range.s.c + index })]?.w ?? ''),
+      ).join(' ');
       if (/class/i.test(values) && /session/i.test(values)) return true;
     }
     return false;
@@ -254,52 +560,108 @@ async function extractExcelLessons(file: File, school: string, defaultTeacher: s
   if (!worksheet?.sheet['!ref']) {
     const tableResult = extractExcelTableLessons(workbook, school, defaultTeacher);
     if (tableResult) return tableResult;
-    throw new Error('No supported Excel timetable layout was found. Expected a class/session matrix or Date, Time, School, Class columns.');
+    throw new Error(
+      'No supported Excel timetable layout was found. Expected a class/session matrix or Date, Time, School, Class columns.',
+    );
   }
 
   const range = XLSX.utils.decode_range(worksheet.sheet['!ref']);
-  let headerRow = -1; let classColumn = -1; let coachColumn = -1; let timingColumn = -1; const sessionColumns: number[] = [];
+  let headerRow = -1;
+  let classColumn = -1;
+  let coachColumn = -1;
+  let timingColumn = -1;
+  const sessionColumns: number[] = [];
   for (let row = range.s.r; row <= Math.min(range.e.r, range.s.r + 10); row += 1) {
     for (let column = range.s.c; column <= range.e.c; column += 1) {
-      const value = String(worksheet.sheet[XLSX.utils.encode_cell({ r: row, c: column })]?.w ?? '').trim();
-      if (/class/i.test(value)) { headerRow = row; classColumn = column; }
+      const value = String(
+        worksheet.sheet[XLSX.utils.encode_cell({ r: row, c: column })]?.w ?? '',
+      ).trim();
+      if (/class/i.test(value)) {
+        headerRow = row;
+        classColumn = column;
+      }
       if (/coach/i.test(value)) coachColumn = column;
       if (/timing|time/i.test(value)) timingColumn = column;
       if (/^session\s*\d+/i.test(value)) sessionColumns.push(column);
     }
     if (headerRow >= 0 && sessionColumns.length) break;
   }
-  if (headerRow < 0 || classColumn < 0 || !sessionColumns.length) throw new Error('Could not identify class and session columns in the Excel schedule.');
+  if (headerRow < 0 || classColumn < 0 || !sessionColumns.length)
+    throw new Error('Could not identify class and session columns in the Excel schedule.');
 
   const year = Number(file.name.match(/20\d{2}/)?.[0] ?? new Date().getFullYear());
-  const title = String(worksheet.sheet[XLSX.utils.encode_cell({ r: range.s.r, c: range.s.c })]?.w ?? '');
-  const programme = title.match(/for\s+(.+?)\s+sessions/i)?.[1]?.trim() ?? title.match(/^(.+?)\s+as\s+of/i)?.[1]?.trim() ?? '';
-  const lessons: ImportedLesson[] = []; let id = Date.now();
+  const title = String(
+    worksheet.sheet[XLSX.utils.encode_cell({ r: range.s.r, c: range.s.c })]?.w ?? '',
+  );
+  const programme =
+    title.match(/for\s+(.+?)\s+sessions/i)?.[1]?.trim() ??
+    title.match(/^(.+?)\s+as\s+of/i)?.[1]?.trim() ??
+    '';
+  const lessons: ImportedLesson[] = [];
+  let id = Date.now();
   for (let row = headerRow + 1; row <= range.e.r; row += 1) {
-    const classLabel = String(worksheet.sheet[XLSX.utils.encode_cell({ r: row, c: classColumn })]?.w ?? '').replace(/\s+/g, ' ').trim();
+    const classLabel = String(
+      worksheet.sheet[XLSX.utils.encode_cell({ r: row, c: classColumn })]?.w ?? '',
+    )
+      .replace(/\s+/g, ' ')
+      .trim();
     if (!classLabel) continue;
     const className = programme ? `${programme} - ${classLabel}` : classLabel;
-    const coach = coachColumn >= 0 ? String(worksheet.sheet[XLSX.utils.encode_cell({ r: row, c: coachColumn })]?.w ?? '').trim() : '';
-    const matchedTeacher = teacherNames.find((teacher) => coach.toLowerCase().includes(teacher.toLowerCase()));
-    const teacher = matchedTeacher === 'Audrey Jansen' ? 'Audrey' : matchedTeacher ?? defaultTeacher;
+    const coach =
+      coachColumn >= 0
+        ? String(
+            worksheet.sheet[XLSX.utils.encode_cell({ r: row, c: coachColumn })]?.w ?? '',
+          ).trim()
+        : '';
+    const matchedTeacher = teacherNames.find((teacher) =>
+      coach.toLowerCase().includes(teacher.toLowerCase()),
+    );
+    const teacher =
+      matchedTeacher === 'Audrey Jansen' ? 'Audrey' : (matchedTeacher ?? defaultTeacher);
     if (timingColumn >= 0) {
-      const timing = parseExcelTiming(String(worksheet.sheet[XLSX.utils.encode_cell({ r: row, c: timingColumn })]?.w ?? ''));
+      const timing = parseExcelTiming(
+        String(worksheet.sheet[XLSX.utils.encode_cell({ r: row, c: timingColumn })]?.w ?? ''),
+      );
       if (!timing) continue;
       for (const column of sessionColumns) {
-        const date = parseExcelDateCell(worksheet.sheet[XLSX.utils.encode_cell({ r: row, c: column })], year);
-        if (date) lessons.push({ id: id++, date, ...timing, school, className, teacher, unavailable: false });
+        const date = parseExcelDateCell(
+          worksheet.sheet[XLSX.utils.encode_cell({ r: row, c: column })],
+          year,
+        );
+        if (date)
+          lessons.push({
+            id: id++,
+            date,
+            ...timing,
+            school,
+            className,
+            teacher,
+            unavailable: false,
+          });
       }
     } else {
       for (const column of sessionColumns) {
-        const session = String(worksheet.sheet[XLSX.utils.encode_cell({ r: row, c: column })]?.w ?? '').trim();
+        const session = String(
+          worksheet.sheet[XLSX.utils.encode_cell({ r: row, c: column })]?.w ?? '',
+        ).trim();
         const parsed = parseExcelSession(session, year);
-        if (parsed) lessons.push({ id: id++, ...parsed, school, className, teacher, unavailable: false });
+        if (parsed)
+          lessons.push({ id: id++, ...parsed, school, className, teacher, unavailable: false });
       }
     }
   }
-  if (!lessons.length) throw new Error('No dated class sessions could be detected in this Excel schedule.');
-  const unique = lessons.filter((lesson, index, all) => all.findIndex((candidate) => lessonKey(candidate) === lessonKey(lesson)) === index);
-  return { lessons: unique.sort((a, b) => `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`)), monthName: `Excel timetable ${year}` };
+  if (!lessons.length)
+    throw new Error('No dated class sessions could be detected in this Excel schedule.');
+  const unique = lessons.filter(
+    (lesson, index, all) =>
+      all.findIndex((candidate) => lessonKey(candidate) === lessonKey(lesson)) === index,
+  );
+  return {
+    lessons: unique.sort((a, b) =>
+      `${a.date}${a.startTime}`.localeCompare(`${b.date}${b.startTime}`),
+    ),
+    monthName: `Excel timetable ${year}`,
+  };
 }
 
 export default function ImportPage() {
@@ -310,7 +672,9 @@ export default function ImportPage() {
   const [removedCandidates, setRemovedCandidates] = useState<RemovedCandidate[]>([]);
   const [monthName, setMonthName] = useState('');
   const [fileName, setFileName] = useState('');
-  const [status, setStatus] = useState<'idle'|'reading'|'ready'|'saving'|'saved'|'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'reading' | 'ready' | 'saving' | 'saved' | 'error'>(
+    'idle',
+  );
   const [message, setMessage] = useState('');
   const [comparison, setComparison] = useState<Comparison | null>(null);
   const [filter, setFilter] = useState<FilterName>('all');
@@ -326,47 +690,159 @@ export default function ImportPage() {
 
   const assignedCount = useMemo(() => lessons.filter((lesson) => lesson.teacher).length, [lessons]);
   const selectedLessons = useMemo(() => lessons.filter((lesson) => lesson.selected), [lessons]);
-  const filteredLessons = useMemo(() => filter === 'all' ? lessons : lessons.filter((lesson) => lesson.importStatus === filter), [lessons, filter]);
-  const safeLessons = useMemo(() => lessons.filter((lesson) => lesson.importStatus === 'new' || lesson.importStatus === 'changed'), [lessons]);
-  const unsafeSelected = selectedLessons.filter((lesson) => lesson.importStatus === 'conflict' || lesson.importStatus === 'review');
+  const filteredLessons = useMemo(
+    () => (filter === 'all' ? lessons : lessons.filter((lesson) => lesson.importStatus === filter)),
+    [lessons, filter],
+  );
+  const safeLessons = useMemo(
+    () =>
+      lessons.filter(
+        (lesson) => lesson.importStatus === 'new' || lesson.importStatus === 'changed',
+      ),
+    [lessons],
+  );
+  const unsafeSelected = selectedLessons.filter(
+    (lesson) => lesson.importStatus === 'conflict' || lesson.importStatus === 'review',
+  );
 
-  const baseKey = (value: {date:string;startTime:string;endTime:string;school:string;className:string}) =>
-    `${value.date}|${value.startTime.slice(0,5)}|${value.endTime.slice(0,5)}|${value.school.trim().toLowerCase()}|${value.className.trim().toLowerCase()}`;
-  const minutes = (value: string) => { const [hour, minute] = value.slice(0,5).split(':').map(Number); return hour * 60 + minute; };
-  const overlaps = (a: {startTime:string;endTime:string}, b: {startTime:string;endTime:string}) => minutes(a.startTime) < minutes(b.endTime) && minutes(b.startTime) < minutes(a.endTime);
+  const baseKey = (value: {
+    date: string;
+    startTime: string;
+    endTime: string;
+    school: string;
+    className: string;
+  }) =>
+    `${value.date}|${value.startTime.slice(0, 5)}|${value.endTime.slice(0, 5)}|${value.school.trim().toLowerCase()}|${value.className.trim().toLowerCase()}`;
+  const minutes = (value: string) => {
+    const [hour, minute] = value.slice(0, 5).split(':').map(Number);
+    return hour * 60 + minute;
+  };
+  const overlaps = (
+    a: { startTime: string; endTime: string },
+    b: { startTime: string; endTime: string },
+  ) => minutes(a.startTime) < minutes(b.endTime) && minutes(b.startTime) < minutes(a.endTime);
 
-  const analyseImport = (detected: ImportedLesson[], existingRows: ExistingRow[], historyRows: ExistingRow[] = []) => {
+  const analyseImport = (
+    detected: ImportedLesson[],
+    existingRows: ExistingRow[],
+    historyRows: ExistingRow[] = [],
+  ) => {
     const teacherHistory = new Map<string, Map<string, number>>();
-    historyRows.filter((row) => !row.cancelled && row.teacher_name).forEach((row) => { const matchKey = teacherMatchKey({ school: row.school, className: row.class_name, startTime: row.start_time, endTime: row.end_time }); const teachers = teacherHistory.get(matchKey) ?? new Map<string, number>(); teachers.set(row.teacher_name!, (teachers.get(row.teacher_name!) ?? 0) + 1); teacherHistory.set(matchKey, teachers); });
-    const inferred = detected.map((lesson) => { const historyTeachers = teacherHistory.get(teacherMatchKey(lesson)); if (lesson.teacher || !historyTeachers?.size) return lesson; const ordered = [...historyTeachers.entries()].sort((a, b) => b[1] - a[1]); if (ordered.length === 1 || ordered[0][1] > ordered[1][1]) return { ...lesson, teacher: ordered[0][0], autoAssignedTeacher: ordered[0][0] }; return lesson; });
-    const exactExisting = new Set(existingRows.map((row) => lessonKey({ date: row.lesson_date, startTime: row.start_time, endTime: row.end_time, school: row.school, className: row.class_name, teacher: row.teacher_name })));
+    historyRows
+      .filter((row) => !row.cancelled && row.teacher_name)
+      .forEach((row) => {
+        const matchKey = teacherMatchKey({
+          school: row.school,
+          className: row.class_name,
+          startTime: row.start_time,
+          endTime: row.end_time,
+        });
+        const teachers = teacherHistory.get(matchKey) ?? new Map<string, number>();
+        teachers.set(row.teacher_name!, (teachers.get(row.teacher_name!) ?? 0) + 1);
+        teacherHistory.set(matchKey, teachers);
+      });
+    const inferred = detected.map((lesson) => {
+      const historyTeachers = teacherHistory.get(teacherMatchKey(lesson));
+      if (lesson.teacher || !historyTeachers?.size) return lesson;
+      const ordered = [...historyTeachers.entries()].sort((a, b) => b[1] - a[1]);
+      if (ordered.length === 1 || ordered[0][1] > ordered[1][1])
+        return { ...lesson, teacher: ordered[0][0], autoAssignedTeacher: ordered[0][0] };
+      return lesson;
+    });
+    const exactExisting = new Set(
+      existingRows.map((row) =>
+        lessonKey({
+          date: row.lesson_date,
+          startTime: row.start_time,
+          endTime: row.end_time,
+          school: row.school,
+          className: row.class_name,
+          teacher: row.teacher_name,
+        }),
+      ),
+    );
     const existingByBase = new Map<string, ExistingRow[]>();
-    existingRows.forEach((row) => { const key = baseKey({date:row.lesson_date,startTime:row.start_time,endTime:row.end_time,school:row.school,className:row.class_name}); existingByBase.set(key, [...(existingByBase.get(key) ?? []), row]); });
+    existingRows.forEach((row) => {
+      const key = baseKey({
+        date: row.lesson_date,
+        startTime: row.start_time,
+        endTime: row.end_time,
+        school: row.school,
+        className: row.class_name,
+      });
+      existingByBase.set(key, [...(existingByBase.get(key) ?? []), row]);
+    });
     const importedBase = new Set(inferred.map(baseKey));
 
     const analysed: PreviewLesson[] = inferred.map((lesson) => {
       const issues: string[] = [];
       const sameTeacher = lesson.teacher?.trim().toLowerCase();
-      if (lesson.confidence !== undefined && lesson.confidence < 80) issues.push(`Image detection confidence is ${lesson.confidence}%. Review this row before importing.`);
+      if (lesson.confidence !== undefined && lesson.confidence < 80)
+        issues.push(
+          `Image detection confidence is ${lesson.confidence}%. Review this row before importing.`,
+        );
       if (lesson.reviewReasons?.length) issues.push(...lesson.reviewReasons);
 
-      const pdfClashes = detected.filter((other) => other.id !== lesson.id && other.date === lesson.date && sameTeacher && other.teacher?.trim().toLowerCase() === sameTeacher && overlaps(lesson, other));
+      const pdfClashes = detected.filter(
+        (other) =>
+          other.id !== lesson.id &&
+          other.date === lesson.date &&
+          sameTeacher &&
+          other.teacher?.trim().toLowerCase() === sameTeacher &&
+          overlaps(lesson, other),
+      );
       if (pdfClashes.length) issues.push(`Overlaps another uploaded lesson for ${lesson.teacher}.`);
 
-      const databaseClashes = existingRows.filter((row) => row.lesson_date === lesson.date && sameTeacher && row.teacher_name?.trim().toLowerCase() === sameTeacher && overlaps(lesson, { startTime: row.start_time, endTime: row.end_time }) && baseKey(lesson) !== baseKey({date:row.lesson_date,startTime:row.start_time,endTime:row.end_time,school:row.school,className:row.class_name}));
-      if (databaseClashes.length) issues.push(`Clashes with ${databaseClashes[0].school} ${databaseClashes[0].start_time.slice(0,5)}–${databaseClashes[0].end_time.slice(0,5)} already in the calendar.`);
+      const databaseClashes = existingRows.filter(
+        (row) =>
+          row.lesson_date === lesson.date &&
+          sameTeacher &&
+          row.teacher_name?.trim().toLowerCase() === sameTeacher &&
+          overlaps(lesson, { startTime: row.start_time, endTime: row.end_time }) &&
+          baseKey(lesson) !==
+            baseKey({
+              date: row.lesson_date,
+              startTime: row.start_time,
+              endTime: row.end_time,
+              school: row.school,
+              className: row.class_name,
+            }),
+      );
+      if (databaseClashes.length)
+        issues.push(
+          `Clashes with ${databaseClashes[0].school} ${databaseClashes[0].start_time.slice(0, 5)}–${databaseClashes[0].end_time.slice(0, 5)} already in the calendar.`,
+        );
 
       const exact = exactExisting.has(lessonKey(lesson));
-      const candidates = !exact ? existingByBase.get(baseKey(lesson)) ?? [] : [];
+      const candidates = !exact ? (existingByBase.get(baseKey(lesson)) ?? []) : [];
       const changed = candidates.length === 1 ? candidates[0] : undefined;
-      if (candidates.some((row) => row.cancelled)) issues.push('A matching cancelled class exists. Reactivate or review it manually.');
-      if (candidates.length > 1) issues.push('Multiple teacher records match this class. Review them manually.');
-      if (!lesson.teacher && candidates.some((row) => row.teacher_name)) issues.push('The PDF has no recognised teacher and cannot replace an assigned teacher automatically.');
+      if (candidates.some((row) => row.cancelled))
+        issues.push('A matching cancelled class exists. Reactivate or review it manually.');
+      if (candidates.length > 1)
+        issues.push('Multiple teacher records match this class. Review them manually.');
+      if (!lesson.teacher && candidates.some((row) => row.teacher_name))
+        issues.push(
+          'The PDF has no recognised teacher and cannot replace an assigned teacher automatically.',
+        );
       const historyTeachers = teacherHistory.get(teacherMatchKey(lesson));
-      const suggestedTeacher = !lesson.teacher && historyTeachers?.size ? [...historyTeachers.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] : undefined;
-      const blockedChange = candidates.length > 1 || Boolean(changed?.cancelled) || (!lesson.teacher && Boolean(changed?.teacher_name)) || (lesson.confidence !== undefined && lesson.confidence < 80);
-      let importStatus: ImportStatus = exact ? 'duplicate' : blockedChange ? 'review' : changed ? 'changed' : 'new';
-      if (!exact && !blockedChange && (pdfClashes.length || databaseClashes.length)) importStatus = 'conflict';
+      const suggestedTeacher =
+        !lesson.teacher && historyTeachers?.size
+          ? [...historyTeachers.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]
+          : undefined;
+      const blockedChange =
+        candidates.length > 1 ||
+        Boolean(changed?.cancelled) ||
+        (!lesson.teacher && Boolean(changed?.teacher_name)) ||
+        (lesson.confidence !== undefined && lesson.confidence < 80);
+      let importStatus: ImportStatus = exact
+        ? 'duplicate'
+        : blockedChange
+          ? 'review'
+          : changed
+            ? 'changed'
+            : 'new';
+      if (!exact && !blockedChange && (pdfClashes.length || databaseClashes.length))
+        importStatus = 'conflict';
 
       return {
         ...lesson,
@@ -378,11 +854,29 @@ export default function ImportPage() {
       };
     });
 
-    const importedTeachers = new Set(inferred.map((lesson) => lesson.teacher?.trim().toLowerCase()).filter(Boolean));
-    const relevantExistingRows = importedTeachers.size ? existingRows.filter((row) => row.teacher_name && importedTeachers.has(row.teacher_name.trim().toLowerCase())) : existingRows;
-    const removals = relevantExistingRows.filter((row) => !importedBase.has(baseKey({date:row.lesson_date,startTime:row.start_time,endTime:row.end_time,school:row.school,className:row.class_name})));
+    const importedTeachers = new Set(
+      inferred.map((lesson) => lesson.teacher?.trim().toLowerCase()).filter(Boolean),
+    );
+    const relevantExistingRows = importedTeachers.size
+      ? existingRows.filter(
+          (row) => row.teacher_name && importedTeachers.has(row.teacher_name.trim().toLowerCase()),
+        )
+      : existingRows;
+    const removals = relevantExistingRows.filter(
+      (row) =>
+        !importedBase.has(
+          baseKey({
+            date: row.lesson_date,
+            startTime: row.start_time,
+            endTime: row.end_time,
+            school: row.school,
+            className: row.class_name,
+          }),
+        ),
+    );
 
-    const count = (value: ImportStatus) => analysed.filter((lesson) => lesson.importStatus === value).length;
+    const count = (value: ImportStatus) =>
+      analysed.filter((lesson) => lesson.importStatus === value).length;
     return {
       analysed,
       removals,
@@ -400,136 +894,1163 @@ export default function ImportPage() {
   const analyseDetected = async (result: { lessons: ImportedLesson[]; monthName: string }) => {
     setMonthName(result.monthName);
     const dates = [...new Set(result.lessons.map((lesson) => lesson.date))].sort();
-    const select = 'id,lesson_date,school,class_name,start_time,end_time,teacher_name,unavailable,cancelled,source,created_at,updated_at';
+    const select =
+      'id,lesson_date,school,class_name,start_time,end_time,teacher_name,unavailable,cancelled,source,created_at,updated_at';
     const [{ data: existing, error: compareError }, { data: history }] = await Promise.all([
-      supabase.from('lessons').select(select).gte('lesson_date', dates[0]).lte('lesson_date', dates[dates.length-1]),
-      supabase.from('lessons').select(select).lt('lesson_date', dates[0]).order('lesson_date', { ascending: false }).limit(1000),
+      supabase
+        .from('lessons')
+        .select(select)
+        .gte('lesson_date', dates[0])
+        .lte('lesson_date', dates[dates.length - 1]),
+      supabase
+        .from('lessons')
+        .select(select)
+        .lt('lesson_date', dates[0])
+        .order('lesson_date', { ascending: false })
+        .limit(1000),
     ]);
     if (compareError) throw compareError;
     const currentRows = (existing ?? []) as ExistingRow[];
     const historical = (history ?? []) as ExistingRow[];
-    setDetectedLessons(result.lessons); setComparisonRows(currentRows); setHistoricalRows(historical);
+    setDetectedLessons(result.lessons);
+    setComparisonRows(currentRows);
+    setHistoricalRows(historical);
     const analysis = analyseImport(result.lessons, currentRows, historical);
-    setLessons(analysis.analysed); setRemovedCandidates(analysis.removals); setComparison(analysis.summary); setStatus('ready');
-    setMessage(`${result.lessons.length} lessons detected. ${analysis.summary.conflictCount} clash${analysis.summary.conflictCount === 1 ? '' : 'es'} and ${analysis.summary.reviewCount} item${analysis.summary.reviewCount === 1 ? '' : 's'} need review.`);
+    setLessons(analysis.analysed);
+    setRemovedCandidates(analysis.removals);
+    setComparison(analysis.summary);
+    setStatus('ready');
+    setMessage(
+      `${result.lessons.length} lessons detected. ${analysis.summary.conflictCount} clash${analysis.summary.conflictCount === 1 ? '' : 'es'} and ${analysis.summary.reviewCount} item${analysis.summary.reviewCount === 1 ? '' : 's'} need review.`,
+    );
   };
 
-  const acceptTeacherSuggestion = (id: number) => { const source = detectedLessons.length ? detectedLessons : lessons; const suggested = source.find((lesson) => lesson.id === id)?.suggestedTeacher; if (!suggested) return; const corrected = source.map((lesson) => lesson.id === id ? { ...lesson, teacher: suggested, suggestedTeacher: undefined } : lesson); const analysis = analyseImport(corrected, comparisonRows, historicalRows); setDetectedLessons(corrected); setLessons(analysis.analysed); setRemovedCandidates(analysis.removals); setComparison(analysis.summary); setMessage(`${suggested} assigned to the selected import row. Review the updated result before importing.`); };
-  const changePreviewTeacher = (id: number, teacher: string) => { const source = detectedLessons.length ? detectedLessons : lessons; const corrected = source.map((lesson) => lesson.id === id ? { ...lesson, teacher: teacher || null, suggestedTeacher: undefined } : lesson); const analysis = analyseImport(corrected, comparisonRows, historicalRows); setDetectedLessons(corrected); setLessons(analysis.analysed); setRemovedCandidates(analysis.removals); setComparison(analysis.summary); };
+  const acceptTeacherSuggestion = (id: number) => {
+    const source = detectedLessons.length ? detectedLessons : lessons;
+    const suggested = source.find((lesson) => lesson.id === id)?.suggestedTeacher;
+    if (!suggested) return;
+    const corrected = source.map((lesson) =>
+      lesson.id === id ? { ...lesson, teacher: suggested, suggestedTeacher: undefined } : lesson,
+    );
+    const analysis = analyseImport(corrected, comparisonRows, historicalRows);
+    setDetectedLessons(corrected);
+    setLessons(analysis.analysed);
+    setRemovedCandidates(analysis.removals);
+    setComparison(analysis.summary);
+    setMessage(
+      `${suggested} assigned to the selected import row. Review the updated result before importing.`,
+    );
+  };
+  const changePreviewTeacher = (id: number, teacher: string) => {
+    const source = detectedLessons.length ? detectedLessons : lessons;
+    const corrected = source.map((lesson) =>
+      lesson.id === id
+        ? { ...lesson, teacher: teacher || null, suggestedTeacher: undefined }
+        : lesson,
+    );
+    const analysis = analyseImport(corrected, comparisonRows, historicalRows);
+    setDetectedLessons(corrected);
+    setLessons(analysis.analysed);
+    setRemovedCandidates(analysis.removals);
+    setComparison(analysis.summary);
+  };
 
   const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    setFileName(file.name); setComparison(null); setLessons([]); setRemovedCandidates([]); setAllowConflicts(false);
-    if (/\.(xlsx|xls)$/i.test(file.name)) { setExcelFile(file); setImageFile(null); setStatus('idle'); setMessage('Enter the school for this Excel timetable, then analyse it with the same safety checks as a PDF.'); return; }
-    if (file.type.startsWith('image/')) { setImageFile(file); setExcelFile(null); setStatus('idle'); setMessage('Enter the school for this timetable image, then use AI image analysis with the same safety checks as a PDF.'); return; }
-    setExcelFile(null); setImageFile(null); setStatus('reading'); setMessage('Reading the PDF, checking Supabase and scanning for timetable clashes...');
+    setFileName(file.name);
+    setComparison(null);
+    setLessons([]);
+    setRemovedCandidates([]);
+    setAllowConflicts(false);
+    if (/\.(xlsx|xls)$/i.test(file.name)) {
+      setExcelFile(file);
+      setImageFile(null);
+      setStatus('idle');
+      setMessage(
+        'Enter the school for this Excel timetable, then analyse it with the same safety checks as a PDF.',
+      );
+      return;
+    }
+    if (file.type.startsWith('image/')) {
+      setImageFile(file);
+      setExcelFile(null);
+      setStatus('idle');
+      setMessage(
+        'Enter the school for this timetable image, then use AI image analysis with the same safety checks as a PDF.',
+      );
+      return;
+    }
+    setExcelFile(null);
+    setImageFile(null);
+    setStatus('reading');
+    setMessage('Reading the PDF, checking Supabase and scanning for timetable clashes...');
     try {
       const result = await extractLessons(file);
       await analyseDetected(result);
     } catch (error) {
-      setStatus('error'); setMessage(error instanceof Error ? error.message : 'The PDF could not be read.');
+      setStatus('error');
+      setMessage(error instanceof Error ? error.message : 'The PDF could not be read.');
     }
   };
 
   const analyseExcel = async () => {
-    if (!excelFile || !excelSchool.trim()) { setMessage('Enter the school name for this Excel timetable first.'); return; }
-    setStatus('reading'); setMessage('Reading the Excel schedule, checking Supabase and scanning for timetable clashes...');
-    try { await analyseDetected(await extractExcelLessons(excelFile, excelSchool.trim(), excelTeacher.trim() || null)); }
-    catch (error) { setStatus('error'); setMessage(error instanceof Error ? error.message : 'The Excel timetable could not be read.'); }
+    if (!excelFile || !excelSchool.trim()) {
+      setMessage('Enter the school name for this Excel timetable first.');
+      return;
+    }
+    setStatus('reading');
+    setMessage(
+      'Reading the Excel schedule, checking Supabase and scanning for timetable clashes...',
+    );
+    try {
+      await analyseDetected(
+        await extractExcelLessons(excelFile, excelSchool.trim(), excelTeacher.trim() || null),
+      );
+    } catch (error) {
+      setStatus('error');
+      setMessage(error instanceof Error ? error.message : 'The Excel timetable could not be read.');
+    }
   };
 
   const analyseImage = async () => {
-    if (!imageFile || !excelSchool.trim()) { setMessage('Enter the school name for this timetable image first.'); return; }
-    setStatus('reading'); setMessage('Reading the timetable image with AI, checking Supabase and scanning for clashes...');
+    if (!imageFile || !excelSchool.trim()) {
+      setMessage('Enter the school name for this timetable image first.');
+      return;
+    }
+    setStatus('reading');
+    setMessage(
+      'Reading the timetable image with AI, checking Supabase and scanning for clashes...',
+    );
     try {
-      const form = new FormData(); form.append('image', imageFile);
+      const form = new FormData();
+      form.append('image', imageFile);
       const response = await fetch('/api/import-image', { method: 'POST', body: form });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || 'Image timetable analysis failed.');
       const rows = Array.isArray(body.lessons) ? body.lessons : [];
-      if (!rows.length) throw new Error('No confirmed dated lessons were detected. Use a clearer image or an Excel/PDF timetable.');
-      await analyseDetected({ monthName: body.monthName || 'Image timetable', lessons: rows.map((row: { date: string; startTime: string; endTime: string; className: string; teacher: string | null; confidence?: number; reviewReasons?: string[] }, index: number) => ({ id: Date.now() + index, date: row.date, startTime: row.startTime, endTime: row.endTime, school: excelSchool.trim(), className: row.className, teacher: (row.teacher ?? excelTeacher.trim()) || null, unavailable: false, confidence: row.confidence, reviewReasons: row.reviewReasons })) });
-    } catch (error) { setStatus('error'); setMessage(error instanceof Error ? error.message : 'The timetable image could not be read.'); }
+      if (!rows.length)
+        throw new Error(
+          'No confirmed dated lessons were detected. Use a clearer image or an Excel/PDF timetable.',
+        );
+      await analyseDetected({
+        monthName: body.monthName || 'Image timetable',
+        lessons: rows.map(
+          (
+            row: {
+              date: string;
+              startTime: string;
+              endTime: string;
+              className: string;
+              teacher: string | null;
+              confidence?: number;
+              reviewReasons?: string[];
+            },
+            index: number,
+          ) => ({
+            id: Date.now() + index,
+            date: row.date,
+            startTime: row.startTime,
+            endTime: row.endTime,
+            school: excelSchool.trim(),
+            className: row.className,
+            teacher: (row.teacher ?? excelTeacher.trim()) || null,
+            unavailable: false,
+            confidence: row.confidence,
+            reviewReasons: row.reviewReasons,
+          }),
+        ),
+      });
+    } catch (error) {
+      setStatus('error');
+      setMessage(error instanceof Error ? error.message : 'The timetable image could not be read.');
+    }
   };
 
-  const toggleLesson = (id: number) => setLessons((current) => current.map((lesson) => lesson.id === id && lesson.importStatus !== 'duplicate' ? { ...lesson, selected: !lesson.selected } : lesson));
-  const selectSafe = () => setLessons((current) => current.map((lesson) => ({ ...lesson, selected: lesson.importStatus === 'new' || lesson.importStatus === 'changed' })));
+  const toggleLesson = (id: number) =>
+    setLessons((current) =>
+      current.map((lesson) =>
+        lesson.id === id && lesson.importStatus !== 'duplicate'
+          ? { ...lesson, selected: !lesson.selected }
+          : lesson,
+      ),
+    );
+  const selectSafe = () =>
+    setLessons((current) =>
+      current.map((lesson) => ({
+        ...lesson,
+        selected: lesson.importStatus === 'new' || lesson.importStatus === 'changed',
+      })),
+    );
 
   const saveImport = async () => {
-    if (!selectedLessons.length) { setMessage('Select at least one new or changed lesson to import.'); return; }
-    if (unsafeSelected.length && !allowConflicts) { setMessage('Resolve the selected clashes/review items, or confirm the override first.'); return; }
-    setStatus('saving'); setMessage('Applying selected lessons to Supabase...');
+    if (!selectedLessons.length) {
+      setMessage('Select at least one new or changed lesson to import.');
+      return;
+    }
+    if (unsafeSelected.length && !allowConflicts) {
+      setMessage('Resolve the selected clashes/review items, or confirm the override first.');
+      return;
+    }
+    setStatus('saving');
+    setMessage('Applying selected lessons to Supabase...');
     const dates = [...new Set(selectedLessons.map((lesson) => lesson.date))];
-    const { data: existing, error: readError } = await supabase.from('lessons').select('id,lesson_date,school,class_name,start_time,end_time,teacher_name,unavailable,cancelled,source,created_at,updated_at').in('lesson_date', dates);
-    if (readError) { setStatus('error'); setMessage(`Could not check existing lessons: ${readError.message}`); return; }
+    const { data: existing, error: readError } = await supabase
+      .from('lessons')
+      .select(
+        'id,lesson_date,school,class_name,start_time,end_time,teacher_name,unavailable,cancelled,source,created_at,updated_at',
+      )
+      .in('lesson_date', dates);
+    if (readError) {
+      setStatus('error');
+      setMessage(`Could not check existing lessons: ${readError.message}`);
+      return;
+    }
     const rows = (existing ?? []) as ExistingRow[];
-    const exactKeys = new Set(rows.map((row) => lessonKey({ date: row.lesson_date, startTime: row.start_time, endTime: row.end_time, school: row.school, className: row.class_name, teacher: row.teacher_name })));
+    const exactKeys = new Set(
+      rows.map((row) =>
+        lessonKey({
+          date: row.lesson_date,
+          startTime: row.start_time,
+          endTime: row.end_time,
+          school: row.school,
+          className: row.class_name,
+          teacher: row.teacher_name,
+        }),
+      ),
+    );
     const existingByBase = new Map<string, ExistingRow[]>();
-    rows.forEach((row) => { const key = baseKey({date:row.lesson_date,startTime:row.start_time,endTime:row.end_time,school:row.school,className:row.class_name}); existingByBase.set(key, [...(existingByBase.get(key) ?? []), row]); });
+    rows.forEach((row) => {
+      const key = baseKey({
+        date: row.lesson_date,
+        startTime: row.start_time,
+        endTime: row.end_time,
+        school: row.school,
+        className: row.class_name,
+      });
+      existingByBase.set(key, [...(existingByBase.get(key) ?? []), row]);
+    });
     const pending = selectedLessons.filter((lesson) => !exactKeys.has(lessonKey(lesson)));
-    const newLessons = pending.filter((lesson) => !(existingByBase.get(baseKey(lesson))?.length));
-    const changedLessons = pending.filter((lesson) => existingByBase.get(baseKey(lesson))?.length === 1);
-    const blocked = pending.filter((lesson) => { const matches = existingByBase.get(baseKey(lesson)) ?? []; return matches.length > 1 || matches.some((row) => row.cancelled) || (!lesson.teacher && matches.some((row) => row.teacher_name)); });
-    if (blocked.length) { setStatus('error'); setMessage('Import stopped because matching cancelled, assigned, or multi-teacher records require manual review.'); return; }
+    const newLessons = pending.filter((lesson) => !existingByBase.get(baseKey(lesson))?.length);
+    const changedLessons = pending.filter(
+      (lesson) => existingByBase.get(baseKey(lesson))?.length === 1,
+    );
+    const blocked = pending.filter((lesson) => {
+      const matches = existingByBase.get(baseKey(lesson)) ?? [];
+      return (
+        matches.length > 1 ||
+        matches.some((row) => row.cancelled) ||
+        (!lesson.teacher && matches.some((row) => row.teacher_name))
+      );
+    });
+    if (blocked.length) {
+      setStatus('error');
+      setMessage(
+        'Import stopped because matching cancelled, assigned, or multi-teacher records require manual review.',
+      );
+      return;
+    }
 
-    const newPayload = newLessons.map((lesson) => ({ lesson_date: lesson.date, school: lesson.school.trim(), class_name: lesson.className.trim(), start_time: lesson.startTime, end_time: lesson.endTime, teacher_name: lesson.teacher }));
-    const updatePayload = changedLessons.map((lesson) => { const row = existingByBase.get(baseKey(lesson))![0]; return { lesson_id: row.id, teacher_name: lesson.teacher, expected_snapshot: row }; });
+    const newPayload = newLessons.map((lesson) => ({
+      lesson_date: lesson.date,
+      school: lesson.school.trim(),
+      class_name: lesson.className.trim(),
+      start_time: lesson.startTime,
+      end_time: lesson.endTime,
+      teacher_name: lesson.teacher,
+    }));
+    const updatePayload = changedLessons.map((lesson) => {
+      const row = existingByBase.get(baseKey(lesson))![0];
+      return { lesson_id: row.id, teacher_name: lesson.teacher, expected_snapshot: row };
+    });
     const sortedDates = [...dates].sort();
-    const { error } = await supabase.rpc('apply_timetable_import', { p_file_name: fileName, p_calendar_label: monthName, p_date_start: sortedDates[0], p_date_end: sortedDates[sortedDates.length - 1], p_new_lessons: newPayload, p_updates: updatePayload });
-    if (error) { setStatus('error'); setMessage(`Import failed safely: ${error.message}`); return; }
+    const { error } = await supabase.rpc('apply_timetable_import', {
+      p_file_name: fileName,
+      p_calendar_label: monthName,
+      p_date_start: sortedDates[0],
+      p_date_end: sortedDates[sortedDates.length - 1],
+      p_new_lessons: newPayload,
+      p_updates: updatePayload,
+    });
+    if (error) {
+      setStatus('error');
+      setMessage(`Import failed safely: ${error.message}`);
+      return;
+    }
     invalidateLessons();
     setStatus('saved');
-    setMessage(`${newLessons.length} new lessons saved and ${changedLessons.length} changed lessons updated. Duplicates and possible removals were left untouched.`);
+    setMessage(
+      `${newLessons.length} new lessons saved and ${changedLessons.length} changed lessons updated. Duplicates and possible removals were left untouched.`,
+    );
     setTimeout(() => router.push('/'), 1400);
   };
 
-  const statusLabel: Record<ImportStatus,string> = { new:'New', changed:'Changed', duplicate:'Already exists', conflict:'Clash', review:'Review' };
-  const filters: FilterName[] = ['all','new','changed','conflict','review','duplicate'];
+  const statusLabel: Record<ImportStatus, string> = {
+    new: 'New',
+    changed: 'Changed',
+    duplicate: 'Already exists',
+    conflict: 'Clash',
+    review: 'Review',
+  };
+  const filters: FilterName[] = ['all', 'new', 'changed', 'conflict', 'review', 'duplicate'];
 
-  return <main className="importShell">
-    <header className="importHeader"><Link href="/" className="backLink"><ArrowLeft size={17}/> Back to calendar</Link><div><p>SMART TIMETABLE IMPORT</p><h1>Import MOE timetable</h1><span>Extract lessons from PDF, Excel, or timetable images, then catch conflicts before anything is saved.</span></div></header>
-    <section className="importCard uploadCard"><label className="dropZone"><input type="file" accept="application/pdf,.pdf,.xlsx,.xls,image/png,image/jpeg,image/webp" onChange={handleFile}/><Upload size={34}/><strong>{fileName || 'Choose timetable file or image'}</strong><span>PDF, Excel, WhatsApp image, PNG, JPEG or WebP</span></label>{(excelFile || imageFile) && <div style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr) auto',gap:10,alignItems:'end',marginTop:14,padding:13,border:'1px solid rgba(129,116,255,.26)',borderRadius:12,background:'rgba(120,87,255,.06)'}}><label style={{display:'grid',gap:6,color:'#aeb8ca',fontSize:12,fontWeight:800}}>School for this {imageFile ? 'timetable image' : 'Excel timetable'}<input value={excelSchool} onChange={(event)=>setExcelSchool(event.target.value)} placeholder="e.g. Chongfu Primary School" style={{padding:'10px',border:'1px solid rgba(148,163,184,.16)',borderRadius:9,background:'#0b1222',color:'#eef2fb'}}/></label><label style={{display:'grid',gap:6,color:'#aeb8ca',fontSize:12,fontWeight:800}}>Default teacher <small style={{color:'#7f8ca4',fontWeight:500}}>optional</small><select value={excelTeacher} onChange={(event)=>setExcelTeacher(event.target.value)} style={{padding:'10px',border:'1px solid rgba(148,163,184,.16)',borderRadius:9,background:'#0b1222',color:'#eef2fb'}}><option value="">Unassigned</option>{teacherNames.filter((teacher)=>teacher!=='Audrey Jansen').map((teacher)=><option key={teacher}>{teacher}</option>)}</select></label><button onClick={()=>void (imageFile ? analyseImage() : analyseExcel())} style={{padding:'11px 14px',border:0,borderRadius:10,background:'#6653de',color:'#fff',fontWeight:800,cursor:'pointer'}}>{imageFile ? 'Analyse image' : 'Analyse Excel'}</button></div>}<div className={`statusBox ${status}`}>{status === 'reading' || status === 'saving' ? <Loader2 className="spin" size={20}/> : status === 'error' ? <XCircle size={20}/> : <CheckCircle2 size={20}/>}<span>{message || 'No timetable selected yet.'}</span></div></section>
-
-    {lessons.length > 0 && <>
-      <section className="importStats">
-        <article><span>Calendar</span><strong>{monthName}</strong></article><article><span>Detected</span><strong>{lessons.length}</strong></article>
-        <article className="new"><span>New</span><strong>{comparison?.newCount ?? '—'}</strong></article><article className="changed"><span>Changed</span><strong>{comparison?.changedCount ?? '—'}</strong></article>
-        <article><span>Duplicates</span><strong>{comparison?.duplicateCount ?? '—'}</strong></article><article className="danger"><span>Automatic clashes</span><strong>{comparison?.conflictCount ?? '—'}</strong></article>
-        <article className="removed"><span>Possible removed</span><strong>{comparison?.possibleRemovedCount ?? '—'}</strong></article><article className="danger"><span>Needs review</span><strong>{comparison?.reviewCount ?? '—'}</strong></article>
+  return (
+    <main className="importShell">
+      <header className="importHeader">
+        <Link href="/" className="backLink">
+          <ArrowLeft size={17} /> Back to calendar
+        </Link>
+        <div>
+          <p>SMART TIMETABLE IMPORT</p>
+          <h1>Import MOE timetable</h1>
+          <span>
+            Extract lessons from PDF, Excel, or timetable images, then catch conflicts before
+            anything is saved.
+          </span>
+        </div>
+      </header>
+      <section className="importCard uploadCard">
+        <label className="dropZone">
+          <input
+            type="file"
+            accept="application/pdf,.pdf,.xlsx,.xls,image/png,image/jpeg,image/webp"
+            onChange={handleFile}
+          />
+          <Upload size={34} />
+          <strong>{fileName || 'Choose timetable file or image'}</strong>
+          <span>PDF, Excel, WhatsApp image, PNG, JPEG or WebP</span>
+        </label>
+        {(excelFile || imageFile) && (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr) auto',
+              gap: 10,
+              alignItems: 'end',
+              marginTop: 14,
+              padding: 13,
+              border: '1px solid rgba(129,116,255,.26)',
+              borderRadius: 12,
+              background: 'rgba(120,87,255,.06)',
+            }}
+          >
+            <label
+              style={{ display: 'grid', gap: 6, color: '#aeb8ca', fontSize: 12, fontWeight: 800 }}
+            >
+              School for this {imageFile ? 'timetable image' : 'Excel timetable'}
+              <input
+                value={excelSchool}
+                onChange={(event) => setExcelSchool(event.target.value)}
+                placeholder="e.g. Chongfu Primary School"
+                style={{
+                  padding: '10px',
+                  border: '1px solid rgba(148,163,184,.16)',
+                  borderRadius: 9,
+                  background: '#0b1222',
+                  color: '#eef2fb',
+                }}
+              />
+            </label>
+            <label
+              style={{ display: 'grid', gap: 6, color: '#aeb8ca', fontSize: 12, fontWeight: 800 }}
+            >
+              Default teacher <small style={{ color: '#7f8ca4', fontWeight: 500 }}>optional</small>
+              <select
+                value={excelTeacher}
+                onChange={(event) => setExcelTeacher(event.target.value)}
+                style={{
+                  padding: '10px',
+                  border: '1px solid rgba(148,163,184,.16)',
+                  borderRadius: 9,
+                  background: '#0b1222',
+                  color: '#eef2fb',
+                }}
+              >
+                <option value="">Unassigned</option>
+                {teacherNames
+                  .filter((teacher) => teacher !== 'Audrey Jansen')
+                  .map((teacher) => (
+                    <option key={teacher}>{teacher}</option>
+                  ))}
+              </select>
+            </label>
+            <button
+              onClick={() => void (imageFile ? analyseImage() : analyseExcel())}
+              style={{
+                padding: '11px 14px',
+                border: 0,
+                borderRadius: 10,
+                background: '#6653de',
+                color: '#fff',
+                fontWeight: 800,
+                cursor: 'pointer',
+              }}
+            >
+              {imageFile ? 'Analyse image' : 'Analyse Excel'}
+            </button>
+          </div>
+        )}
+        <div className={`statusBox ${status}`}>
+          {status === 'reading' || status === 'saving' ? (
+            <Loader2 className="spin" size={20} />
+          ) : status === 'error' ? (
+            <XCircle size={20} />
+          ) : (
+            <CheckCircle2 size={20} />
+          )}
+          <span>{message || 'No timetable selected yet.'}</span>
+        </div>
       </section>
 
-      <section className="analysisSummary">
-        <div className="analysisIcon"><ShieldCheck size={26}/></div>
-        <div className="analysisCopy">
-          <p>IMPORT ANALYSIS COMPLETE</p>
-          <h2>{fileName}</h2>
-          <span>{lessons.length} lessons scanned. Duplicates are locked and will never be imported.</span>
-        </div>
-        <div className="analysisBreakdown">
-          <span><strong>{comparison?.duplicateCount ?? 0}</strong> already exist</span>
-          <span className="good"><strong>{comparison?.newCount ?? 0}</strong> new</span>
-          <span className="warn"><strong>{comparison?.changedCount ?? 0}</strong> changed</span>
-          <span className="bad"><strong>{comparison?.conflictCount ?? 0}</strong> clashes</span>
-        </div>
-        <div className="analysisRecommendation">
-          <strong>Recommended action</strong>
-          <span>{safeLessons.length ? `Import ${safeLessons.length} safe change${safeLessons.length === 1 ? '' : 's'}.` : 'No safe changes need importing.'}</span>
-          {(comparison?.conflictCount ?? 0) > 0 && <span>Review {comparison?.conflictCount} clash{comparison?.conflictCount === 1 ? '' : 'es'} separately.</span>}
-        </div>
-      </section>
+      {lessons.length > 0 && (
+        <>
+          <section className="importStats">
+            <article>
+              <span>Calendar</span>
+              <strong>{monthName}</strong>
+            </article>
+            <article>
+              <span>Detected</span>
+              <strong>{lessons.length}</strong>
+            </article>
+            <article className="new">
+              <span>New</span>
+              <strong>{comparison?.newCount ?? '—'}</strong>
+            </article>
+            <article className="changed">
+              <span>Changed</span>
+              <strong>{comparison?.changedCount ?? '—'}</strong>
+            </article>
+            <article>
+              <span>Duplicates</span>
+              <strong>{comparison?.duplicateCount ?? '—'}</strong>
+            </article>
+            <article className="danger">
+              <span>Automatic clashes</span>
+              <strong>{comparison?.conflictCount ?? '—'}</strong>
+            </article>
+            <article className="removed">
+              <span>Possible removed</span>
+              <strong>{comparison?.possibleRemovedCount ?? '—'}</strong>
+            </article>
+            <article className="danger">
+              <span>Needs review</span>
+              <strong>{comparison?.reviewCount ?? '—'}</strong>
+            </article>
+          </section>
 
-      {(comparison?.conflictCount ?? 0) > 0 && <section className="clashBanner"><AlertTriangle size={22}/><div><strong>Clashes detected before import</strong><span>Conflicting rows are unselected by default. Review them individually before overriding.</span></div><Link href="/admin/conflicts">Open Conflict Center</Link></section>}
+          <section className="analysisSummary">
+            <div className="analysisIcon">
+              <ShieldCheck size={26} />
+            </div>
+            <div className="analysisCopy">
+              <p>IMPORT ANALYSIS COMPLETE</p>
+              <h2>{fileName}</h2>
+              <span>
+                {lessons.length} lessons scanned. Duplicates are locked and will never be imported.
+              </span>
+            </div>
+            <div className="analysisBreakdown">
+              <span>
+                <strong>{comparison?.duplicateCount ?? 0}</strong> already exist
+              </span>
+              <span className="good">
+                <strong>{comparison?.newCount ?? 0}</strong> new
+              </span>
+              <span className="warn">
+                <strong>{comparison?.changedCount ?? 0}</strong> changed
+              </span>
+              <span className="bad">
+                <strong>{comparison?.conflictCount ?? 0}</strong> clashes
+              </span>
+            </div>
+            <div className="analysisRecommendation">
+              <strong>Recommended action</strong>
+              <span>
+                {safeLessons.length
+                  ? `Import ${safeLessons.length} safe change${safeLessons.length === 1 ? '' : 's'}.`
+                  : 'No safe changes need importing.'}
+              </span>
+              {(comparison?.conflictCount ?? 0) > 0 && (
+                <span>
+                  Review {comparison?.conflictCount} clash
+                  {comparison?.conflictCount === 1 ? '' : 'es'} separately.
+                </span>
+              )}
+            </div>
+          </section>
 
-      <section className="importCard previewCard">
-        <div className="previewHeader"><div><p>IMPORT PREVIEW</p><h2>Detected lessons</h2></div><div className="previewActions"><button className="secondary" onClick={selectSafe}><ShieldCheck size={16}/> Select safe changes</button><button onClick={saveImport} disabled={status === 'saving' || selectedLessons.length === 0}>{status === 'saving' ? 'Saving…' : unsafeSelected.length ? `Import ${selectedLessons.length} selected` : `Import ${selectedLessons.length} safe change${selectedLessons.length === 1 ? '' : 's'}`}</button></div></div>
-        <div className="toolbar"><div className="filterTitle"><Filter size={15}/> Show</div>{filters.map((name) => <button key={name} className={filter === name ? 'active' : ''} onClick={() => setFilter(name)}>{name === 'all' ? `All ${lessons.length}` : `${statusLabel[name as ImportStatus]} ${lessons.filter((lesson) => lesson.importStatus === name).length}`}</button>)}<button className="removedToggle" onClick={() => setShowRemoved((value) => !value)}>Possible removals {removedCandidates.length}</button></div>
-        <div className="tableWrap"><table><thead><tr><th><span className="srOnly">Select</span></th><th>Status</th><th>Date</th><th>Time</th><th>School</th><th>Class / programme</th><th>Teacher</th><th>Checks</th></tr></thead><tbody>{filteredLessons.map((lesson) => <tr key={lesson.id} className={`row-${lesson.importStatus}`}><td>{lesson.importStatus === 'duplicate' ? <span className="lockedDuplicate" title="Already in database"><CheckCircle2 size={16}/></span> : <input type="checkbox" checked={lesson.selected} onChange={() => toggleLesson(lesson.id)}/>}</td><td><span className={`badge ${lesson.importStatus}`}>{statusLabel[lesson.importStatus]}</span></td><td>{lesson.date}</td><td>{lesson.startTime}–{lesson.endTime}</td><td>{lesson.school}</td><td>{lesson.className}</td><td>{lesson.importStatus === 'changed' ? <span>{lesson.existingTeacher || 'Unassigned'} → <strong>{lesson.teacher || 'Unassigned'}</strong></span> : <select value={lesson.teacher ?? ''} onChange={(event) => changePreviewTeacher(lesson.id, event.target.value)} disabled={lesson.importStatus === 'duplicate'}><option value="">Unassigned</option>{Array.from(new Set(teacherNames)).map((teacher) => <option key={teacher} value={teacher === 'Audrey Jansen' ? 'Audrey' : teacher}>{teacher === 'Audrey Jansen' ? 'Audrey' : teacher}</option>)}</select>}</td><td className="checks">{lesson.importStatus === 'duplicate' ? <span className="existingCheck"><CheckCircle2 size={13}/>Matches an existing calendar record</span> : !lesson.teacher ? <span className="unassignedCheck"><AlertTriangle size={13}/>Will be imported under Unassigned and shown on the calendar</span> : lesson.issues.length ? lesson.issues.map((issue) => <span key={issue}><AlertTriangle size={13}/>{issue}</span>) : <span className="clearCheck"><CheckCircle2 size={13}/>No clash found</span>}</td></tr>)}</tbody></table></div>
-        {unsafeSelected.length > 0 && <label className="override"><input type="checkbox" checked={allowConflicts} onChange={(event) => setAllowConflicts(event.target.checked)}/><span>I reviewed the {unsafeSelected.length} selected warning item{unsafeSelected.length === 1 ? '' : 's'} and want to import them anyway.</span></label>}
-        {showRemoved && <div className="removedPanel"><div><h3>Possible removals</h3><p>These records are in Supabase for the same teacher/date range but not in this PDF. They will not be deleted automatically.</p></div>{removedCandidates.length ? <div className="removedList">{removedCandidates.map((row) => <article key={row.id}><strong>{row.lesson_date} · {row.start_time.slice(0,5)}–{row.end_time.slice(0,5)}</strong><span>{row.school} · {row.class_name} · {row.teacher_name}</span></article>)}</div> : <p>No possible removals.</p>}</div>}
-      </section>
-    </>}
+          {(comparison?.conflictCount ?? 0) > 0 && (
+            <section className="clashBanner">
+              <AlertTriangle size={22} />
+              <div>
+                <strong>Clashes detected before import</strong>
+                <span>
+                  Conflicting rows are unselected by default. Review them individually before
+                  overriding.
+                </span>
+              </div>
+              <Link href="/admin/conflicts">Open Conflict Center</Link>
+            </section>
+          )}
 
-    <style jsx>{`.importShell{min-height:100vh;padding:38px;max-width:1550px;margin:auto}.importHeader{display:grid;gap:24px;margin-bottom:24px}.backLink{display:flex;align-items:center;gap:8px;color:#9aa7bf;text-decoration:none;width:max-content}.importHeader p,.previewHeader p{margin:0 0 6px;color:#8174ff;font-size:11px;font-weight:800;letter-spacing:.15em}.importHeader h1{margin:0 0 8px;font-size:34px}.importHeader span{color:#8995ad}.importCard,.importStats article{border:1px solid rgba(148,163,184,.14);background:linear-gradient(145deg,rgba(20,27,48,.92),rgba(11,16,31,.86));border-radius:18px}.uploadCard{padding:20px}.dropZone{min-height:180px;border:1px dashed rgba(129,116,255,.5);border-radius:15px;display:grid;place-items:center;align-content:center;gap:9px;color:#c8c2ff;cursor:pointer;background:rgba(120,87,255,.06)}.dropZone input{display:none}.dropZone span{font-size:12px;color:#76839b}.statusBox{margin-top:14px;padding:12px 14px;border-radius:11px;display:flex;align-items:center;gap:9px;background:#0b1222;color:#8995ad}.statusBox.error,.danger strong{color:#fb7185}.statusBox.ready,.statusBox.saved{color:#70d28c}.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.importStats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:16px 0}.importStats article{padding:17px;display:grid;gap:7px}.importStats span{color:#8793aa;font-size:12px}.importStats strong{font-size:21px}.importStats .new strong{color:#70d28c}.importStats .changed strong{color:#fbbf24}.importStats .removed strong{color:#fb7185}.analysisSummary{display:grid;grid-template-columns:auto minmax(260px,1.2fr) minmax(260px,1fr) minmax(260px,1fr);gap:18px;align-items:center;margin:16px 0;padding:18px;border:1px solid rgba(129,116,255,.24);border-radius:18px;background:linear-gradient(135deg,rgba(91,72,205,.13),rgba(13,20,38,.92))}.analysisIcon{width:50px;height:50px;display:grid;place-items:center;border-radius:14px;background:rgba(112,210,140,.12);color:#70d28c}.analysisCopy{display:grid;gap:5px}.analysisCopy p{margin:0;color:#8174ff;font-size:10px;font-weight:800;letter-spacing:.15em}.analysisCopy h2{margin:0;font-size:18px}.analysisCopy span,.analysisRecommendation span{color:#8f9bb0;font-size:12px}.analysisBreakdown{display:grid;grid-template-columns:repeat(2,minmax(110px,1fr));gap:8px}.analysisBreakdown span{padding:9px 10px;border-radius:10px;background:rgba(148,163,184,.06);color:#a8b3c7;font-size:11px}.analysisBreakdown strong{margin-right:5px;color:#dce4f2;font-size:15px}.analysisBreakdown .good strong{color:#70d28c}.analysisBreakdown .warn strong{color:#fbbf24}.analysisBreakdown .bad strong{color:#fb7185}.analysisRecommendation{display:grid;gap:5px;padding:12px;border-radius:12px;background:rgba(112,210,140,.06);border:1px solid rgba(112,210,140,.13)}.analysisRecommendation strong{color:#a9e7b9;font-size:12px}.lockedDuplicate{display:inline-flex;color:#70d28c;opacity:.75}.existingCheck{color:#91a0b6!important}.row-duplicate{opacity:.72}.row-duplicate:hover{opacity:.9}.clashBanner{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:15px 17px;border:1px solid rgba(251,113,133,.28);border-radius:15px;background:rgba(251,113,133,.07);color:#fb7185}.clashBanner div{display:grid;gap:3px;flex:1}.clashBanner span{color:#c5a5ae;font-size:12px}.clashBanner a{padding:9px 12px;border-radius:9px;background:rgba(251,113,133,.12);color:#ffd6dd;text-decoration:none;font-size:12px}.previewCard{overflow:hidden}.previewHeader{padding:18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(148,163,184,.1)}.previewHeader h2{margin:0}.previewActions{display:flex;gap:8px}.previewActions button{display:flex;align-items:center;gap:7px;border:0;border-radius:11px;padding:11px 16px;background:linear-gradient(135deg,#6c56e8,#5544cf);color:white;font-weight:700;cursor:pointer}.previewActions .secondary{border:1px solid rgba(148,163,184,.15);background:#111a2d;color:#c8d1e2}.previewActions button:disabled{opacity:.45;cursor:not-allowed}.toolbar{display:flex;align-items:center;gap:7px;padding:12px 16px;border-bottom:1px solid rgba(148,163,184,.1);overflow:auto}.filterTitle{display:flex;gap:6px;align-items:center;color:#71809a;font-size:11px}.toolbar button{white-space:nowrap;padding:7px 10px;border:1px solid rgba(148,163,184,.12);border-radius:9px;background:transparent;color:#8f9bb0;font-size:11px}.toolbar button.active{border-color:rgba(129,116,255,.45);background:rgba(129,116,255,.12);color:#d7d2ff}.toolbar .removedToggle{margin-left:auto}.tableWrap{overflow:auto;max-height:600px}table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:11px 12px;text-align:left;border-bottom:1px solid rgba(148,163,184,.08);white-space:nowrap}th{position:sticky;top:0;background:#0c1324;color:#7f8ca5;text-transform:uppercase;font-size:10px;z-index:2}td{color:#c1cadb}.checks{min-width:300px;white-space:normal}.checks span{display:flex;align-items:flex-start;gap:5px;color:#fb9cad}.checks .clearCheck{color:#70d28c}.checks .unassignedCheck{color:#fbbf24}.badge{display:inline-flex;padding:4px 7px;border-radius:999px;font-size:9px;font-weight:800;text-transform:uppercase}.badge.new{background:rgba(112,210,140,.12);color:#70d28c}.badge.changed{background:rgba(251,191,36,.12);color:#fbbf24}.badge.duplicate{background:rgba(148,163,184,.1);color:#91a0b6}.badge.conflict,.badge.review{background:rgba(251,113,133,.12);color:#fb7185}.row-conflict,.row-review{background:rgba(251,113,133,.025)}td em{color:#fb7185}.override{display:flex;gap:9px;align-items:flex-start;padding:13px 16px;border-top:1px solid rgba(251,113,133,.18);color:#d9b9c1;font-size:12px;background:rgba(251,113,133,.04)}.removedPanel{padding:17px;border-top:1px solid rgba(148,163,184,.1);background:#0b1222}.removedPanel h3{margin:0 0 5px}.removedPanel p{margin:0;color:#8794ab;font-size:12px}.removedList{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:8px;margin-top:13px}.removedList article{display:grid;gap:4px;padding:11px;border:1px solid rgba(148,163,184,.1);border-radius:10px;background:#10192c}.removedList span{color:#8794ab;font-size:11px}.srOnly{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}@media(max-width:1100px){.analysisSummary{grid-template-columns:auto 1fr}.analysisBreakdown,.analysisRecommendation{grid-column:2}}@media(max-width:900px){.importShell{padding:20px}.importStats{grid-template-columns:repeat(2,1fr)}.previewHeader{align-items:flex-start;flex-direction:column;gap:13px}.previewActions{width:100%;flex-wrap:wrap}.clashBanner{align-items:flex-start;flex-wrap:wrap}.analysisSummary{grid-template-columns:1fr}.analysisIcon,.analysisBreakdown,.analysisRecommendation{grid-column:1}.analysisBreakdown{grid-template-columns:repeat(2,1fr)}}`}</style>
-  </main>;
+          <section className="importCard previewCard">
+            <div className="previewHeader">
+              <div>
+                <p>IMPORT PREVIEW</p>
+                <h2>Detected lessons</h2>
+              </div>
+              <div className="previewActions">
+                <button className="secondary" onClick={selectSafe}>
+                  <ShieldCheck size={16} /> Select safe changes
+                </button>
+                <button
+                  onClick={saveImport}
+                  disabled={status === 'saving' || selectedLessons.length === 0}
+                >
+                  {status === 'saving'
+                    ? 'Saving…'
+                    : unsafeSelected.length
+                      ? `Import ${selectedLessons.length} selected`
+                      : `Import ${selectedLessons.length} safe change${selectedLessons.length === 1 ? '' : 's'}`}
+                </button>
+              </div>
+            </div>
+            <div className="toolbar">
+              <div className="filterTitle">
+                <Filter size={15} /> Show
+              </div>
+              {filters.map((name) => (
+                <button
+                  key={name}
+                  className={filter === name ? 'active' : ''}
+                  onClick={() => setFilter(name)}
+                >
+                  {name === 'all'
+                    ? `All ${lessons.length}`
+                    : `${statusLabel[name as ImportStatus]} ${lessons.filter((lesson) => lesson.importStatus === name).length}`}
+                </button>
+              ))}
+              <button className="removedToggle" onClick={() => setShowRemoved((value) => !value)}>
+                Possible removals {removedCandidates.length}
+              </button>
+            </div>
+            <div className="tableWrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>
+                      <span className="srOnly">Select</span>
+                    </th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>School</th>
+                    <th>Class / programme</th>
+                    <th>Teacher</th>
+                    <th>Checks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredLessons.map((lesson) => (
+                    <tr key={lesson.id} className={`row-${lesson.importStatus}`}>
+                      <td>
+                        {lesson.importStatus === 'duplicate' ? (
+                          <span className="lockedDuplicate" title="Already in database">
+                            <CheckCircle2 size={16} />
+                          </span>
+                        ) : (
+                          <input
+                            type="checkbox"
+                            checked={lesson.selected}
+                            onChange={() => toggleLesson(lesson.id)}
+                          />
+                        )}
+                      </td>
+                      <td>
+                        <span className={`badge ${lesson.importStatus}`}>
+                          {statusLabel[lesson.importStatus]}
+                        </span>
+                      </td>
+                      <td>{lesson.date}</td>
+                      <td>
+                        {lesson.startTime}–{lesson.endTime}
+                      </td>
+                      <td>{lesson.school}</td>
+                      <td>{lesson.className}</td>
+                      <td>
+                        {lesson.importStatus === 'changed' ? (
+                          <span>
+                            {lesson.existingTeacher || 'Unassigned'} →{' '}
+                            <strong>{lesson.teacher || 'Unassigned'}</strong>
+                          </span>
+                        ) : (
+                          <select
+                            value={lesson.teacher ?? ''}
+                            onChange={(event) =>
+                              changePreviewTeacher(lesson.id, event.target.value)
+                            }
+                            disabled={lesson.importStatus === 'duplicate'}
+                          >
+                            <option value="">Unassigned</option>
+                            {Array.from(new Set(teacherNames)).map((teacher) => (
+                              <option
+                                key={teacher}
+                                value={teacher === 'Audrey Jansen' ? 'Audrey' : teacher}
+                              >
+                                {teacher === 'Audrey Jansen' ? 'Audrey' : teacher}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </td>
+                      <td className="checks">
+                        {lesson.importStatus === 'duplicate' ? (
+                          <span className="existingCheck">
+                            <CheckCircle2 size={13} />
+                            Matches an existing calendar record
+                          </span>
+                        ) : !lesson.teacher ? (
+                          <span className="unassignedCheck">
+                            <AlertTriangle size={13} />
+                            Will be imported under Unassigned and shown on the calendar
+                          </span>
+                        ) : lesson.issues.length ? (
+                          lesson.issues.map((issue) => (
+                            <span key={issue}>
+                              <AlertTriangle size={13} />
+                              {issue}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="clearCheck">
+                            <CheckCircle2 size={13} />
+                            No clash found
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {unsafeSelected.length > 0 && (
+              <label className="override">
+                <input
+                  type="checkbox"
+                  checked={allowConflicts}
+                  onChange={(event) => setAllowConflicts(event.target.checked)}
+                />
+                <span>
+                  I reviewed the {unsafeSelected.length} selected warning item
+                  {unsafeSelected.length === 1 ? '' : 's'} and want to import them anyway.
+                </span>
+              </label>
+            )}
+            {showRemoved && (
+              <div className="removedPanel">
+                <div>
+                  <h3>Possible removals</h3>
+                  <p>
+                    These records are in Supabase for the same teacher/date range but not in this
+                    PDF. They will not be deleted automatically.
+                  </p>
+                </div>
+                {removedCandidates.length ? (
+                  <div className="removedList">
+                    {removedCandidates.map((row) => (
+                      <article key={row.id}>
+                        <strong>
+                          {row.lesson_date} · {row.start_time.slice(0, 5)}–
+                          {row.end_time.slice(0, 5)}
+                        </strong>
+                        <span>
+                          {row.school} · {row.class_name} · {row.teacher_name}
+                        </span>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p>No possible removals.</p>
+                )}
+              </div>
+            )}
+          </section>
+        </>
+      )}
+
+      <style jsx>{`
+        .importShell {
+          min-height: 100vh;
+          padding: 38px;
+          max-width: 1550px;
+          margin: auto;
+        }
+        .importHeader {
+          display: grid;
+          gap: 24px;
+          margin-bottom: 24px;
+        }
+        .backLink {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #9aa7bf;
+          text-decoration: none;
+          width: max-content;
+        }
+        .importHeader p,
+        .previewHeader p {
+          margin: 0 0 6px;
+          color: #8174ff;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.15em;
+        }
+        .importHeader h1 {
+          margin: 0 0 8px;
+          font-size: 34px;
+        }
+        .importHeader span {
+          color: #8995ad;
+        }
+        .importCard,
+        .importStats article {
+          border: 1px solid rgba(148, 163, 184, 0.14);
+          background: linear-gradient(145deg, rgba(20, 27, 48, 0.92), rgba(11, 16, 31, 0.86));
+          border-radius: 18px;
+        }
+        .uploadCard {
+          padding: 20px;
+        }
+        .dropZone {
+          min-height: 180px;
+          border: 1px dashed rgba(129, 116, 255, 0.5);
+          border-radius: 15px;
+          display: grid;
+          place-items: center;
+          align-content: center;
+          gap: 9px;
+          color: #c8c2ff;
+          cursor: pointer;
+          background: rgba(120, 87, 255, 0.06);
+        }
+        .dropZone input {
+          display: none;
+        }
+        .dropZone span {
+          font-size: 12px;
+          color: #76839b;
+        }
+        .statusBox {
+          margin-top: 14px;
+          padding: 12px 14px;
+          border-radius: 11px;
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          background: #0b1222;
+          color: #8995ad;
+        }
+        .statusBox.error,
+        .danger strong {
+          color: #fb7185;
+        }
+        .statusBox.ready,
+        .statusBox.saved {
+          color: #70d28c;
+        }
+        .spin {
+          animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+        .importStats {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 14px;
+          margin: 16px 0;
+        }
+        .importStats article {
+          padding: 17px;
+          display: grid;
+          gap: 7px;
+        }
+        .importStats span {
+          color: #8793aa;
+          font-size: 12px;
+        }
+        .importStats strong {
+          font-size: 21px;
+        }
+        .importStats .new strong {
+          color: #70d28c;
+        }
+        .importStats .changed strong {
+          color: #fbbf24;
+        }
+        .importStats .removed strong {
+          color: #fb7185;
+        }
+        .analysisSummary {
+          display: grid;
+          grid-template-columns: auto minmax(260px, 1.2fr) minmax(260px, 1fr) minmax(260px, 1fr);
+          gap: 18px;
+          align-items: center;
+          margin: 16px 0;
+          padding: 18px;
+          border: 1px solid rgba(129, 116, 255, 0.24);
+          border-radius: 18px;
+          background: linear-gradient(135deg, rgba(91, 72, 205, 0.13), rgba(13, 20, 38, 0.92));
+        }
+        .analysisIcon {
+          width: 50px;
+          height: 50px;
+          display: grid;
+          place-items: center;
+          border-radius: 14px;
+          background: rgba(112, 210, 140, 0.12);
+          color: #70d28c;
+        }
+        .analysisCopy {
+          display: grid;
+          gap: 5px;
+        }
+        .analysisCopy p {
+          margin: 0;
+          color: #8174ff;
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.15em;
+        }
+        .analysisCopy h2 {
+          margin: 0;
+          font-size: 18px;
+        }
+        .analysisCopy span,
+        .analysisRecommendation span {
+          color: #8f9bb0;
+          font-size: 12px;
+        }
+        .analysisBreakdown {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(110px, 1fr));
+          gap: 8px;
+        }
+        .analysisBreakdown span {
+          padding: 9px 10px;
+          border-radius: 10px;
+          background: rgba(148, 163, 184, 0.06);
+          color: #a8b3c7;
+          font-size: 11px;
+        }
+        .analysisBreakdown strong {
+          margin-right: 5px;
+          color: #dce4f2;
+          font-size: 15px;
+        }
+        .analysisBreakdown .good strong {
+          color: #70d28c;
+        }
+        .analysisBreakdown .warn strong {
+          color: #fbbf24;
+        }
+        .analysisBreakdown .bad strong {
+          color: #fb7185;
+        }
+        .analysisRecommendation {
+          display: grid;
+          gap: 5px;
+          padding: 12px;
+          border-radius: 12px;
+          background: rgba(112, 210, 140, 0.06);
+          border: 1px solid rgba(112, 210, 140, 0.13);
+        }
+        .analysisRecommendation strong {
+          color: #a9e7b9;
+          font-size: 12px;
+        }
+        .lockedDuplicate {
+          display: inline-flex;
+          color: #70d28c;
+          opacity: 0.75;
+        }
+        .existingCheck {
+          color: #91a0b6 !important;
+        }
+        .row-duplicate {
+          opacity: 0.72;
+        }
+        .row-duplicate:hover {
+          opacity: 0.9;
+        }
+        .clashBanner {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 16px;
+          padding: 15px 17px;
+          border: 1px solid rgba(251, 113, 133, 0.28);
+          border-radius: 15px;
+          background: rgba(251, 113, 133, 0.07);
+          color: #fb7185;
+        }
+        .clashBanner div {
+          display: grid;
+          gap: 3px;
+          flex: 1;
+        }
+        .clashBanner span {
+          color: #c5a5ae;
+          font-size: 12px;
+        }
+        .clashBanner a {
+          padding: 9px 12px;
+          border-radius: 9px;
+          background: rgba(251, 113, 133, 0.12);
+          color: #ffd6dd;
+          text-decoration: none;
+          font-size: 12px;
+        }
+        .previewCard {
+          overflow: hidden;
+        }
+        .previewHeader {
+          padding: 18px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+        }
+        .previewHeader h2 {
+          margin: 0;
+        }
+        .previewActions {
+          display: flex;
+          gap: 8px;
+        }
+        .previewActions button {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          border: 0;
+          border-radius: 11px;
+          padding: 11px 16px;
+          background: linear-gradient(135deg, #6c56e8, #5544cf);
+          color: white;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .previewActions .secondary {
+          border: 1px solid rgba(148, 163, 184, 0.15);
+          background: #111a2d;
+          color: #c8d1e2;
+        }
+        .previewActions button:disabled {
+          opacity: 0.45;
+          cursor: not-allowed;
+        }
+        .toolbar {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          padding: 12px 16px;
+          border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+          overflow: auto;
+        }
+        .filterTitle {
+          display: flex;
+          gap: 6px;
+          align-items: center;
+          color: #71809a;
+          font-size: 11px;
+        }
+        .toolbar button {
+          white-space: nowrap;
+          padding: 7px 10px;
+          border: 1px solid rgba(148, 163, 184, 0.12);
+          border-radius: 9px;
+          background: transparent;
+          color: #8f9bb0;
+          font-size: 11px;
+        }
+        .toolbar button.active {
+          border-color: rgba(129, 116, 255, 0.45);
+          background: rgba(129, 116, 255, 0.12);
+          color: #d7d2ff;
+        }
+        .toolbar .removedToggle {
+          margin-left: auto;
+        }
+        .tableWrap {
+          overflow: auto;
+          max-height: 600px;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 12px;
+        }
+        th,
+        td {
+          padding: 11px 12px;
+          text-align: left;
+          border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+          white-space: nowrap;
+        }
+        th {
+          position: sticky;
+          top: 0;
+          background: #0c1324;
+          color: #7f8ca5;
+          text-transform: uppercase;
+          font-size: 10px;
+          z-index: 2;
+        }
+        td {
+          color: #c1cadb;
+        }
+        .checks {
+          min-width: 300px;
+          white-space: normal;
+        }
+        .checks span {
+          display: flex;
+          align-items: flex-start;
+          gap: 5px;
+          color: #fb9cad;
+        }
+        .checks .clearCheck {
+          color: #70d28c;
+        }
+        .checks .unassignedCheck {
+          color: #fbbf24;
+        }
+        .badge {
+          display: inline-flex;
+          padding: 4px 7px;
+          border-radius: 999px;
+          font-size: 9px;
+          font-weight: 800;
+          text-transform: uppercase;
+        }
+        .badge.new {
+          background: rgba(112, 210, 140, 0.12);
+          color: #70d28c;
+        }
+        .badge.changed {
+          background: rgba(251, 191, 36, 0.12);
+          color: #fbbf24;
+        }
+        .badge.duplicate {
+          background: rgba(148, 163, 184, 0.1);
+          color: #91a0b6;
+        }
+        .badge.conflict,
+        .badge.review {
+          background: rgba(251, 113, 133, 0.12);
+          color: #fb7185;
+        }
+        .row-conflict,
+        .row-review {
+          background: rgba(251, 113, 133, 0.025);
+        }
+        td em {
+          color: #fb7185;
+        }
+        .override {
+          display: flex;
+          gap: 9px;
+          align-items: flex-start;
+          padding: 13px 16px;
+          border-top: 1px solid rgba(251, 113, 133, 0.18);
+          color: #d9b9c1;
+          font-size: 12px;
+          background: rgba(251, 113, 133, 0.04);
+        }
+        .removedPanel {
+          padding: 17px;
+          border-top: 1px solid rgba(148, 163, 184, 0.1);
+          background: #0b1222;
+        }
+        .removedPanel h3 {
+          margin: 0 0 5px;
+        }
+        .removedPanel p {
+          margin: 0;
+          color: #8794ab;
+          font-size: 12px;
+        }
+        .removedList {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+          gap: 8px;
+          margin-top: 13px;
+        }
+        .removedList article {
+          display: grid;
+          gap: 4px;
+          padding: 11px;
+          border: 1px solid rgba(148, 163, 184, 0.1);
+          border-radius: 10px;
+          background: #10192c;
+        }
+        .removedList span {
+          color: #8794ab;
+          font-size: 11px;
+        }
+        .srOnly {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+        }
+        @media (max-width: 1100px) {
+          .analysisSummary {
+            grid-template-columns: auto 1fr;
+          }
+          .analysisBreakdown,
+          .analysisRecommendation {
+            grid-column: 2;
+          }
+        }
+        @media (max-width: 900px) {
+          .importShell {
+            padding: 20px;
+          }
+          .importStats {
+            grid-template-columns: repeat(2, 1fr);
+          }
+          .previewHeader {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: 13px;
+          }
+          .previewActions {
+            width: 100%;
+            flex-wrap: wrap;
+          }
+          .clashBanner {
+            align-items: flex-start;
+            flex-wrap: wrap;
+          }
+          .analysisSummary {
+            grid-template-columns: 1fr;
+          }
+          .analysisIcon,
+          .analysisBreakdown,
+          .analysisRecommendation {
+            grid-column: 1;
+          }
+          .analysisBreakdown {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
+      `}</style>
+    </main>
+  );
 }

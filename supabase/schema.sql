@@ -50,33 +50,80 @@ for each row execute function public.set_updated_at();
 alter table public.teachers enable row level security;
 alter table public.lessons enable row level security;
 
--- Temporary development policies. These allow the calendar to work before login is added.
--- We will replace them with admin/teacher-specific policies during the authentication phase.
+-- Role-based access policies. Admins have full access; teachers can only read their own lessons.
+-- API routes use the service_role key (SUPABASE_SECRET_KEY) and bypass RLS entirely.
+-- Drop any leftover development policies first.
 drop policy if exists "development read teachers" on public.teachers;
-create policy "development read teachers"
-on public.teachers for select
-to anon, authenticated
-using (true);
-
 drop policy if exists "development manage teachers" on public.teachers;
-create policy "development manage teachers"
-on public.teachers for all
-to anon, authenticated
-using (true)
-with check (true);
-
 drop policy if exists "development read lessons" on public.lessons;
-create policy "development read lessons"
-on public.lessons for select
-to anon, authenticated
-using (true);
-
 drop policy if exists "development manage lessons" on public.lessons;
-create policy "development manage lessons"
-on public.lessons for all
-to anon, authenticated
-using (true)
-with check (true);
+
+-- Teachers list: authenticated active users may read it; only admins may change it.
+drop policy if exists "authenticated read teachers" on public.teachers;
+create policy "authenticated read teachers"
+on public.teachers for select
+to authenticated
+using (
+  exists (select 1 from public.profiles p where p.id = auth.uid() and p.active)
+);
+
+drop policy if exists "admins manage teachers" on public.teachers;
+create policy "admins manage teachers"
+on public.teachers for all
+to authenticated
+using (
+  exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin' and p.active)
+)
+with check (
+  exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin' and p.active)
+);
+
+-- Lessons: admins see and manage everything. Teachers can only read their own lessons.
+drop policy if exists "admins read all lessons" on public.lessons;
+create policy "admins read all lessons"
+on public.lessons for select
+to authenticated
+using (
+  exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin' and p.active)
+);
+
+drop policy if exists "teachers read own lessons" on public.lessons;
+create policy "teachers read own lessons"
+on public.lessons for select
+to authenticated
+using (
+  teacher_name = (
+    select p.teacher_name from public.profiles p
+    where p.id = auth.uid() and p.role = 'teacher' and p.active
+  )
+);
+
+drop policy if exists "admins insert lessons" on public.lessons;
+create policy "admins insert lessons"
+on public.lessons for insert
+to authenticated
+with check (
+  exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin' and p.active)
+);
+
+drop policy if exists "admins update lessons" on public.lessons;
+create policy "admins update lessons"
+on public.lessons for update
+to authenticated
+using (
+  exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin' and p.active)
+)
+with check (
+  exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin' and p.active)
+);
+
+drop policy if exists "admins delete lessons" on public.lessons;
+create policy "admins delete lessons"
+on public.lessons for delete
+to authenticated
+using (
+  exists (select 1 from public.profiles p where p.id = auth.uid() and p.role = 'admin' and p.active)
+);
 
 insert into public.teachers (name, color) values
   ('Claris', '#70d28c'),

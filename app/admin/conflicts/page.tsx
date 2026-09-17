@@ -2,90 +2,954 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, ArrowLeft, CalendarOff, CheckCircle2, History, Loader2, MapPin, RotateCcw, Sparkles, UserRoundX } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CalendarOff,
+  CheckCircle2,
+  History,
+  Loader2,
+  MapPin,
+  RotateCcw,
+  Sparkles,
+  UserRoundX,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../../../utils/supabase/client';
 
-type Lesson={id:string;lesson_date:string;school:string;class_name:string;start_time:string;end_time:string;teacher_name:string|null;unavailable:boolean};
-type Teacher={name:string;color:string};
-type Availability={id:string;teacher_name:string;availability_type:'weekly'|'leave';weekday:number|null;start_time:string|null;end_time:string|null;start_date:string|null;end_date:string|null;reason:string|null};
-type Conflict={key:string;type:'overlap'|'tight';teacher:string;date:string;first:Lesson;second:Lesson;gap?:number};
-type Ranked=Teacher&{score:number;reasons:string[]};
-type Change={lessonId:string;school:string;className:string;date:string;fromTeacher:string|null;toTeacher:string;previousUnavailable:boolean};
-type Action={id:string;createdAt:string;kind:'single'|'bulk';changes:Change[];undone:boolean};
+type Lesson = {
+  id: string;
+  lesson_date: string;
+  school: string;
+  class_name: string;
+  start_time: string;
+  end_time: string;
+  teacher_name: string | null;
+  unavailable: boolean;
+};
+type Teacher = { name: string; color: string };
+type Availability = {
+  id: string;
+  teacher_name: string;
+  availability_type: 'weekly' | 'leave';
+  weekday: number | null;
+  start_time: string | null;
+  end_time: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  reason: string | null;
+};
+type Conflict = {
+  key: string;
+  type: 'overlap' | 'tight';
+  teacher: string;
+  date: string;
+  first: Lesson;
+  second: Lesson;
+  gap?: number;
+};
+type Ranked = Teacher & { score: number; reasons: string[] };
+type Change = {
+  lessonId: string;
+  school: string;
+  className: string;
+  date: string;
+  fromTeacher: string | null;
+  toTeacher: string;
+  previousUnavailable: boolean;
+};
+type Action = {
+  id: string;
+  createdAt: string;
+  kind: 'single' | 'bulk';
+  changes: Change[];
+  undone: boolean;
+};
 
-const REVIEWED_KEY='moeReviewedConflicts';
-const HISTORY_KEY='moeAssignmentHistory';
-const mins=(t:string)=>{const[h,m]=t.slice(0,5).split(':').map(Number);return h*60+m};
-const dateLabel=(d:string)=>new Intl.DateTimeFormat('en-SG',{weekday:'short',day:'numeric',month:'short',year:'numeric'}).format(new Date(`${d}T00:00:00`));
-const clashes=(a:Lesson,b:Lesson)=>a.lesson_date===b.lesson_date&&mins(a.start_time)<mins(b.end_time)&&mins(a.end_time)>mins(b.start_time);
-const yearRange=()=>{const y=new Date().getFullYear();return{start:`${y}-01-01`,end:`${y}-12-31`}};
+const REVIEWED_KEY = 'moeReviewedConflicts';
+const HISTORY_KEY = 'moeAssignmentHistory';
+const mins = (t: string) => {
+  const [h, m] = t.slice(0, 5).split(':').map(Number);
+  return h * 60 + m;
+};
+const dateLabel = (d: string) =>
+  new Intl.DateTimeFormat('en-SG', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(`${d}T00:00:00`));
+const clashes = (a: Lesson, b: Lesson) =>
+  a.lesson_date === b.lesson_date &&
+  mins(a.start_time) < mins(b.end_time) &&
+  mins(a.end_time) > mins(b.start_time);
+const yearRange = () => {
+  const y = new Date().getFullYear();
+  return { start: `${y}-01-01`, end: `${y}-12-31` };
+};
 
-export default function ConflictCenter(){
- const router=useRouter();
- const supabase=useMemo(()=>createClient(),[]);
- const initial=yearRange();
- const[range,setRange]=useState(initial);
- const[lessons,setLessons]=useState<Lesson[]>([]),[teachers,setTeachers]=useState<Teacher[]>([]),[availability,setAvailability]=useState<Availability[]>([]);
- const[reviewed,setReviewed]=useState<string[]>([]),[history,setHistory]=useState<Action[]>([]),[historyOpen,setHistoryOpen]=useState(false);
- const[loading,setLoading]=useState(true),[message,setMessage]=useState('Checking timetable…'),[selected,setSelected]=useState<string[]>([]),[bulkTeacher,setBulkTeacher]=useState(''),[saving,setSaving]=useState(false);
- const requestId=useRef(0);
+export default function ConflictCenter() {
+  const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
+  const initial = yearRange();
+  const [range, setRange] = useState(initial);
+  const [lessons, setLessons] = useState<Lesson[]>([]),
+    [teachers, setTeachers] = useState<Teacher[]>([]),
+    [availability, setAvailability] = useState<Availability[]>([]);
+  const [reviewed, setReviewed] = useState<string[]>([]),
+    [history, setHistory] = useState<Action[]>([]),
+    [historyOpen, setHistoryOpen] = useState(false);
+  const [loading, setLoading] = useState(true),
+    [message, setMessage] = useState('Checking timetable…'),
+    [selected, setSelected] = useState<string[]>([]),
+    [bulkTeacher, setBulkTeacher] = useState(''),
+    [saving, setSaving] = useState(false);
+  const requestId = useRef(0);
 
- useEffect(()=>{try{setReviewed(JSON.parse(localStorage.getItem(REVIEWED_KEY)||'[]'))}catch{};try{setHistory(JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]'))}catch{}},[]);
- const saveHistory=(next:Action[])=>{const v=next.slice(0,30);setHistory(v);localStorage.setItem(HISTORY_KEY,JSON.stringify(v))};
+  useEffect(() => {
+    try {
+      setReviewed(JSON.parse(localStorage.getItem(REVIEWED_KEY) || '[]'));
+    } catch {}
+    try {
+      setHistory(JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'));
+    } catch {}
+  }, []);
+  const saveHistory = (next: Action[]) => {
+    const v = next.slice(0, 30);
+    setHistory(v);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(v));
+  };
 
- const load=useCallback(async()=>{
-  const id=++requestId.current;setLoading(true);const t0=performance.now();
-  const{data:s}=await supabase.auth.getSession();if(!s.session){router.replace('/login');return}
-  const{data:p}=await supabase.from('profiles').select('role,active').eq('id',s.session.user.id).single();if(!p?.active||p.role!=='admin'){router.replace(p?.role==='teacher'?'/teacher':'/login');return}
-  const[lr,tr,ar]=await Promise.all([
-    supabase.from('lessons').select('id,lesson_date,school,class_name,start_time,end_time,teacher_name,unavailable').eq('cancelled',false).gte('lesson_date',range.start).lte('lesson_date',range.end).order('lesson_date').order('start_time'),
-   supabase.from('teachers').select('name,color').order('name'),
-   supabase.from('teacher_availability').select('*')
-  ]);
-  if(id!==requestId.current)return;
-  if(lr.error)setMessage(`Could not check conflicts: ${lr.error.message}`);else{setLessons((lr.data as Lesson[])??[]);setMessage(`${lr.data?.length??0} lessons checked in ${Math.round(performance.now()-t0)} ms.`)}
-  setTeachers((tr.data as Teacher[])??[]);setAvailability(ar.error?[]:((ar.data as Availability[])??[]));setSelected([]);setBulkTeacher('');setLoading(false);
- },[range.start,range.end,router,supabase]);
- useEffect(()=>{void load()},[load]);
+  const load = useCallback(async () => {
+    const id = ++requestId.current;
+    setLoading(true);
+    const t0 = performance.now();
+    const { data: s } = await supabase.auth.getSession();
+    if (!s.session) {
+      router.replace('/login');
+      return;
+    }
+    const { data: p } = await supabase
+      .from('profiles')
+      .select('role,active')
+      .eq('id', s.session.user.id)
+      .single();
+    if (!p?.active || p.role !== 'admin') {
+      router.replace(p?.role === 'teacher' ? '/teacher' : '/login');
+      return;
+    }
+    const [lr, tr, ar] = await Promise.all([
+      supabase
+        .from('lessons')
+        .select('id,lesson_date,school,class_name,start_time,end_time,teacher_name,unavailable')
+        .eq('cancelled', false)
+        .gte('lesson_date', range.start)
+        .lte('lesson_date', range.end)
+        .order('lesson_date')
+        .order('start_time'),
+      supabase.from('teachers').select('name,color').order('name'),
+      supabase.from('teacher_availability').select('*'),
+    ]);
+    if (id !== requestId.current) return;
+    if (lr.error) setMessage(`Could not check conflicts: ${lr.error.message}`);
+    else {
+      setLessons((lr.data as Lesson[]) ?? []);
+      setMessage(
+        `${lr.data?.length ?? 0} lessons checked in ${Math.round(performance.now() - t0)} ms.`,
+      );
+    }
+    setTeachers((tr.data as Teacher[]) ?? []);
+    setAvailability(ar.error ? [] : ((ar.data as Availability[]) ?? []));
+    setSelected([]);
+    setBulkTeacher('');
+    setLoading(false);
+  }, [range.start, range.end, router, supabase]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
- const availabilityByTeacher=useMemo(()=>{const m=new Map<string,Availability[]>();for(const r of availability){const arr=m.get(r.teacher_name);if(arr)arr.push(r);else m.set(r.teacher_name,[r])}return m},[availability]);
- const reasonFor=useCallback((teacher:string,lesson:Lesson)=>{const records=availabilityByTeacher.get(teacher)??[];const leave=records.find(r=>r.availability_type==='leave'&&r.start_date&&r.end_date&&lesson.lesson_date>=r.start_date&&lesson.lesson_date<=r.end_date);if(leave)return leave.reason?`On leave: ${leave.reason}`:'Teacher is on leave.';const weekly=records.filter(r=>r.availability_type==='weekly');if(!weekly.length)return null;const day=new Date(`${lesson.lesson_date}T00:00:00`).getDay();return weekly.some(r=>r.weekday===day&&r.start_time&&r.end_time&&lesson.start_time.slice(0,5)>=r.start_time.slice(0,5)&&lesson.end_time.slice(0,5)<=r.end_time.slice(0,5))?null:'Outside weekly availability.'},[availabilityByTeacher]);
+  const availabilityByTeacher = useMemo(() => {
+    const m = new Map<string, Availability[]>();
+    for (const r of availability) {
+      const arr = m.get(r.teacher_name);
+      if (arr) arr.push(r);
+      else m.set(r.teacher_name, [r]);
+    }
+    return m;
+  }, [availability]);
+  const reasonFor = useCallback(
+    (teacher: string, lesson: Lesson) => {
+      const records = availabilityByTeacher.get(teacher) ?? [];
+      const leave = records.find(
+        (r) =>
+          r.availability_type === 'leave' &&
+          r.start_date &&
+          r.end_date &&
+          lesson.lesson_date >= r.start_date &&
+          lesson.lesson_date <= r.end_date,
+      );
+      if (leave) return leave.reason ? `On leave: ${leave.reason}` : 'Teacher is on leave.';
+      const weekly = records.filter((r) => r.availability_type === 'weekly');
+      if (!weekly.length) return null;
+      const day = new Date(`${lesson.lesson_date}T00:00:00`).getDay();
+      return weekly.some(
+        (r) =>
+          r.weekday === day &&
+          r.start_time &&
+          r.end_time &&
+          lesson.start_time.slice(0, 5) >= r.start_time.slice(0, 5) &&
+          lesson.end_time.slice(0, 5) <= r.end_time.slice(0, 5),
+      )
+        ? null
+        : 'Outside weekly availability.';
+    },
+    [availabilityByTeacher],
+  );
 
- const indexes=useMemo(()=>{const byTeacher=new Map<string,Lesson[]>(),byTeacherDay=new Map<string,Lesson[]>(),workloads=new Map<string,number>();for(const l of lessons){if(!l.teacher_name)continue;const a=byTeacher.get(l.teacher_name);a?a.push(l):byTeacher.set(l.teacher_name,[l]);const k=`${l.teacher_name}|${l.lesson_date}`;const b=byTeacherDay.get(k);b?b.push(l):byTeacherDay.set(k,[l]);workloads.set(l.teacher_name,(workloads.get(l.teacher_name)??0)+1)}return{byTeacher,byTeacherDay,workloads}},[lessons]);
- const analysis=useMemo(()=>{const conflicts:Conflict[]=[];for(const[k,g]of indexes.byTeacherDay){const ordered=[...g].sort((a,b)=>a.start_time.localeCompare(b.start_time));for(let i=0;i<ordered.length-1;i++){const a=ordered[i],b=ordered[i+1],gap=mins(b.start_time)-mins(a.end_time),[teacher,date]=k.split('|');if(gap<0)conflicts.push({key:`${a.id}-${b.id}-overlap`,type:'overlap',teacher,date,first:a,second:b});else if(gap<30&&a.school.trim().toLowerCase()!==b.school.trim().toLowerCase())conflicts.push({key:`${a.id}-${b.id}-tight`,type:'tight',teacher,date,first:a,second:b,gap})}}const availabilityIssues=lessons.flatMap(l=>l.teacher_name?(()=>{const r=reasonFor(l.teacher_name!,l);return r?[{lesson:l,reason:r}]:[]})():[]);const active=conflicts.filter(c=>!reviewed.includes(c.key));return{conflicts,overlaps:active.filter(c=>c.type==='overlap'),tight:active.filter(c=>c.type==='tight'),availabilityIssues,unassigned:lessons.filter(l=>!l.teacher_name),manual:lessons.filter(l=>l.unavailable),reviewedCount:conflicts.length-active.length}},[indexes.byTeacherDay,lessons,reasonFor,reviewed]);
- const issueCount=analysis.overlaps.length+analysis.tight.length+analysis.availabilityIssues.length+analysis.unassigned.length+analysis.manual.length;
- const maxLoad=Math.max(1,...Array.from(indexes.workloads.values()));
- const ranked=useCallback((lesson:Lesson):Ranked[]=>teachers.flatMap(t=>{const all=indexes.byTeacher.get(t.name)??[];const day=indexes.byTeacherDay.get(`${t.name}|${lesson.lesson_date}`)??[];if(day.some(o=>o.id!==lesson.id&&clashes(lesson,o))||reasonFor(t.name,lesson))return[];let score=70;const reasons=['Free at this time','Within availability'];const same=day.some(o=>o.school.trim().toLowerCase()===lesson.school.trim().toLowerCase());const adjacent=day.some(o=>o.school.trim().toLowerCase()===lesson.school.trim().toLowerCase()&&(Math.abs(mins(o.end_time)-mins(lesson.start_time))<=90||Math.abs(mins(lesson.end_time)-mins(o.start_time))<=90));if(same){score+=12;reasons.push('Already at this school')}if(adjacent){score+=8;reasons.push('Nearby same-school lesson')}const balance=Math.round((1-(indexes.workloads.get(t.name)??0)/maxLoad)*10);score+=balance;if(balance>=6)reasons.push('Lower workload');if(!day.length){score+=5;reasons.push('No other lessons that day')}return[{...t,score:Math.min(99,score),reasons}]}).sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name)),[teachers,indexes,maxLoad,reasonFor]);
+  const indexes = useMemo(() => {
+    const byTeacher = new Map<string, Lesson[]>(),
+      byTeacherDay = new Map<string, Lesson[]>(),
+      workloads = new Map<string, number>();
+    for (const l of lessons) {
+      if (!l.teacher_name) continue;
+      const a = byTeacher.get(l.teacher_name);
+      a ? a.push(l) : byTeacher.set(l.teacher_name, [l]);
+      const k = `${l.teacher_name}|${l.lesson_date}`;
+      const b = byTeacherDay.get(k);
+      b ? b.push(l) : byTeacherDay.set(k, [l]);
+      workloads.set(l.teacher_name, (workloads.get(l.teacher_name) ?? 0) + 1);
+    }
+    return { byTeacher, byTeacherDay, workloads };
+  }, [lessons]);
+  const analysis = useMemo(() => {
+    const conflicts: Conflict[] = [];
+    for (const [k, g] of indexes.byTeacherDay) {
+      const ordered = [...g].sort((a, b) => a.start_time.localeCompare(b.start_time));
+      for (let i = 0; i < ordered.length - 1; i++) {
+        const a = ordered[i],
+          b = ordered[i + 1],
+          gap = mins(b.start_time) - mins(a.end_time),
+          [teacher, date] = k.split('|');
+        if (gap < 0)
+          conflicts.push({
+            key: `${a.id}-${b.id}-overlap`,
+            type: 'overlap',
+            teacher,
+            date,
+            first: a,
+            second: b,
+          });
+        else if (gap < 30 && a.school.trim().toLowerCase() !== b.school.trim().toLowerCase())
+          conflicts.push({
+            key: `${a.id}-${b.id}-tight`,
+            type: 'tight',
+            teacher,
+            date,
+            first: a,
+            second: b,
+            gap,
+          });
+      }
+    }
+    const availabilityIssues = lessons.flatMap((l) =>
+      l.teacher_name
+        ? (() => {
+            const r = reasonFor(l.teacher_name!, l);
+            return r ? [{ lesson: l, reason: r }] : [];
+          })()
+        : [],
+    );
+    const active = conflicts.filter((c) => !reviewed.includes(c.key));
+    return {
+      conflicts,
+      overlaps: active.filter((c) => c.type === 'overlap'),
+      tight: active.filter((c) => c.type === 'tight'),
+      availabilityIssues,
+      unassigned: lessons.filter((l) => !l.teacher_name),
+      manual: lessons.filter((l) => l.unavailable),
+      reviewedCount: conflicts.length - active.length,
+    };
+  }, [indexes.byTeacherDay, lessons, reasonFor, reviewed]);
+  const issueCount =
+    analysis.overlaps.length +
+    analysis.tight.length +
+    analysis.availabilityIssues.length +
+    analysis.unassigned.length +
+    analysis.manual.length;
+  const maxLoad = Math.max(1, ...Array.from(indexes.workloads.values()));
+  const ranked = useCallback(
+    (lesson: Lesson): Ranked[] =>
+      teachers
+        .flatMap((t) => {
+          const all = indexes.byTeacher.get(t.name) ?? [];
+          const day = indexes.byTeacherDay.get(`${t.name}|${lesson.lesson_date}`) ?? [];
+          if (
+            day.some((o) => o.id !== lesson.id && clashes(lesson, o)) ||
+            reasonFor(t.name, lesson)
+          )
+            return [];
+          let score = 70;
+          const reasons = ['Free at this time', 'Within availability'];
+          const same = day.some(
+            (o) => o.school.trim().toLowerCase() === lesson.school.trim().toLowerCase(),
+          );
+          const adjacent = day.some(
+            (o) =>
+              o.school.trim().toLowerCase() === lesson.school.trim().toLowerCase() &&
+              (Math.abs(mins(o.end_time) - mins(lesson.start_time)) <= 90 ||
+                Math.abs(mins(lesson.end_time) - mins(o.start_time)) <= 90),
+          );
+          if (same) {
+            score += 12;
+            reasons.push('Already at this school');
+          }
+          if (adjacent) {
+            score += 8;
+            reasons.push('Nearby same-school lesson');
+          }
+          const balance = Math.round((1 - (indexes.workloads.get(t.name) ?? 0) / maxLoad) * 10);
+          score += balance;
+          if (balance >= 6) reasons.push('Lower workload');
+          if (!day.length) {
+            score += 5;
+            reasons.push('No other lessons that day');
+          }
+          return [{ ...t, score: Math.min(99, score), reasons }];
+        })
+        .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name)),
+    [teachers, indexes, maxLoad, reasonFor],
+  );
 
- const selectedLessons=useMemo(()=>{const ids=new Set(selected);return lessons.filter(l=>ids.has(l.id))},[lessons,selected]);
- const selectedSet=useMemo(()=>new Set(selected),[selected]);
- const bulkChoices=useMemo(()=>teachers.filter(t=>selectedLessons.length>0&&selectedLessons.every(l=>!reasonFor(t.name,l)&&!(indexes.byTeacherDay.get(`${t.name}|${l.lesson_date}`)??[]).some(o=>!selectedSet.has(o.id)&&clashes(l,o)))&&!selectedLessons.some((l,i)=>selectedLessons.slice(i+1).some(o=>clashes(l,o)))),[teachers,selectedLessons,reasonFor,indexes.byTeacherDay,selectedSet]);
- useEffect(()=>{if(!bulkChoices.some(t=>t.name===bulkTeacher))setBulkTeacher(bulkChoices[0]?.name??'')},[bulkChoices,bulkTeacher]);
+  const selectedLessons = useMemo(() => {
+    const ids = new Set(selected);
+    return lessons.filter((l) => ids.has(l.id));
+  }, [lessons, selected]);
+  const selectedSet = useMemo(() => new Set(selected), [selected]);
+  const bulkChoices = useMemo(
+    () =>
+      teachers.filter(
+        (t) =>
+          selectedLessons.length > 0 &&
+          selectedLessons.every(
+            (l) =>
+              !reasonFor(t.name, l) &&
+              !(indexes.byTeacherDay.get(`${t.name}|${l.lesson_date}`) ?? []).some(
+                (o) => !selectedSet.has(o.id) && clashes(l, o),
+              ),
+          ) &&
+          !selectedLessons.some((l, i) => selectedLessons.slice(i + 1).some((o) => clashes(l, o))),
+      ),
+    [teachers, selectedLessons, reasonFor, indexes.byTeacherDay, selectedSet],
+  );
+  useEffect(() => {
+    if (!bulkChoices.some((t) => t.name === bulkTeacher))
+      setBulkTeacher(bulkChoices[0]?.name ?? '');
+  }, [bulkChoices, bulkTeacher]);
 
- const record=(kind:'single'|'bulk',changes:Change[])=>saveHistory([{id:`${Date.now()}`,createdAt:new Date().toISOString(),kind,changes,undone:false},...history]);
- const assign=async(lesson:Lesson,to:string)=>{if(!to||to===lesson.teacher_name)return;setMessage(`Assigning ${to}…`);const{error}=await supabase.from('lessons').update({teacher_name:to,unavailable:false}).eq('id',lesson.id);if(error){setMessage(error.message);return}record('single',[{lessonId:lesson.id,school:lesson.school,className:lesson.class_name,date:lesson.lesson_date,fromTeacher:lesson.teacher_name,toTeacher:to,previousUnavailable:lesson.unavailable}]);setLessons(v=>v.map(x=>x.id===lesson.id?{...x,teacher_name:to,unavailable:false}:x));setSelected(v=>v.filter(id=>id!==lesson.id));setMessage(`${lesson.class_name} assigned to ${to}.`)};
- const bulkAssign=async()=>{if(!bulkTeacher||!selected.length)return;setSaving(true);const changes=selectedLessons.map(l=>({lessonId:l.id,school:l.school,className:l.class_name,date:l.lesson_date,fromTeacher:l.teacher_name,toTeacher:bulkTeacher,previousUnavailable:l.unavailable}));const{error}=await supabase.from('lessons').update({teacher_name:bulkTeacher,unavailable:false}).in('id',selected);if(error)setMessage(error.message);else{record('bulk',changes);setLessons(v=>v.map(x=>selectedSet.has(x.id)?{...x,teacher_name:bulkTeacher,unavailable:false}:x));setMessage(`${selected.length} lessons assigned to ${bulkTeacher}.`);setSelected([])}setSaving(false)};
- const undo=async()=>{const action=history.find(h=>!h.undone);if(!action)return;setSaving(true);for(const c of action.changes)await supabase.from('lessons').update({teacher_name:c.fromTeacher,unavailable:c.previousUnavailable}).eq('id',c.lessonId);setLessons(v=>v.map(l=>{const c=action.changes.find(x=>x.lessonId===l.id);return c?{...l,teacher_name:c.fromTeacher,unavailable:c.previousUnavailable}:l}));saveHistory(history.map(h=>h.id===action.id?{...h,undone:true}:h));setMessage('Last assignment undone.');setSaving(false)};
- const review=(key:string)=>{const n=[...reviewed,key];setReviewed(n);localStorage.setItem(REVIEWED_KEY,JSON.stringify(n))};
+  const record = (kind: 'single' | 'bulk', changes: Change[]) =>
+    saveHistory([
+      { id: `${Date.now()}`, createdAt: new Date().toISOString(), kind, changes, undone: false },
+      ...history,
+    ]);
+  const assign = async (lesson: Lesson, to: string) => {
+    if (!to || to === lesson.teacher_name) return;
+    setMessage(`Assigning ${to}…`);
+    const { error } = await supabase
+      .from('lessons')
+      .update({ teacher_name: to, unavailable: false })
+      .eq('id', lesson.id);
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+    record('single', [
+      {
+        lessonId: lesson.id,
+        school: lesson.school,
+        className: lesson.class_name,
+        date: lesson.lesson_date,
+        fromTeacher: lesson.teacher_name,
+        toTeacher: to,
+        previousUnavailable: lesson.unavailable,
+      },
+    ]);
+    setLessons((v) =>
+      v.map((x) => (x.id === lesson.id ? { ...x, teacher_name: to, unavailable: false } : x)),
+    );
+    setSelected((v) => v.filter((id) => id !== lesson.id));
+    setMessage(`${lesson.class_name} assigned to ${to}.`);
+  };
+  const bulkAssign = async () => {
+    if (!bulkTeacher || !selected.length) return;
+    setSaving(true);
+    const changes = selectedLessons.map((l) => ({
+      lessonId: l.id,
+      school: l.school,
+      className: l.class_name,
+      date: l.lesson_date,
+      fromTeacher: l.teacher_name,
+      toTeacher: bulkTeacher,
+      previousUnavailable: l.unavailable,
+    }));
+    const { error } = await supabase
+      .from('lessons')
+      .update({ teacher_name: bulkTeacher, unavailable: false })
+      .in('id', selected);
+    if (error) setMessage(error.message);
+    else {
+      record('bulk', changes);
+      setLessons((v) =>
+        v.map((x) =>
+          selectedSet.has(x.id) ? { ...x, teacher_name: bulkTeacher, unavailable: false } : x,
+        ),
+      );
+      setMessage(`${selected.length} lessons assigned to ${bulkTeacher}.`);
+      setSelected([]);
+    }
+    setSaving(false);
+  };
+  const undo = async () => {
+    const action = history.find((h) => !h.undone);
+    if (!action) return;
+    setSaving(true);
+    for (const c of action.changes)
+      await supabase
+        .from('lessons')
+        .update({ teacher_name: c.fromTeacher, unavailable: c.previousUnavailable })
+        .eq('id', c.lessonId);
+    setLessons((v) =>
+      v.map((l) => {
+        const c = action.changes.find((x) => x.lessonId === l.id);
+        return c ? { ...l, teacher_name: c.fromTeacher, unavailable: c.previousUnavailable } : l;
+      }),
+    );
+    saveHistory(history.map((h) => (h.id === action.id ? { ...h, undone: true } : h)));
+    setMessage('Last assignment undone.');
+    setSaving(false);
+  };
+  const review = (key: string) => {
+    const n = [...reviewed, key];
+    setReviewed(n);
+    localStorage.setItem(REVIEWED_KEY, JSON.stringify(n));
+  };
 
- return <main className="conflictShell">
-  <header className="header"><div><Link href="/admin/calendar" className="back"><ArrowLeft size={17}/> Back to calendar</Link><p>ADMIN CONTROL PANEL</p><h1>Conflict Center</h1><span>{loading?'Loading…':message}</span></div><div className="headerActions"><button onClick={()=>setHistoryOpen(v=>!v)}><History size={16}/> History</button><button disabled={!history.some(h=>!h.undone)||saving} onClick={()=>void undo()}><RotateCcw size={16}/> Undo last</button><button onClick={()=>void load()} disabled={loading}>{loading?<Loader2 className="spin" size={16}/>:<CheckCircle2 size={16}/>} Recheck</button></div></header>
-  <section className="range"><label>From<input type="date" value={range.start} onChange={e=>setRange({...range,start:e.target.value})}/></label><label>To<input type="date" value={range.end} onChange={e=>setRange({...range,end:e.target.value})}/></label><span>Only this date range is downloaded and analysed.</span></section>
-  <section className="stats"><Stat n={issueCount} label="Total issues"/><Stat n={analysis.overlaps.length} label="Overlaps"/><Stat n={analysis.tight.length} label="Tight travel"/><Stat n={analysis.availabilityIssues.length} label="Availability"/><Stat n={analysis.unassigned.length} label="Unassigned"/></section>
-  {selected.length>0&&<section className="bulk"><strong>{selected.length} selected</strong><select value={bulkTeacher} onChange={e=>setBulkTeacher(e.target.value)}><option value="">{bulkChoices.length?'Choose teacher…':'No teacher can cover all'}</option>{bulkChoices.map(t=><option key={t.name}>{t.name}</option>)}</select><button disabled={!bulkTeacher||saving} onClick={()=>void bulkAssign()}>{saving?<Loader2 className="spin" size={15}/>:null} Assign</button><button onClick={()=>setSelected([])}>Clear</button></section>}
-  {!loading&&issueCount===0&&<div className="clear"><CheckCircle2 size={34}/><h2>No active conflicts</h2><p>The timetable follows current rules.</p></div>}
-  <Section title="Availability conflicts" icon={<CalendarOff size={19}/>} items={analysis.availabilityIssues.map(({lesson,reason})=><LessonCard key={`a-${lesson.id}`} lesson={lesson} warning={reason} choices={ranked(lesson)} selected={selectedSet.has(lesson.id)} onToggle={()=>setSelected(v=>v.includes(lesson.id)?v.filter(x=>x!==lesson.id):[...v,lesson.id])} onAssign={assign}/>)}/>
-  <Section title="Overlapping lessons" icon={<AlertTriangle size={19}/>} items={analysis.overlaps.map(c=><ConflictCard key={c.key} c={c} ranked={ranked} onAssign={assign} onReview={()=>review(c.key)}/>)}/>
-  <Section title="Tight travel gaps" icon={<MapPin size={19}/>} items={analysis.tight.map(c=><ConflictCard key={c.key} c={c} ranked={ranked} onAssign={assign} onReview={()=>review(c.key)}/>)}/>
-  <Section title="Teacher marked unavailable" icon={<UserRoundX size={19}/>} items={analysis.manual.map(l=><LessonCard key={`m-${l.id}`} lesson={l} choices={ranked(l)} onAssign={assign}/>)}/>
-  <Section title="Unassigned lessons" icon={<Sparkles size={19}/>} items={analysis.unassigned.map(l=><LessonCard key={`u-${l.id}`} lesson={l} choices={ranked(l)} onAssign={assign}/>)}/>
-  {historyOpen&&<div className="history"><h2>Assignment history</h2>{history.length?history.map(h=><article key={h.id}><strong>{h.kind==='bulk'?`${h.changes.length} lessons`:`${h.changes[0]?.school}`}</strong><span>{new Date(h.createdAt).toLocaleString('en-SG')} {h.undone?'· Undone':''}</span></article>):<p>No assignments yet.</p>}</div>}
-  <style jsx global>{`.conflictShell{min-height:100vh;padding:30px;max-width:1500px;color:#eef2fb}.header{display:flex;justify-content:space-between;gap:20px;align-items:end;margin-bottom:16px}.header p{margin:14px 0 5px;color:#8b7cff;font-size:10px;font-weight:900;letter-spacing:.15em}.header h1{margin:0 0 5px;font-size:32px}.header span,.range span{color:#8794ab}.back{display:flex;gap:7px;align-items:center;color:#aa9cff}.headerActions{display:flex;gap:8px}.headerActions button,.bulk button{display:flex;gap:7px;align-items:center;padding:10px 13px;border:1px solid rgba(148,163,184,.15);border-radius:10px;background:#111a2d;color:#e9eef8}.range{display:flex;align-items:end;gap:10px;margin-bottom:14px;padding:12px 14px;border:1px solid rgba(148,163,184,.12);border-radius:13px;background:#0d1425}.range label{display:grid;gap:5px;color:#8794ab;font-size:11px}.range input,.bulk select{padding:9px;border:1px solid rgba(148,163,184,.16);border-radius:9px;background:#111a2d;color:#eef2fb}.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:15px}.stat{padding:16px;border:1px solid rgba(148,163,184,.12);border-radius:15px;background:#0d1425}.stat strong{display:block;font-size:27px}.stat span{color:#8794ab;font-size:12px}.bulk{position:sticky;top:10px;z-index:20;display:flex;align-items:center;gap:10px;padding:12px 14px;margin-bottom:14px;border:1px solid rgba(139,124,255,.35);border-radius:13px;background:#0d1425}.bulk strong{margin-right:auto}.section{margin:14px 0;border:1px solid rgba(148,163,184,.12);border-radius:16px;background:#0d1425;overflow:hidden}.sectionHeader{display:flex;align-items:center;gap:9px;padding:14px 16px;border-bottom:1px solid rgba(148,163,184,.1)}.sectionHeader h2{margin:0;font-size:16px}.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px;padding:12px}.lesson,.conflictCard{min-width:0;padding:13px;border:1px solid rgba(148,163,184,.12);border-radius:12px;background:#111a2d}.lessonTop{display:flex;gap:10px;align-items:start}.lessonTop input{margin-top:4px}.lesson h3{margin:0 0 4px;font-size:14px}.lesson p,.lesson small{margin:0;color:#8794ab}.warning{margin-top:8px!important;color:#fb7185!important}.choice{display:flex;gap:8px;margin-top:10px}.choice select{min-width:0;flex:1;padding:8px;border-radius:8px;border:1px solid rgba(148,163,184,.15);background:#0d1425;color:#eef2fb}.choice button,.review{padding:8px 10px;border:0;border-radius:8px;background:#6653de;color:#fff}.conflictCard{grid-column:1/-1}.conflictCard>p{color:#8794ab}.pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.pair>*{min-width:0}.clear{padding:35px;text-align:center;border:1px solid rgba(99,217,149,.25);border-radius:16px;background:#0d1425}.history{position:fixed;right:18px;bottom:18px;width:350px;max-height:70vh;overflow:auto;padding:16px;border:1px solid rgba(148,163,184,.18);border-radius:15px;background:#0d1425;box-shadow:0 18px 50px rgba(0,0,0,.35);z-index:40}.history article{display:grid;gap:3px;padding:10px 0;border-bottom:1px solid rgba(148,163,184,.1)}.history span{color:#8794ab;font-size:11px}.spin{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}@media(max-width:1100px){.pair{grid-template-columns:1fr}}@media(max-width:900px){.header{align-items:start;flex-direction:column}.stats{grid-template-columns:repeat(2,1fr)}.range{align-items:stretch;flex-direction:column}.cards{grid-template-columns:1fr}.pair{grid-template-columns:1fr}}`}</style>
- </main>
+  return (
+    <main className="conflictShell">
+      <header className="header">
+        <div>
+          <Link href="/admin/calendar" className="back">
+            <ArrowLeft size={17} /> Back to calendar
+          </Link>
+          <p>ADMIN CONTROL PANEL</p>
+          <h1>Conflict Center</h1>
+          <span>{loading ? 'Loading…' : message}</span>
+        </div>
+        <div className="headerActions">
+          <button onClick={() => setHistoryOpen((v) => !v)}>
+            <History size={16} /> History
+          </button>
+          <button disabled={!history.some((h) => !h.undone) || saving} onClick={() => void undo()}>
+            <RotateCcw size={16} /> Undo last
+          </button>
+          <button onClick={() => void load()} disabled={loading}>
+            {loading ? <Loader2 className="spin" size={16} /> : <CheckCircle2 size={16} />} Recheck
+          </button>
+        </div>
+      </header>
+      <section className="range">
+        <label>
+          From
+          <input
+            type="date"
+            value={range.start}
+            onChange={(e) => setRange({ ...range, start: e.target.value })}
+          />
+        </label>
+        <label>
+          To
+          <input
+            type="date"
+            value={range.end}
+            onChange={(e) => setRange({ ...range, end: e.target.value })}
+          />
+        </label>
+        <span>Only this date range is downloaded and analysed.</span>
+      </section>
+      <section className="stats">
+        <Stat n={issueCount} label="Total issues" />
+        <Stat n={analysis.overlaps.length} label="Overlaps" />
+        <Stat n={analysis.tight.length} label="Tight travel" />
+        <Stat n={analysis.availabilityIssues.length} label="Availability" />
+        <Stat n={analysis.unassigned.length} label="Unassigned" />
+      </section>
+      {selected.length > 0 && (
+        <section className="bulk">
+          <strong>{selected.length} selected</strong>
+          <select value={bulkTeacher} onChange={(e) => setBulkTeacher(e.target.value)}>
+            <option value="">
+              {bulkChoices.length ? 'Choose teacher…' : 'No teacher can cover all'}
+            </option>
+            {bulkChoices.map((t) => (
+              <option key={t.name}>{t.name}</option>
+            ))}
+          </select>
+          <button disabled={!bulkTeacher || saving} onClick={() => void bulkAssign()}>
+            {saving ? <Loader2 className="spin" size={15} /> : null} Assign
+          </button>
+          <button onClick={() => setSelected([])}>Clear</button>
+        </section>
+      )}
+      {!loading && issueCount === 0 && (
+        <div className="clear">
+          <CheckCircle2 size={34} />
+          <h2>No active conflicts</h2>
+          <p>The timetable follows current rules.</p>
+        </div>
+      )}
+      <Section
+        title="Availability conflicts"
+        icon={<CalendarOff size={19} />}
+        items={analysis.availabilityIssues.map(({ lesson, reason }) => (
+          <LessonCard
+            key={`a-${lesson.id}`}
+            lesson={lesson}
+            warning={reason}
+            choices={ranked(lesson)}
+            selected={selectedSet.has(lesson.id)}
+            onToggle={() =>
+              setSelected((v) =>
+                v.includes(lesson.id) ? v.filter((x) => x !== lesson.id) : [...v, lesson.id],
+              )
+            }
+            onAssign={assign}
+          />
+        ))}
+      />
+      <Section
+        title="Overlapping lessons"
+        icon={<AlertTriangle size={19} />}
+        items={analysis.overlaps.map((c) => (
+          <ConflictCard
+            key={c.key}
+            c={c}
+            ranked={ranked}
+            onAssign={assign}
+            onReview={() => review(c.key)}
+          />
+        ))}
+      />
+      <Section
+        title="Tight travel gaps"
+        icon={<MapPin size={19} />}
+        items={analysis.tight.map((c) => (
+          <ConflictCard
+            key={c.key}
+            c={c}
+            ranked={ranked}
+            onAssign={assign}
+            onReview={() => review(c.key)}
+          />
+        ))}
+      />
+      <Section
+        title="Teacher marked unavailable"
+        icon={<UserRoundX size={19} />}
+        items={analysis.manual.map((l) => (
+          <LessonCard key={`m-${l.id}`} lesson={l} choices={ranked(l)} onAssign={assign} />
+        ))}
+      />
+      <Section
+        title="Unassigned lessons"
+        icon={<Sparkles size={19} />}
+        items={analysis.unassigned.map((l) => (
+          <LessonCard key={`u-${l.id}`} lesson={l} choices={ranked(l)} onAssign={assign} />
+        ))}
+      />
+      {historyOpen && (
+        <div className="history">
+          <h2>Assignment history</h2>
+          {history.length ? (
+            history.map((h) => (
+              <article key={h.id}>
+                <strong>
+                  {h.kind === 'bulk' ? `${h.changes.length} lessons` : `${h.changes[0]?.school}`}
+                </strong>
+                <span>
+                  {new Date(h.createdAt).toLocaleString('en-SG')} {h.undone ? '· Undone' : ''}
+                </span>
+              </article>
+            ))
+          ) : (
+            <p>No assignments yet.</p>
+          )}
+        </div>
+      )}
+      <style jsx global>{`
+        .conflictShell {
+          min-height: 100vh;
+          padding: 30px;
+          max-width: 1500px;
+          color: #eef2fb;
+        }
+        .header {
+          display: flex;
+          justify-content: space-between;
+          gap: 20px;
+          align-items: end;
+          margin-bottom: 16px;
+        }
+        .header p {
+          margin: 14px 0 5px;
+          color: #8b7cff;
+          font-size: 10px;
+          font-weight: 900;
+          letter-spacing: 0.15em;
+        }
+        .header h1 {
+          margin: 0 0 5px;
+          font-size: 32px;
+        }
+        .header span,
+        .range span {
+          color: #8794ab;
+        }
+        .back {
+          display: flex;
+          gap: 7px;
+          align-items: center;
+          color: #aa9cff;
+        }
+        .headerActions {
+          display: flex;
+          gap: 8px;
+        }
+        .headerActions button,
+        .bulk button {
+          display: flex;
+          gap: 7px;
+          align-items: center;
+          padding: 10px 13px;
+          border: 1px solid rgba(148, 163, 184, 0.15);
+          border-radius: 10px;
+          background: #111a2d;
+          color: #e9eef8;
+        }
+        .range {
+          display: flex;
+          align-items: end;
+          gap: 10px;
+          margin-bottom: 14px;
+          padding: 12px 14px;
+          border: 1px solid rgba(148, 163, 184, 0.12);
+          border-radius: 13px;
+          background: #0d1425;
+        }
+        .range label {
+          display: grid;
+          gap: 5px;
+          color: #8794ab;
+          font-size: 11px;
+        }
+        .range input,
+        .bulk select {
+          padding: 9px;
+          border: 1px solid rgba(148, 163, 184, 0.16);
+          border-radius: 9px;
+          background: #111a2d;
+          color: #eef2fb;
+        }
+        .stats {
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          gap: 12px;
+          margin-bottom: 15px;
+        }
+        .stat {
+          padding: 16px;
+          border: 1px solid rgba(148, 163, 184, 0.12);
+          border-radius: 15px;
+          background: #0d1425;
+        }
+        .stat strong {
+          display: block;
+          font-size: 27px;
+        }
+        .stat span {
+          color: #8794ab;
+          font-size: 12px;
+        }
+        .bulk {
+          position: sticky;
+          top: 10px;
+          z-index: 20;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 12px 14px;
+          margin-bottom: 14px;
+          border: 1px solid rgba(139, 124, 255, 0.35);
+          border-radius: 13px;
+          background: #0d1425;
+        }
+        .bulk strong {
+          margin-right: auto;
+        }
+        .section {
+          margin: 14px 0;
+          border: 1px solid rgba(148, 163, 184, 0.12);
+          border-radius: 16px;
+          background: #0d1425;
+          overflow: hidden;
+        }
+        .sectionHeader {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          padding: 14px 16px;
+          border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+        }
+        .sectionHeader h2 {
+          margin: 0;
+          font-size: 16px;
+        }
+        .cards {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+          gap: 10px;
+          padding: 12px;
+        }
+        .lesson,
+        .conflictCard {
+          min-width: 0;
+          padding: 13px;
+          border: 1px solid rgba(148, 163, 184, 0.12);
+          border-radius: 12px;
+          background: #111a2d;
+        }
+        .lessonTop {
+          display: flex;
+          gap: 10px;
+          align-items: start;
+        }
+        .lessonTop input {
+          margin-top: 4px;
+        }
+        .lesson h3 {
+          margin: 0 0 4px;
+          font-size: 14px;
+        }
+        .lesson p,
+        .lesson small {
+          margin: 0;
+          color: #8794ab;
+        }
+        .warning {
+          margin-top: 8px !important;
+          color: #fb7185 !important;
+        }
+        .choice {
+          display: flex;
+          gap: 8px;
+          margin-top: 10px;
+        }
+        .choice select {
+          min-width: 0;
+          flex: 1;
+          padding: 8px;
+          border-radius: 8px;
+          border: 1px solid rgba(148, 163, 184, 0.15);
+          background: #0d1425;
+          color: #eef2fb;
+        }
+        .choice button,
+        .review {
+          padding: 8px 10px;
+          border: 0;
+          border-radius: 8px;
+          background: #6653de;
+          color: #fff;
+        }
+        .conflictCard {
+          grid-column: 1/-1;
+        }
+        .conflictCard > p {
+          color: #8794ab;
+        }
+        .pair {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 8px;
+        }
+        .pair > * {
+          min-width: 0;
+        }
+        .clear {
+          padding: 35px;
+          text-align: center;
+          border: 1px solid rgba(99, 217, 149, 0.25);
+          border-radius: 16px;
+          background: #0d1425;
+        }
+        .history {
+          position: fixed;
+          right: 18px;
+          bottom: 18px;
+          width: 350px;
+          max-height: 70vh;
+          overflow: auto;
+          padding: 16px;
+          border: 1px solid rgba(148, 163, 184, 0.18);
+          border-radius: 15px;
+          background: #0d1425;
+          box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+          z-index: 40;
+        }
+        .history article {
+          display: grid;
+          gap: 3px;
+          padding: 10px 0;
+          border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+        }
+        .history span {
+          color: #8794ab;
+          font-size: 11px;
+        }
+        .spin {
+          animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+        @media (max-width: 1100px) {
+          .pair {
+            grid-template-columns: 1fr;
+          }
+        }
+        @media (max-width: 900px) {
+          .header {
+            align-items: start;
+            flex-direction: column;
+          }
+          .stats {
+            grid-template-columns: repeat(2, 1fr);
+          }
+          .range {
+            align-items: stretch;
+            flex-direction: column;
+          }
+          .cards {
+            grid-template-columns: 1fr;
+          }
+          .pair {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
+    </main>
+  );
 }
 
-function Stat({n,label}:{n:number;label:string}){return <article className="stat"><strong>{n}</strong><span>{label}</span></article>}
-function Section({title,icon,items}:{title:string;icon:React.ReactNode;items:React.ReactNode[]}){if(!items.length)return null;return <section className="section"><div className="sectionHeader">{icon}<h2>{title}</h2></div><div className="cards">{items}</div></section>}
-function LessonCard({lesson,warning,choices,selected,onToggle,onAssign}:{lesson:Lesson;warning?:string;choices:Ranked[];selected?:boolean;onToggle?:()=>void;onAssign:(l:Lesson,t:string)=>void}){const[top,setTop]=useState(choices[0]?.name??'');useEffect(()=>setTop(choices[0]?.name??''),[choices]);return <article className="lesson"><div className="lessonTop">{onToggle&&<input type="checkbox" checked={!!selected} onChange={onToggle}/>}<div><h3>{lesson.school}</h3><p>{lesson.class_name}</p><small>{dateLabel(lesson.lesson_date)} · {lesson.start_time.slice(0,5)}–{lesson.end_time.slice(0,5)} · {lesson.teacher_name??'Unassigned'}</small></div></div>{warning&&<p className="warning">{warning}</p>}<div className="choice"><select value={top} onChange={e=>setTop(e.target.value)}><option value="">No available teacher</option>{choices.map(c=><option key={c.name} value={c.name}>{c.name} · {c.score}%</option>)}</select><button disabled={!top} onClick={()=>onAssign(lesson,top)}>Assign</button></div></article>}
-function ConflictCard({c,ranked,onAssign,onReview}:{c:Conflict;ranked:(l:Lesson)=>Ranked[];onAssign:(l:Lesson,t:string)=>void;onReview:()=>void}){return <article className="conflictCard"><h3>{c.teacher} · {dateLabel(c.date)}</h3><p>{c.type==='overlap'?'Overlapping lessons':`${c.gap} minute travel gap`}</p><div className="pair"><LessonCard lesson={c.first} choices={ranked(c.first)} onAssign={onAssign}/><LessonCard lesson={c.second} choices={ranked(c.second)} onAssign={onAssign}/></div><button className="review" onClick={onReview}>Mark reviewed</button></article>}
+function Stat({ n, label }: { n: number; label: string }) {
+  return (
+    <article className="stat">
+      <strong>{n}</strong>
+      <span>{label}</span>
+    </article>
+  );
+}
+function Section({
+  title,
+  icon,
+  items,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  items: React.ReactNode[];
+}) {
+  if (!items.length) return null;
+  return (
+    <section className="section">
+      <div className="sectionHeader">
+        {icon}
+        <h2>{title}</h2>
+      </div>
+      <div className="cards">{items}</div>
+    </section>
+  );
+}
+function LessonCard({
+  lesson,
+  warning,
+  choices,
+  selected,
+  onToggle,
+  onAssign,
+}: {
+  lesson: Lesson;
+  warning?: string;
+  choices: Ranked[];
+  selected?: boolean;
+  onToggle?: () => void;
+  onAssign: (l: Lesson, t: string) => void;
+}) {
+  const [top, setTop] = useState(choices[0]?.name ?? '');
+  useEffect(() => setTop(choices[0]?.name ?? ''), [choices]);
+  return (
+    <article className="lesson">
+      <div className="lessonTop">
+        {onToggle && <input type="checkbox" checked={!!selected} onChange={onToggle} />}
+        <div>
+          <h3>{lesson.school}</h3>
+          <p>{lesson.class_name}</p>
+          <small>
+            {dateLabel(lesson.lesson_date)} · {lesson.start_time.slice(0, 5)}–
+            {lesson.end_time.slice(0, 5)} · {lesson.teacher_name ?? 'Unassigned'}
+          </small>
+        </div>
+      </div>
+      {warning && <p className="warning">{warning}</p>}
+      <div className="choice">
+        <select value={top} onChange={(e) => setTop(e.target.value)}>
+          <option value="">No available teacher</option>
+          {choices.map((c) => (
+            <option key={c.name} value={c.name}>
+              {c.name} · {c.score}%
+            </option>
+          ))}
+        </select>
+        <button disabled={!top} onClick={() => onAssign(lesson, top)}>
+          Assign
+        </button>
+      </div>
+    </article>
+  );
+}
+function ConflictCard({
+  c,
+  ranked,
+  onAssign,
+  onReview,
+}: {
+  c: Conflict;
+  ranked: (l: Lesson) => Ranked[];
+  onAssign: (l: Lesson, t: string) => void;
+  onReview: () => void;
+}) {
+  return (
+    <article className="conflictCard">
+      <h3>
+        {c.teacher} · {dateLabel(c.date)}
+      </h3>
+      <p>{c.type === 'overlap' ? 'Overlapping lessons' : `${c.gap} minute travel gap`}</p>
+      <div className="pair">
+        <LessonCard lesson={c.first} choices={ranked(c.first)} onAssign={onAssign} />
+        <LessonCard lesson={c.second} choices={ranked(c.second)} onAssign={onAssign} />
+      </div>
+      <button className="review" onClick={onReview}>
+        Mark reviewed
+      </button>
+    </article>
+  );
+}

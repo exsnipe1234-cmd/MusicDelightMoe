@@ -19,25 +19,57 @@ type Props = {
   onDelete: () => void;
 };
 
-function BulkToolbar({ selectedCount, visibleCount, onSelectVisible, bulkDate, onBulkDateChange, bulkTeacher, onBulkTeacherChange, teachers, onMove, onAssign, onCancel, onDelete }: Props) {
+function BulkToolbar({
+  selectedCount,
+  visibleCount,
+  onSelectVisible,
+  bulkDate,
+  onBulkDateChange,
+  bulkTeacher,
+  onBulkTeacherChange,
+  teachers,
+  onMove,
+  onAssign,
+  onCancel,
+  onDelete,
+}: Props) {
   return (
     <section className={styles.bulkToolbar} aria-label="Bulk operations">
       <label>
-        <input type="checkbox" checked={visibleCount > 0 && selectedCount === visibleCount} onChange={onSelectVisible} />
+        <input
+          type="checkbox"
+          checked={visibleCount > 0 && selectedCount === visibleCount}
+          onChange={onSelectVisible}
+        />
         Select visible lessons
       </label>
       {selectedCount > 0 && (
         <>
           <strong aria-live="polite">{selectedCount} selected</strong>
-          <input type="date" value={bulkDate} onChange={(event) => onBulkDateChange(event.target.value)} aria-label="Move selected lessons to date" />
+          <input
+            type="date"
+            value={bulkDate}
+            onChange={(event) => onBulkDateChange(event.target.value)}
+            aria-label="Move selected lessons to date"
+          />
           <button onClick={onMove}>Move</button>
-          <select value={bulkTeacher} onChange={(event) => onBulkTeacherChange(event.target.value)} aria-label="Assign selected lessons to teacher">
+          <select
+            value={bulkTeacher}
+            onChange={(event) => onBulkTeacherChange(event.target.value)}
+            aria-label="Assign selected lessons to teacher"
+          >
             <option value="">Assign teacher...</option>
-            {teachers.map((teacher) => <option key={teacher.name}>{teacher.name}</option>)}
+            {teachers.map((teacher) => (
+              <option key={teacher.name}>{teacher.name}</option>
+            ))}
           </select>
-          <button disabled={!bulkTeacher} onClick={onAssign}>Assign</button>
+          <button disabled={!bulkTeacher} onClick={onAssign}>
+            Assign
+          </button>
           <button onClick={onCancel}>Cancel classes</button>
-          <button className={styles.dangerAction} onClick={onDelete}>Delete</button>
+          <button className={styles.dangerAction} onClick={onDelete}>
+            Delete
+          </button>
         </>
       )}
     </section>

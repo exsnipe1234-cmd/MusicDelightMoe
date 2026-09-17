@@ -1,89 +1,358 @@
 :root {
   color-scheme: light;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
   background: #070b16;
   color: #f8fafc;
 }
 
-* { box-sizing: border-box; }
-body { margin: 0; min-width: 1180px; background: radial-gradient(circle at top right, rgba(90, 84, 255, .14), transparent 28%), #070b16; }
-button, input, select { font: inherit; }
-button { cursor: pointer; }
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-width: 1180px;
+  background:
+    radial-gradient(circle at top right, rgba(90, 84, 255, 0.14), transparent 28%), #070b16;
+}
+button,
+input,
+select {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+}
 
-.shell { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
-.sidebar { position: sticky; top: 0; height: 100vh; padding: 28px 20px; border-right: 1px solid rgba(148, 163, 184, .12); background: rgba(7, 11, 22, .9); backdrop-filter: blur(22px); display: flex; flex-direction: column; }
-.brandMark { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; background: linear-gradient(135deg, #7857ff, #2ed4c7); font-weight: 900; box-shadow: 0 12px 30px rgba(83, 69, 230, .3); }
-.brandText { margin: 14px 0 34px; display: grid; gap: 3px; }
-.brandText strong { font-size: 16px; }
-.brandText span, .sidebarFooter span { color: #7d8aa5; font-size: 12px; }
-nav { display: grid; gap: 8px; }
-.navItem { display: flex; gap: 12px; align-items: center; border: 0; border-radius: 12px; padding: 12px 14px; background: transparent; color: #8995ad; text-align: left; }
-.navItem.active, .navItem:hover { color: #fff; background: linear-gradient(90deg, rgba(120,87,255,.22), rgba(46,212,199,.08)); }
-.sidebarFooter { margin-top: auto; display: flex; align-items: center; gap: 10px; padding-top: 20px; border-top: 1px solid rgba(148,163,184,.12); }
-.sidebarFooter div:last-child { display: grid; gap: 2px; }
-.profileAvatar { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; background: #151c31; color: #b8c1d8; font-weight: 700; }
+.shell {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+}
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding: 28px 20px;
+  border-right: 1px solid rgba(148, 163, 184, 0.12);
+  background: rgba(7, 11, 22, 0.9);
+  backdrop-filter: blur(22px);
+  display: flex;
+  flex-direction: column;
+}
+.brandMark {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #7857ff, #2ed4c7);
+  font-weight: 900;
+  box-shadow: 0 12px 30px rgba(83, 69, 230, 0.3);
+}
+.brandText {
+  margin: 14px 0 34px;
+  display: grid;
+  gap: 3px;
+}
+.brandText strong {
+  font-size: 16px;
+}
+.brandText span,
+.sidebarFooter span {
+  color: #7d8aa5;
+  font-size: 12px;
+}
+nav {
+  display: grid;
+  gap: 8px;
+}
+.navItem {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: transparent;
+  color: #8995ad;
+  text-align: left;
+}
+.navItem.active,
+.navItem:hover {
+  color: #fff;
+  background: linear-gradient(90deg, rgba(120, 87, 255, 0.22), rgba(46, 212, 199, 0.08));
+}
+.sidebarFooter {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+}
+.sidebarFooter div:last-child {
+  display: grid;
+  gap: 2px;
+}
+.profileAvatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  background: #151c31;
+  color: #b8c1d8;
+  font-weight: 700;
+}
 
-.content { padding: 28px 30px 40px; }
-.topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-.eyebrow { margin: 0 0 5px; color: #766bf6; letter-spacing: .14em; font-size: 10px; font-weight: 800; }
-h1, h2, h3, p { margin-top: 0; }
-h1 { margin-bottom: 0; font-size: 30px; }
-h2 { margin: 0; font-size: 19px; }
-h3 { margin-bottom: 0; font-size: 16px; }
-.topActions { display: flex; align-items: center; gap: 10px; }
-.searchBox { width: 290px; display: flex; gap: 9px; align-items: center; padding: 10px 13px; border: 1px solid rgba(148,163,184,.14); border-radius: 12px; background: rgba(15,23,42,.72); color: #76839b; }
-.searchBox input { width: 100%; border: 0; outline: 0; background: transparent; color: #fff; }
-.iconButton, .primaryButton { height: 42px; border: 1px solid rgba(148,163,184,.13); border-radius: 12px; color: #fff; }
-.iconButton { position: relative; width: 42px; background: #10172a; }
-.notificationDot { position: absolute; width: 7px; height: 7px; border-radius: 50%; background: #fb7185; top: 9px; right: 9px; }
-.primaryButton { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 16px; background: linear-gradient(135deg, #6c56e8, #5544cf); box-shadow: 0 10px 25px rgba(86,68,207,.22); }
+.content {
+  padding: 28px 30px 40px;
+}
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.eyebrow {
+  margin: 0 0 5px;
+  color: #766bf6;
+  letter-spacing: 0.14em;
+  font-size: 10px;
+  font-weight: 800;
+}
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+h1 {
+  margin-bottom: 0;
+  font-size: 30px;
+}
+h2 {
+  margin: 0;
+  font-size: 19px;
+}
+h3 {
+  margin-bottom: 0;
+  font-size: 16px;
+}
+.topActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.searchBox {
+  width: 290px;
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  padding: 10px 13px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #76839b;
+}
+.searchBox input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #fff;
+}
+.iconButton,
+.primaryButton {
+  height: 42px;
+  border: 1px solid rgba(148, 163, 184, 0.13);
+  border-radius: 12px;
+  color: #fff;
+}
+.iconButton {
+  position: relative;
+  width: 42px;
+  background: #10172a;
+}
+.notificationDot {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fb7185;
+  top: 9px;
+  right: 9px;
+}
+.primaryButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+  background: linear-gradient(135deg, #6c56e8, #5544cf);
+  box-shadow: 0 10px 25px rgba(86, 68, 207, 0.22);
+}
 
-.statsGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 16px; }
-.statCard, .glassPanel { border: 1px solid rgba(148,163,184,.12); background: linear-gradient(145deg, rgba(20,27,48,.9), rgba(11,16,31,.78)); box-shadow: 0 20px 50px rgba(0,0,0,.16); backdrop-filter: blur(18px); }
-.statCard { min-height: 112px; border-radius: 16px; padding: 18px; display: grid; gap: 4px; }
-.statCard span { color: #8692aa; font-size: 13px; }
-.statCard strong { font-size: 29px; }
-.statCard small { color: #667189; }
-.statCard.warning { border-color: rgba(245,158,11,.3); }
-.statCard.danger { border-color: rgba(244,63,94,.35); }
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.statCard,
+.glassPanel {
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: linear-gradient(145deg, rgba(20, 27, 48, 0.9), rgba(11, 16, 31, 0.78));
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(18px);
+}
+.statCard {
+  min-height: 112px;
+  border-radius: 16px;
+  padding: 18px;
+  display: grid;
+  gap: 4px;
+}
+.statCard span {
+  color: #8692aa;
+  font-size: 13px;
+}
+.statCard strong {
+  font-size: 29px;
+}
+.statCard small {
+  color: #667189;
+}
+.statCard.warning {
+  border-color: rgba(245, 158, 11, 0.3);
+}
+.statCard.danger {
+  border-color: rgba(244, 63, 94, 0.35);
+}
 
-.workspaceGrid { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 16px; }
-.glassPanel { border-radius: 18px; overflow: hidden; }
+.workspaceGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 16px;
+}
+.glassPanel {
+  border-radius: 18px;
+  overflow: hidden;
+}
 
 @media (max-width: 1300px) {
-  body { min-width: 1050px; }
-  .shell { grid-template-columns: 210px 1fr; }
-  .content { padding-left: 20px; padding-right: 20px; }
-  .workspaceGrid { grid-template-columns: minmax(0, 1fr) 230px; }
+  body {
+    min-width: 1050px;
+  }
+  .shell {
+    grid-template-columns: 210px 1fr;
+  }
+  .content {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  .workspaceGrid {
+    grid-template-columns: minmax(0, 1fr) 230px;
+  }
 }
-
 
 /* v1.1 responsive and scrolling improvements */
-html,body{max-width:100%;overflow-x:hidden}
-body{min-width:0!important}
-.adminAppShell{min-height:100vh}
-.adminPageContent{min-height:100vh;margin-left:238px;min-width:0;padding-bottom:96px}
-.adminPageContent main{max-width:100%;overflow:visible}
-.adminPageContent .shell,.adminPageContent .manageShell{min-height:calc(100vh - 1px)}
-.adminPageContent .panel,.adminPageContent .records,.adminPageContent .accountList{scroll-margin-top:18px}
-.adminPageContent table{max-width:100%}
-.adminPageContent .tableWrap,.adminPageContent .accountList,.adminPageContent .records{overscroll-behavior:contain}
-@media(max-width:900px){
-  .adminPageContent{margin-left:0;padding-bottom:90px}
-  .content{padding:18px 14px 100px}
-  .topbar,.manageHeader,.panelHeading{align-items:flex-start;flex-wrap:wrap}
-  .topActions{width:100%;overflow-x:auto;padding-bottom:4px}
-  .searchBox{width:min(100%,360px)}
-  .statsGrid,.summaryGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .workspaceGrid{grid-template-columns:1fr}
-  .sidebar{display:none}
-  .shell{display:block!important;min-height:100vh!important}
-  .glassPanel{overflow:auto}
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
 }
-@media(max-width:600px){
-  .statsGrid,.summaryGrid{grid-template-columns:1fr}
-  .content{padding:14px 10px 96px}
-  h1{font-size:24px}
+body {
+  min-width: 0 !important;
+}
+.adminAppShell {
+  min-height: 100vh;
+}
+.adminPageContent {
+  min-height: 100vh;
+  margin-left: 238px;
+  min-width: 0;
+  padding-bottom: 96px;
+}
+.adminPageContent main {
+  max-width: 100%;
+  overflow: visible;
+}
+.adminPageContent .shell,
+.adminPageContent .manageShell {
+  min-height: calc(100vh - 1px);
+}
+.adminPageContent .panel,
+.adminPageContent .records,
+.adminPageContent .accountList {
+  scroll-margin-top: 18px;
+}
+.adminPageContent table {
+  max-width: 100%;
+}
+.adminPageContent .tableWrap,
+.adminPageContent .accountList,
+.adminPageContent .records {
+  overscroll-behavior: contain;
+}
+@media (max-width: 900px) {
+  .adminPageContent {
+    margin-left: 0;
+    padding-bottom: 90px;
+  }
+  .content {
+    padding: 18px 14px 100px;
+  }
+  .topbar,
+  .manageHeader,
+  .panelHeading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .topActions {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  .searchBox {
+    width: min(100%, 360px);
+  }
+  .statsGrid,
+  .summaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .workspaceGrid {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    display: none;
+  }
+  .shell {
+    display: block !important;
+    min-height: 100vh !important;
+  }
+  .glassPanel {
+    overflow: auto;
+  }
+}
+@media (max-width: 600px) {
+  .statsGrid,
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+  .content {
+    padding: 14px 10px 96px;
+  }
+  h1 {
+    font-size: 24px;
+  }
 }
 
 /* ── Calendar CSS module theme tokens ── */
@@ -130,7 +399,10 @@ body {
 }
 
 /* Light mode is the default. Keep the dark theme available through ThemeToggle. */
-body.light-mode{background:linear-gradient(135deg,#f8fafc,#eef2ff);color:#172033}
+body.light-mode {
+  background: linear-gradient(135deg, #f8fafc, #eef2ff);
+  color: #172033;
+}
 
 /* Calendar CSS module light-mode overrides (CSS modules hash class names, so we use custom properties) */
 body.light-mode {
@@ -173,97 +445,1242 @@ body.light-mode {
   --cal-shadow-drawer: -18px 0 55px rgba(30, 41, 59, 0.16);
   --cal-gradient-fade: #fff;
 }
-body.light-mode .adminSidebar,body.light-mode .adminMobileBar{background:rgba(255,255,255,.96);border-color:#dbe2ee}
-body.light-mode .adminBrand strong,body.light-mode .adminMobileBar strong{color:#172033}
-body.light-mode .adminBrand span,body.light-mode .adminSidebarFooter span,body.light-mode .adminSidebarFooter strong{color:#64748b}
-body.light-mode .adminNavLink{color:#64748b!important}
-body.light-mode .adminNavLink:hover,body.light-mode .adminNavLink.active{color:#312e81!important;background:linear-gradient(90deg,#eef2ff,#ecfeff)}
-body.light-mode .editorShell,body.light-mode .manageShell,body.light-mode .historyShell,body.light-mode .auditShell,body.light-mode .importShell,body.light-mode .requestShell,body.light-mode .conflictShell{color:#172033}
-body.light-mode .smartDashboard,body.light-mode .calendarCard,body.light-mode .workloadPanel,body.light-mode .panel,body.light-mode .status,body.light-mode .message,body.light-mode .requestCard,body.light-mode .accountCard,body.light-mode .history,body.light-mode .section,body.light-mode .queue,body.light-mode .stats article,body.light-mode .statsGrid article,body.light-mode .summaryGrid article,body.light-mode .summaryCards article,body.light-mode .summaryCards a,body.light-mode .upcomingCard,body.light-mode .requestsCard,body.light-mode .scheduleCard,body.light-mode .quickCard,body.light-mode .nextCard,body.light-mode .weekCard{background:#fff!important;border-color:#dbe2ee!important;box-shadow:0 10px 28px rgba(30,41,59,.08)}
-body.light-mode h1,body.light-mode h2,body.light-mode h3,body.light-mode strong,body.light-mode .editorHeader h1,body.light-mode .manageHeader h1{color:#172033}
-body.light-mode span,body.light-mode small,body.light-mode .editorHeader span,body.light-mode .manageHeader span,body.light-mode .panelHeading small{color:#64748b}
-body.light-mode input,body.light-mode select,body.light-mode textarea,body.light-mode .searchBox,body.light-mode .filterBar select,body.light-mode .formGrid input,body.light-mode .formGrid select{background:#f8fafc!important;color:#172033!important;border-color:#cbd5e1!important}
-body.light-mode .filterBar>button,body.light-mode .exportButton,body.light-mode .refreshButton,body.light-mode .secondary,body.light-mode .signOut,body.light-mode .changePassword,body.light-mode .quickRow{background:#f8fafc;color:#334155;border-color:#cbd5e1}
-body.light-mode .task,body.light-mode .upcomingGrid article,body.light-mode .requestList article,body.light-mode .quickLink{background:#f8fafc!important;color:#172033}
-body.light-mode .quickActions .quickTrigger{color:#fff}
-body.light-mode .loginShell,body.light-mode .passwordShell{background:linear-gradient(135deg,#f8fafc,#eef2ff);color:#172033}
-body.light-mode .loginCard,body.light-mode .passwordCard{background:#fff;border-color:#dbe2ee;box-shadow:0 20px 60px rgba(30,41,59,.12)}
-body.light-mode .loginCard h1,body.light-mode .passwordCard h1{color:#172033}
-body.light-mode .loginCard .intro,body.light-mode .passwordCard>span{color:#64748b}
-body.light-mode .loginCard .inputWrap,body.light-mode .passwordCard label>div{background:#f8fafc;border-color:#cbd5e1;color:#64748b}
-body.light-mode .loginCard .inputWrap input,body.light-mode .passwordCard input{color:#172033}
-body.light-mode .loginCard small{color:#64748b}
-body.light-mode .lessonDrawer,body.light-mode .dayPanel,body.light-mode .quickDrawer,body.light-mode .requestModal{background:#fff;border-color:#dbe2ee;box-shadow:0 20px 60px rgba(30,41,59,.18)}
-body.light-mode .drawerHeader h2,body.light-mode .requestModal h3{color:#172033}
-body.light-mode .drawerHeader span,body.light-mode .drawerHeader button{color:#64748b}
-body.light-mode .dayLessonList>button{background:#f8fafc;color:#172033;border-color:#dbe2ee}
-body.light-mode .dayLessonList small,body.light-mode .noDayLessons{color:#64748b}
-body.light-mode .copyLessons,body.light-mode .addAnother{background:#eef2ff;color:#4338ca;border-color:#c7d2fe}
-body.light-mode .importCard,body.light-mode .importStats article,body.light-mode .previewCard{background:#fff;border-color:#dbe2ee}
-body.light-mode .dropZone{background:#f8fafc;color:#4338ca;border-color:#a5b4fc}
-body.light-mode .dropZone span,body.light-mode .importHeader span{color:#64748b}
-body.light-mode .analysisSummary{background:linear-gradient(135deg,#eef2ff,#fff);border-color:#c7d2fe}
-body.light-mode .analysisSummary h2,body.light-mode .analysisSummary span,body.light-mode .analysisSummary strong{color:#172033}
-body.light-mode .tableWrap,body.light-mode .toolbar,body.light-mode .removedPanel{background:#f8fafc;color:#172033;border-color:#dbe2ee}
-body.light-mode .tableWrap th{background:#e2e8f0;color:#334155}
-body.light-mode .tableWrap td{color:#334155;border-color:#dbe2ee}
-body.light-mode .requestModal input,body.light-mode .requestModal select,body.light-mode .requestModal textarea,body.light-mode .noteField textarea{background:#f8fafc;color:#172033;border-color:#cbd5e1}
-body.light-mode .requestCard .lessonList,body.light-mode .requestCard .remarks{background:#f8fafc;color:#334155}
-body.light-mode .lessonHero,body.light-mode .original,body.light-mode .suggestionHeading,body.light-mode .suggestions article{color:#172033}
-body.light-mode .calendarAiPanel{background:linear-gradient(160deg,#fff,#f8fafc);border-color:#dbe2ee;box-shadow:0 20px 60px rgba(30,41,59,.2)}
-body.light-mode .calendarAiHeader,body.light-mode .calendarAiNotice{border-color:#dbe2ee}
-body.light-mode .calendarAiIdentity strong,body.light-mode .calendarAiBubble h4{color:#172033}
-body.light-mode .calendarAiIdentity span,body.light-mode .calendarAiNotice,body.light-mode .calendarAiBubble,body.light-mode .calendarAiComposer small{color:#64748b}
-body.light-mode .calendarAiBubble{background:#eef2ff;border-color:#dbe2ee}
-body.light-mode .calendarAiComposer{background:#fff;border-color:#dbe2ee}
-body.light-mode .alertGrid a,body.light-mode .statusMessage,body.light-mode .emptyState,body.light-mode .tabs button,body.light-mode .toolbar button,body.light-mode .record,body.light-mode .auditShell article,body.light-mode .historyShell article,body.light-mode .conflictCard,body.light-mode .suggestions article{background:#fff!important;border-color:#dbe2ee!important;color:#334155}
-body.light-mode .alertGrid a span,body.light-mode .statusMessage,body.light-mode .emptyState span,body.light-mode .tabs button,body.light-mode .toolbar button,body.light-mode .record small,body.light-mode .auditShell article span,body.light-mode .historyShell article span,body.light-mode .conflictCard p,body.light-mode .suggestions article span{color:#64748b!important}
-body.light-mode .alertGrid a b,body.light-mode .emptyState strong,body.light-mode .record strong,body.light-mode .auditShell article strong,body.light-mode .historyShell article strong,body.light-mode .conflictCard h3,body.light-mode .suggestions article strong{color:#172033!important}
-body.light-mode .toolbar button.active,body.light-mode .tabs button.active{background:#6653de!important;color:#fff!important;border-color:#6653de!important}
-body.light-mode .toolbar button.active b{color:#fff!important}
-body.light-mode .importShell .statusBox{background:#f8fafc!important;border-color:#dbe2ee;color:#64748b}
-body.light-mode .importShell .statusBox.ready,body.light-mode .importShell .statusBox.saved{color:#15803d}
-body.light-mode .importShell .statusBox.error{color:#be123c}
-body.light-mode .accountCard .timetableAccess label,body.light-mode .teacherChips span{background:#eef2ff;color:#334155;border-color:#cbd5e1}
-body.light-mode .accountCard .timetableAccess label.primaryTeacher{background:#e0e7ff;color:#312e81}
-body.light-mode .smartDashboard .summaryCards strong{color:#172033!important}
-body.light-mode .smartDashboard .summaryCards span,body.light-mode .smartDashboard .alertGrid span,body.light-mode .smartDashboard .smartActions span{color:#475569!important}
-body.light-mode .manageShell .summaryGrid strong,body.light-mode .requestShell .summaryGrid strong{color:#172033!important}
-body.light-mode .manageShell .summaryGrid span,body.light-mode .requestShell .summaryGrid span{color:#475569!important}
-body.light-mode .manageShell .accountIdentity strong,body.light-mode .manageShell .accountIdentity span,body.light-mode .manageShell .fields label,body.light-mode .manageShell .timetableAccess>span{color:#334155!important}
-body.light-mode .requestShell .statusMessage{color:#334155!important;background:#fff!important;border-color:#dbe2ee!important}
-body.light-mode .manageShell .avatar{background:#e0e7ff!important;color:#312e81!important}
-body.light-mode .manageShell .teacherChips span{background:#eef2ff!important;color:#334155!important;border-color:#cbd5e1!important}
-body.light-mode .shell{background:linear-gradient(135deg,#f8fafc,#eef2ff)!important;color:#172033!important}
-body.light-mode .shell .card{background:#fff!important;border-color:#dbe2ee!important;box-shadow:0 20px 60px rgba(30,41,59,.12)!important}
-body.light-mode .shell .card h1,body.light-mode .shell .card label,body.light-mode .shell .card strong{color:#172033!important}
-body.light-mode .shell .card>span,body.light-mode .shell .card .loading{color:#475569!important}
-body.light-mode .shell .card label>div{background:#f8fafc!important;border-color:#cbd5e1!important}
-body.light-mode .shell .card input{color:#172033!important}
-body.light-mode .shell:has(.card){display:grid!important;grid-template-columns:1fr!important;place-items:center!important;width:100%!important;min-height:100vh!important;margin:0!important;padding:24px!important}
-body.light-mode .teacherStrip button{background:#fff!important;color:#334155!important;border-color:#cbd5e1!important}
-body.light-mode .teacherStrip button.active{background:#eef2ff!important;color:#172033!important}
-body.light-mode .portalShell .weekCard,body.light-mode .portalShell .statGrid article,body.light-mode .portalShell .scheduleCard,body.light-mode .portalShell .quickCard,body.light-mode .portalShell .upcomingCard,body.light-mode .portalShell .requestsCard,body.light-mode .portalShell .nextCard{background:#fff!important;border-color:#dbe2ee!important;color:#172033!important;box-shadow:0 10px 28px rgba(30,41,59,.08)}
-body.light-mode .portalShell .weekCard h3,body.light-mode .portalShell .statGrid strong,body.light-mode .portalShell .statGrid span,body.light-mode .portalShell .statGrid small,body.light-mode .portalShell .sectionHeading h3,body.light-mode .portalShell .sectionHeading>span{color:#172033!important}
-body.light-mode .portalShell .barColumn>div{background:#f1f5f9!important}
-body.light-mode .portalShell .barColumn>span,body.light-mode .portalShell .barColumn>small,body.light-mode .portalShell .upcomingGrid article>small,body.light-mode .portalShell .lessonTime span{color:#475569!important}
-body.light-mode .portalShell .quickCard button{color:#172033!important;border-color:#dbe2ee!important}
-body.light-mode .portalShell .quickCard button small,body.light-mode .portalShell .lessonDetails>span,body.light-mode .portalShell .todayLesson .lessonDetails small{color:#475569!important}
-.mobilePortalNav{display:none}
-.taskTabs{display:flex;gap:8px;margin:14px 0;overflow-x:auto}.taskTabs button{white-space:nowrap;padding:9px 13px;border:1px solid #cbd5e1;border-radius:999px;background:#fff;color:#475569;font-weight:800;cursor:pointer}.taskTabs button.active{background:#6653de;color:#fff;border-color:#6653de}.taskTabs b{margin-left:5px}
-@media(max-width:780px){.mobilePortalNav{display:flex;gap:8px;margin:0 0 16px;overflow-x:auto}.mobilePortalNav a,.mobilePortalNav button{flex:1;min-width:90px;padding:10px 13px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;color:#334155;text-align:center;text-decoration:none;font-size:12px;font-weight:800}.mobilePortalNav a:first-child{background:#eef2ff;color:#4338ca;border-color:#c7d2fe}}
-body.light-mode .workloadStats button{background:#f8fafc!important;color:#334155!important;border-color:#cbd5e1!important}
-body.light-mode .workloadStats button span,body.light-mode .workloadStats button small{color:#64748b!important}
-body.light-mode .workloadStats button strong{color:#172033!important}
-body.light-mode .alertGrid a{background:#fff!important;color:#334155!important;border-color:#dbe2ee!important}
-body.light-mode .alertGrid a b,body.light-mode .alertGrid a span{color:#334155!important}
-body.light-mode .conflictShell .range,body.light-mode .conflictShell .bulk,body.light-mode .conflictShell .section,body.light-mode .conflictShell .conflictCard,body.light-mode .conflictShell .lesson,body.light-mode .conflictShell .choice,body.light-mode .conflictShell .choice select{background:#fff!important;color:#334155!important;border-color:#dbe2ee!important}
-body.light-mode .conflictShell .lesson h3,body.light-mode .conflictShell .lesson p,body.light-mode .conflictShell .lesson small,body.light-mode .conflictShell .conflictCard h3,body.light-mode .conflictShell .conflictCard p{color:#172033!important}
-body.light-mode .conflictShell .range span,body.light-mode .conflictShell .choice select{color:#64748b!important}
-body.light-mode .requestShell .toolbar button,body.light-mode .requestShell .statusMessage,body.light-mode .requestShell .requestList .emptyState{background:#fff!important;color:#334155!important;border-color:#dbe2ee!important}
-body.light-mode .requestShell .toolbar button:not(.active){color:#64748b!important}
-body.light-mode .smartActions>div{background:#fff!important;color:#64748b!important;border:1px solid #dbe2ee}
-body.light-mode .editorShell,body.light-mode .editorShell p,body.light-mode .editorShell span,body.light-mode .editorShell small,body.light-mode .manageShell,body.light-mode .manageShell p,body.light-mode .manageShell span,body.light-mode .manageShell small,body.light-mode .importShell,body.light-mode .importShell p,body.light-mode .importShell span,body.light-mode .importShell small,body.light-mode .historyShell,body.light-mode .historyShell p,body.light-mode .historyShell span,body.light-mode .historyShell small,body.light-mode .auditShell,body.light-mode .auditShell p,body.light-mode .auditShell span,body.light-mode .auditShell small,body.light-mode .requestShell,body.light-mode .requestShell p,body.light-mode .requestShell span,body.light-mode .requestShell small,body.light-mode .conflictShell,body.light-mode .conflictShell p,body.light-mode .conflictShell span,body.light-mode .conflictShell small{color:#334155!important}
-body.light-mode .editorShell h1,body.light-mode .editorShell h2,body.light-mode .editorShell h3,body.light-mode .manageShell h1,body.light-mode .manageShell h2,body.light-mode .manageShell h3,body.light-mode .importShell h1,body.light-mode .importShell h2,body.light-mode .importShell h3,body.light-mode .historyShell h1,body.light-mode .historyShell h2,body.light-mode .auditShell h1,body.light-mode .auditShell h2,body.light-mode .requestShell h1,body.light-mode .requestShell h2,body.light-mode .requestShell h3,body.light-mode .conflictShell h1,body.light-mode .conflictShell h2,body.light-mode .conflictShell h3{color:#172033!important}
-body.light-mode .primary,body.light-mode .save,body.light-mode .approve,body.light-mode .assigned,body.light-mode .replacementButton,body.light-mode .submit,body.light-mode .quickTrigger,body.light-mode .loginButton{color:#fff!important}
-body.light-mode .eyebrow,body.light-mode .editorHeader p,body.light-mode .workloadHeading p,body.light-mode .drawerHeader p{color:#5b4bd6!important}
+body.light-mode .adminSidebar,
+body.light-mode .adminMobileBar {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: #dbe2ee;
+}
+body.light-mode .adminBrand strong,
+body.light-mode .adminMobileBar strong {
+  color: #172033;
+}
+body.light-mode .adminBrand span,
+body.light-mode .adminSidebarFooter span,
+body.light-mode .adminSidebarFooter strong {
+  color: #64748b;
+}
+body.light-mode .adminNavLink {
+  color: #64748b !important;
+}
+body.light-mode .adminNavLink:hover,
+body.light-mode .adminNavLink.active {
+  color: #312e81 !important;
+  background: linear-gradient(90deg, #eef2ff, #ecfeff);
+}
+body.light-mode .editorShell,
+body.light-mode .manageShell,
+body.light-mode .historyShell,
+body.light-mode .auditShell,
+body.light-mode .importShell,
+body.light-mode .requestShell,
+body.light-mode .conflictShell {
+  color: #172033;
+}
+body.light-mode .smartDashboard,
+body.light-mode .calendarCard,
+body.light-mode .workloadPanel,
+body.light-mode .panel,
+body.light-mode .status,
+body.light-mode .message,
+body.light-mode .requestCard,
+body.light-mode .accountCard,
+body.light-mode .history,
+body.light-mode .section,
+body.light-mode .queue,
+body.light-mode .stats article,
+body.light-mode .statsGrid article,
+body.light-mode .summaryGrid article,
+body.light-mode .summaryCards article,
+body.light-mode .summaryCards a,
+body.light-mode .upcomingCard,
+body.light-mode .requestsCard,
+body.light-mode .scheduleCard,
+body.light-mode .quickCard,
+body.light-mode .nextCard,
+body.light-mode .weekCard {
+  background: #fff !important;
+  border-color: #dbe2ee !important;
+  box-shadow: 0 10px 28px rgba(30, 41, 59, 0.08);
+}
+body.light-mode h1,
+body.light-mode h2,
+body.light-mode h3,
+body.light-mode strong,
+body.light-mode .editorHeader h1,
+body.light-mode .manageHeader h1 {
+  color: #172033;
+}
+body.light-mode span,
+body.light-mode small,
+body.light-mode .editorHeader span,
+body.light-mode .manageHeader span,
+body.light-mode .panelHeading small {
+  color: #64748b;
+}
+body.light-mode input,
+body.light-mode select,
+body.light-mode textarea,
+body.light-mode .searchBox,
+body.light-mode .filterBar select,
+body.light-mode .formGrid input,
+body.light-mode .formGrid select {
+  background: #f8fafc !important;
+  color: #172033 !important;
+  border-color: #cbd5e1 !important;
+}
+body.light-mode .filterBar > button,
+body.light-mode .exportButton,
+body.light-mode .refreshButton,
+body.light-mode .secondary,
+body.light-mode .signOut,
+body.light-mode .changePassword,
+body.light-mode .quickRow {
+  background: #f8fafc;
+  color: #334155;
+  border-color: #cbd5e1;
+}
+body.light-mode .task,
+body.light-mode .upcomingGrid article,
+body.light-mode .requestList article,
+body.light-mode .quickLink {
+  background: #f8fafc !important;
+  color: #172033;
+}
+body.light-mode .quickActions .quickTrigger {
+  color: #fff;
+}
+body.light-mode .loginShell,
+body.light-mode .passwordShell {
+  background: linear-gradient(135deg, #f8fafc, #eef2ff);
+  color: #172033;
+}
+body.light-mode .loginCard,
+body.light-mode .passwordCard {
+  background: #fff;
+  border-color: #dbe2ee;
+  box-shadow: 0 20px 60px rgba(30, 41, 59, 0.12);
+}
+body.light-mode .loginCard h1,
+body.light-mode .passwordCard h1 {
+  color: #172033;
+}
+body.light-mode .loginCard .intro,
+body.light-mode .passwordCard > span {
+  color: #64748b;
+}
+body.light-mode .loginCard .inputWrap,
+body.light-mode .passwordCard label > div {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #64748b;
+}
+body.light-mode .loginCard .inputWrap input,
+body.light-mode .passwordCard input {
+  color: #172033;
+}
+body.light-mode .loginCard small {
+  color: #64748b;
+}
+body.light-mode .lessonDrawer,
+body.light-mode .dayPanel,
+body.light-mode .quickDrawer,
+body.light-mode .requestModal {
+  background: #fff;
+  border-color: #dbe2ee;
+  box-shadow: 0 20px 60px rgba(30, 41, 59, 0.18);
+}
+body.light-mode .drawerHeader h2,
+body.light-mode .requestModal h3 {
+  color: #172033;
+}
+body.light-mode .drawerHeader span,
+body.light-mode .drawerHeader button {
+  color: #64748b;
+}
+body.light-mode .dayLessonList > button {
+  background: #f8fafc;
+  color: #172033;
+  border-color: #dbe2ee;
+}
+body.light-mode .dayLessonList small,
+body.light-mode .noDayLessons {
+  color: #64748b;
+}
+body.light-mode .copyLessons,
+body.light-mode .addAnother {
+  background: #eef2ff;
+  color: #4338ca;
+  border-color: #c7d2fe;
+}
+body.light-mode .importCard,
+body.light-mode .importStats article,
+body.light-mode .previewCard {
+  background: #fff;
+  border-color: #dbe2ee;
+}
+body.light-mode .dropZone {
+  background: #f8fafc;
+  color: #4338ca;
+  border-color: #a5b4fc;
+}
+body.light-mode .dropZone span,
+body.light-mode .importHeader span {
+  color: #64748b;
+}
+body.light-mode .analysisSummary {
+  background: linear-gradient(135deg, #eef2ff, #fff);
+  border-color: #c7d2fe;
+}
+body.light-mode .analysisSummary h2,
+body.light-mode .analysisSummary span,
+body.light-mode .analysisSummary strong {
+  color: #172033;
+}
+body.light-mode .tableWrap,
+body.light-mode .toolbar,
+body.light-mode .removedPanel {
+  background: #f8fafc;
+  color: #172033;
+  border-color: #dbe2ee;
+}
+body.light-mode .tableWrap th {
+  background: #e2e8f0;
+  color: #334155;
+}
+body.light-mode .tableWrap td {
+  color: #334155;
+  border-color: #dbe2ee;
+}
+body.light-mode .requestModal input,
+body.light-mode .requestModal select,
+body.light-mode .requestModal textarea,
+body.light-mode .noteField textarea {
+  background: #f8fafc;
+  color: #172033;
+  border-color: #cbd5e1;
+}
+body.light-mode .requestCard .lessonList,
+body.light-mode .requestCard .remarks {
+  background: #f8fafc;
+  color: #334155;
+}
+body.light-mode .lessonHero,
+body.light-mode .original,
+body.light-mode .suggestionHeading,
+body.light-mode .suggestions article {
+  color: #172033;
+}
+body.light-mode .calendarAiPanel {
+  background: linear-gradient(160deg, #fff, #f8fafc);
+  border-color: #dbe2ee;
+  box-shadow: 0 20px 60px rgba(30, 41, 59, 0.2);
+}
+body.light-mode .calendarAiHeader,
+body.light-mode .calendarAiNotice {
+  border-color: #dbe2ee;
+}
+body.light-mode .calendarAiIdentity strong,
+body.light-mode .calendarAiBubble h4 {
+  color: #172033;
+}
+body.light-mode .calendarAiIdentity span,
+body.light-mode .calendarAiNotice,
+body.light-mode .calendarAiBubble,
+body.light-mode .calendarAiComposer small {
+  color: #64748b;
+}
+body.light-mode .calendarAiBubble {
+  background: #eef2ff;
+  border-color: #dbe2ee;
+}
+body.light-mode .calendarAiComposer {
+  background: #fff;
+  border-color: #dbe2ee;
+}
+body.light-mode .alertGrid a,
+body.light-mode .statusMessage,
+body.light-mode .emptyState,
+body.light-mode .tabs button,
+body.light-mode .toolbar button,
+body.light-mode .record,
+body.light-mode .auditShell article,
+body.light-mode .historyShell article,
+body.light-mode .conflictCard,
+body.light-mode .suggestions article {
+  background: #fff !important;
+  border-color: #dbe2ee !important;
+  color: #334155;
+}
+body.light-mode .alertGrid a span,
+body.light-mode .statusMessage,
+body.light-mode .emptyState span,
+body.light-mode .tabs button,
+body.light-mode .toolbar button,
+body.light-mode .record small,
+body.light-mode .auditShell article span,
+body.light-mode .historyShell article span,
+body.light-mode .conflictCard p,
+body.light-mode .suggestions article span {
+  color: #64748b !important;
+}
+body.light-mode .alertGrid a b,
+body.light-mode .emptyState strong,
+body.light-mode .record strong,
+body.light-mode .auditShell article strong,
+body.light-mode .historyShell article strong,
+body.light-mode .conflictCard h3,
+body.light-mode .suggestions article strong {
+  color: #172033 !important;
+}
+body.light-mode .toolbar button.active,
+body.light-mode .tabs button.active {
+  background: #6653de !important;
+  color: #fff !important;
+  border-color: #6653de !important;
+}
+body.light-mode .toolbar button.active b {
+  color: #fff !important;
+}
+body.light-mode .importShell .statusBox {
+  background: #f8fafc !important;
+  border-color: #dbe2ee;
+  color: #64748b;
+}
+body.light-mode .importShell .statusBox.ready,
+body.light-mode .importShell .statusBox.saved {
+  color: #15803d;
+}
+body.light-mode .importShell .statusBox.error {
+  color: #be123c;
+}
+body.light-mode .accountCard .timetableAccess label,
+body.light-mode .teacherChips span {
+  background: #eef2ff;
+  color: #334155;
+  border-color: #cbd5e1;
+}
+body.light-mode .accountCard .timetableAccess label.primaryTeacher {
+  background: #e0e7ff;
+  color: #312e81;
+}
+body.light-mode .smartDashboard .summaryCards strong {
+  color: #172033 !important;
+}
+body.light-mode .smartDashboard .summaryCards span,
+body.light-mode .smartDashboard .alertGrid span,
+body.light-mode .smartDashboard .smartActions span {
+  color: #475569 !important;
+}
+body.light-mode .manageShell .summaryGrid strong,
+body.light-mode .requestShell .summaryGrid strong {
+  color: #172033 !important;
+}
+body.light-mode .manageShell .summaryGrid span,
+body.light-mode .requestShell .summaryGrid span {
+  color: #475569 !important;
+}
+body.light-mode .manageShell .accountIdentity strong,
+body.light-mode .manageShell .accountIdentity span,
+body.light-mode .manageShell .fields label,
+body.light-mode .manageShell .timetableAccess > span {
+  color: #334155 !important;
+}
+body.light-mode .requestShell .statusMessage {
+  color: #334155 !important;
+  background: #fff !important;
+  border-color: #dbe2ee !important;
+}
+body.light-mode .manageShell .avatar {
+  background: #e0e7ff !important;
+  color: #312e81 !important;
+}
+body.light-mode .manageShell .teacherChips span {
+  background: #eef2ff !important;
+  color: #334155 !important;
+  border-color: #cbd5e1 !important;
+}
+body.light-mode .shell {
+  background: linear-gradient(135deg, #f8fafc, #eef2ff) !important;
+  color: #172033 !important;
+}
+body.light-mode .shell .card {
+  background: #fff !important;
+  border-color: #dbe2ee !important;
+  box-shadow: 0 20px 60px rgba(30, 41, 59, 0.12) !important;
+}
+body.light-mode .shell .card h1,
+body.light-mode .shell .card label,
+body.light-mode .shell .card strong {
+  color: #172033 !important;
+}
+body.light-mode .shell .card > span,
+body.light-mode .shell .card .loading {
+  color: #475569 !important;
+}
+body.light-mode .shell .card label > div {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+body.light-mode .shell .card input {
+  color: #172033 !important;
+}
+body.light-mode .shell:has(.card) {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  place-items: center !important;
+  width: 100% !important;
+  min-height: 100vh !important;
+  margin: 0 !important;
+  padding: 24px !important;
+}
+body.light-mode .teacherStrip button {
+  background: #fff !important;
+  color: #334155 !important;
+  border-color: #cbd5e1 !important;
+}
+body.light-mode .teacherStrip button.active {
+  background: #eef2ff !important;
+  color: #172033 !important;
+}
+body.light-mode .portalShell .weekCard,
+body.light-mode .portalShell .statGrid article,
+body.light-mode .portalShell .scheduleCard,
+body.light-mode .portalShell .quickCard,
+body.light-mode .portalShell .upcomingCard,
+body.light-mode .portalShell .requestsCard,
+body.light-mode .portalShell .nextCard {
+  background: #fff !important;
+  border-color: #dbe2ee !important;
+  color: #172033 !important;
+  box-shadow: 0 10px 28px rgba(30, 41, 59, 0.08);
+}
+body.light-mode .portalShell .weekCard h3,
+body.light-mode .portalShell .statGrid strong,
+body.light-mode .portalShell .statGrid span,
+body.light-mode .portalShell .statGrid small,
+body.light-mode .portalShell .sectionHeading h3,
+body.light-mode .portalShell .sectionHeading > span {
+  color: #172033 !important;
+}
+body.light-mode .portalShell .barColumn > div {
+  background: #f1f5f9 !important;
+}
+body.light-mode .portalShell .barColumn > span,
+body.light-mode .portalShell .barColumn > small,
+body.light-mode .portalShell .upcomingGrid article > small,
+body.light-mode .portalShell .lessonTime span {
+  color: #475569 !important;
+}
+body.light-mode .portalShell .quickCard button {
+  color: #172033 !important;
+  border-color: #dbe2ee !important;
+}
+body.light-mode .portalShell .quickCard button small,
+body.light-mode .portalShell .lessonDetails > span,
+body.light-mode .portalShell .todayLesson .lessonDetails small {
+  color: #475569 !important;
+}
+.mobilePortalNav {
+  display: none;
+}
+.taskTabs {
+  display: flex;
+  gap: 8px;
+  margin: 14px 0;
+  overflow-x: auto;
+}
+.taskTabs button {
+  white-space: nowrap;
+  padding: 9px 13px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #fff;
+  color: #475569;
+  font-weight: 800;
+  cursor: pointer;
+}
+.taskTabs button.active {
+  background: #6653de;
+  color: #fff;
+  border-color: #6653de;
+}
+.taskTabs b {
+  margin-left: 5px;
+}
+@media (max-width: 780px) {
+  .mobilePortalNav {
+    display: flex;
+    gap: 8px;
+    margin: 0 0 16px;
+    overflow-x: auto;
+  }
+  .mobilePortalNav a,
+  .mobilePortalNav button {
+    flex: 1;
+    min-width: 90px;
+    padding: 10px 13px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    background: #fff;
+    color: #334155;
+    text-align: center;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .mobilePortalNav a:first-child {
+    background: #eef2ff;
+    color: #4338ca;
+    border-color: #c7d2fe;
+  }
+}
+body.light-mode .workloadStats button {
+  background: #f8fafc !important;
+  color: #334155 !important;
+  border-color: #cbd5e1 !important;
+}
+body.light-mode .workloadStats button span,
+body.light-mode .workloadStats button small {
+  color: #64748b !important;
+}
+body.light-mode .workloadStats button strong {
+  color: #172033 !important;
+}
+body.light-mode .alertGrid a {
+  background: #fff !important;
+  color: #334155 !important;
+  border-color: #dbe2ee !important;
+}
+body.light-mode .alertGrid a b,
+body.light-mode .alertGrid a span {
+  color: #334155 !important;
+}
+body.light-mode .conflictShell .range,
+body.light-mode .conflictShell .bulk,
+body.light-mode .conflictShell .section,
+body.light-mode .conflictShell .conflictCard,
+body.light-mode .conflictShell .lesson,
+body.light-mode .conflictShell .choice,
+body.light-mode .conflictShell .choice select {
+  background: #fff !important;
+  color: #334155 !important;
+  border-color: #dbe2ee !important;
+}
+body.light-mode .conflictShell .lesson h3,
+body.light-mode .conflictShell .lesson p,
+body.light-mode .conflictShell .lesson small,
+body.light-mode .conflictShell .conflictCard h3,
+body.light-mode .conflictShell .conflictCard p {
+  color: #172033 !important;
+}
+body.light-mode .conflictShell .range span,
+body.light-mode .conflictShell .choice select {
+  color: #64748b !important;
+}
+body.light-mode .requestShell .toolbar button,
+body.light-mode .requestShell .statusMessage,
+body.light-mode .requestShell .requestList .emptyState {
+  background: #fff !important;
+  color: #334155 !important;
+  border-color: #dbe2ee !important;
+}
+body.light-mode .requestShell .toolbar button:not(.active) {
+  color: #64748b !important;
+}
+body.light-mode .smartActions > div {
+  background: #fff !important;
+  color: #64748b !important;
+  border: 1px solid #dbe2ee;
+}
+body.light-mode .editorShell,
+body.light-mode .editorShell p,
+body.light-mode .editorShell span,
+body.light-mode .editorShell small,
+body.light-mode .manageShell,
+body.light-mode .manageShell p,
+body.light-mode .manageShell span,
+body.light-mode .manageShell small,
+body.light-mode .importShell,
+body.light-mode .importShell p,
+body.light-mode .importShell span,
+body.light-mode .importShell small,
+body.light-mode .historyShell,
+body.light-mode .historyShell p,
+body.light-mode .historyShell span,
+body.light-mode .historyShell small,
+body.light-mode .auditShell,
+body.light-mode .auditShell p,
+body.light-mode .auditShell span,
+body.light-mode .auditShell small,
+body.light-mode .requestShell,
+body.light-mode .requestShell p,
+body.light-mode .requestShell span,
+body.light-mode .requestShell small,
+body.light-mode .conflictShell,
+body.light-mode .conflictShell p,
+body.light-mode .conflictShell span,
+body.light-mode .conflictShell small {
+  color: #334155 !important;
+}
+body.light-mode .editorShell h1,
+body.light-mode .editorShell h2,
+body.light-mode .editorShell h3,
+body.light-mode .manageShell h1,
+body.light-mode .manageShell h2,
+body.light-mode .manageShell h3,
+body.light-mode .importShell h1,
+body.light-mode .importShell h2,
+body.light-mode .importShell h3,
+body.light-mode .historyShell h1,
+body.light-mode .historyShell h2,
+body.light-mode .auditShell h1,
+body.light-mode .auditShell h2,
+body.light-mode .requestShell h1,
+body.light-mode .requestShell h2,
+body.light-mode .requestShell h3,
+body.light-mode .conflictShell h1,
+body.light-mode .conflictShell h2,
+body.light-mode .conflictShell h3 {
+  color: #172033 !important;
+}
+body.light-mode .primary,
+body.light-mode .save,
+body.light-mode .approve,
+body.light-mode .assigned,
+body.light-mode .replacementButton,
+body.light-mode .submit,
+body.light-mode .quickTrigger,
+body.light-mode .loginButton {
+  color: #fff !important;
+}
+body.light-mode .eyebrow,
+body.light-mode .editorHeader p,
+body.light-mode .workloadHeading p,
+body.light-mode .drawerHeader p {
+  color: #5b4bd6 !important;
+}
+
+/* ── Dashboard layout isolation (merged from dashboard-fix.css) ── */
+main.shell {
+  display: grid !important;
+  grid-template-columns: 240px minmax(0, 1fr) !important;
+  min-height: 100vh !important;
+}
+
+main.shell > .sidebar {
+  width: 240px !important;
+  min-width: 240px !important;
+  max-width: 240px !important;
+}
+
+main.shell > .sidebar nav {
+  width: 100%;
+}
+
+main.shell > .sidebar .navItem {
+  width: 100%;
+  max-width: 100%;
+}
+
+main.shell > .content {
+  min-width: 0;
+  width: 100%;
+}
+
+/* ── Premium UI refinements (merged from premium-ui.css) ── */
+:root {
+  --premium-ink: #17213b;
+  --premium-muted: #60708a;
+  --premium-soft: #f6f8fc;
+  --premium-line: #dce4f0;
+  --premium-purple: #6653de;
+  --premium-shadow: 0 14px 35px rgba(30, 41, 59, 0.08);
+}
+body.light-mode {
+  background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 52%, #f8fafc 100%);
+  color: var(--premium-ink);
+  letter-spacing: -0.005em;
+}
+body.light-mode {
+  background: linear-gradient(135deg, #e9eef5 0%, #e7eafb 52%, #eef1f6 100%);
+}
+body.light-mode button,
+body.light-mode input,
+body.light-mode select,
+body.light-mode textarea {
+  font-family: inherit;
+}
+body.light-mode .adminPageContent main,
+body.light-mode .portalShell,
+body.light-mode .manageShell,
+body.light-mode .importShell,
+body.light-mode .requestShell,
+body.light-mode .conflictShell,
+body.light-mode .historyShell,
+body.light-mode .auditShell {
+  color: var(--premium-ink);
+}
+body.light-mode .adminSidebar {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-right: 1px solid var(--premium-line) !important;
+  box-shadow: 10px 0 30px rgba(30, 41, 59, 0.04);
+}
+body.light-mode .adminNavLink {
+  border: 1px solid transparent;
+  border-radius: 12px;
+  transition: all 0.18s ease;
+}
+body.light-mode .adminNavLink:hover {
+  background: #f1f4fb !important;
+  color: #334155 !important;
+  transform: translateX(2px);
+}
+body.light-mode .adminNavLink.active {
+  background: linear-gradient(90deg, #eeedff, #f1fbfa) !important;
+  border-color: #dcd9ff;
+  box-shadow:
+    inset 3px 0 var(--premium-purple),
+    0 5px 14px rgba(102, 83, 222, 0.06);
+}
+body.light-mode .editorHeader h1,
+body.light-mode .manageHeader h1,
+body.light-mode .requestHeader h1,
+body.light-mode .conflictShell h1,
+body.light-mode .historyShell h1,
+body.light-mode .auditShell h1 {
+  font-weight: 850;
+  letter-spacing: -0.04em;
+}
+body.light-mode .smartDashboard,
+body.light-mode .calendarCard,
+body.light-mode .workloadPanel,
+body.light-mode .panel,
+body.light-mode .status,
+body.light-mode .message,
+body.light-mode .requestCard,
+body.light-mode .accountCard,
+body.light-mode .history,
+body.light-mode .section,
+body.light-mode .queue,
+body.light-mode .stats article,
+body.light-mode .statsGrid article,
+body.light-mode .summaryGrid article,
+body.light-mode .summaryCards article,
+body.light-mode .summaryCards a,
+body.light-mode .upcomingCard,
+body.light-mode .requestsCard,
+body.light-mode .scheduleCard,
+body.light-mode .quickCard,
+body.light-mode .nextCard,
+body.light-mode .weekCard {
+  border: 1px solid var(--premium-line) !important;
+  box-shadow: var(--premium-shadow) !important;
+}
+body.light-mode .smartDashboard {
+  background: linear-gradient(145deg, #fff, #f8f9ff) !important;
+  padding: 22px !important;
+}
+body.light-mode .smartDashboard header {
+  padding-bottom: 3px;
+}
+body.light-mode .summaryCards article,
+body.light-mode .summaryCards a {
+  background: linear-gradient(145deg, #fff, #fbfcff) !important;
+  min-height: 94px;
+  border-radius: 15px !important;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+body.light-mode .summaryCards a:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 25px rgba(30, 41, 59, 0.1);
+}
+body.light-mode .alertGrid a {
+  background: #fff !important;
+  border-radius: 14px !important;
+  min-height: 112px;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+body.light-mode .alertGrid a:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 25px rgba(30, 41, 59, 0.1);
+}
+body.light-mode .filterBar {
+  padding: 4px 0 2px;
+}
+body.light-mode .searchBox,
+body.light-mode .filterBar select,
+body.light-mode .filterBar > button {
+  background: #fff !important;
+  border: 1px solid var(--premium-line) !important;
+  box-shadow: 0 3px 12px rgba(30, 41, 59, 0.04);
+}
+body.light-mode .searchBox:focus-within,
+body.light-mode .filterBar select:focus {
+  border-color: #aaa1f4 !important;
+  box-shadow: 0 0 0 4px rgba(102, 83, 222, 0.1);
+}
+body.light-mode .quickAddButton,
+body.light-mode .exportButton,
+body.light-mode .conflictLink {
+  border-radius: 11px !important;
+  box-shadow: 0 6px 15px rgba(30, 41, 59, 0.06);
+}
+body.light-mode .quickAddButton {
+  background: #ecfdf5 !important;
+  border-color: #9ae6c2 !important;
+  color: #15803d !important;
+}
+body.light-mode .exportButton {
+  background: #fff !important;
+  color: #334155 !important;
+}
+body.light-mode .conflictLink {
+  background: linear-gradient(135deg, #7163e8, #5545c9) !important;
+  color: #fff !important;
+}
+body.light-mode .conflictLink {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: auto !important;
+  min-width: 126px !important;
+  height: 44px !important;
+  padding: 10px 14px !important;
+  box-sizing: border-box;
+  white-space: nowrap;
+  text-align: center;
+  text-decoration: none !important;
+  flex-shrink: 0;
+}
+body.light-mode .workloadPanel {
+  background: #fff !important;
+  padding: 16px 18px !important;
+}
+body.light-mode .workloadStats button {
+  background: #f8fafc !important;
+  border-color: #dce4f0 !important;
+  border-radius: 12px !important;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+body.light-mode .workloadStats button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(30, 41, 59, 0.08);
+}
+body.light-mode .workloadStats button.active {
+  background: #fff1f2 !important;
+  border-color: #fda4af !important;
+}
+body.light-mode .calendarCard {
+  background: #fff !important;
+  padding: 16px !important;
+}
+body.light-mode .fc .fc-toolbar-title {
+  font-weight: 850;
+  letter-spacing: -0.035em;
+}
+body.light-mode .fc .fc-button {
+  border-radius: 10px !important;
+  box-shadow: 0 3px 10px rgba(30, 41, 59, 0.05) !important;
+}
+body.light-mode .fc .fc-daygrid-day:hover {
+  background: #f8f9ff !important;
+}
+body.light-mode .fc .fc-day-today {
+  background: #f1efff !important;
+}
+body.light-mode .fc .fc-daygrid-event,
+body.light-mode .fc .fc-timegrid-event {
+  box-shadow: 0 3px 9px rgba(30, 41, 59, 0.08) !important;
+  border-radius: 8px !important;
+}
+body.light-mode .lessonDrawer,
+body.light-mode .dayPanel,
+body.light-mode .quickDrawer,
+body.light-mode .requestModal {
+  background: #fff !important;
+  box-shadow: -18px 0 55px rgba(30, 41, 59, 0.16) !important;
+}
+body.light-mode .dayLessonList > button,
+body.light-mode .quickRow {
+  background: #f8fafc !important;
+  border-color: var(--premium-line) !important;
+}
+body.light-mode .addLesson,
+body.light-mode .save,
+body.light-mode .primary {
+  border-radius: 12px !important;
+  background: linear-gradient(135deg, #7163e8, #5545c9) !important;
+  box-shadow: 0 8px 18px rgba(102, 83, 222, 0.18);
+}
+body.light-mode .delete {
+  border-radius: 11px !important;
+}
+body.light-mode .portalHeader {
+  padding-bottom: 4px;
+}
+body.light-mode .portalShell .weekCard,
+body.light-mode .portalShell .statGrid article,
+body.light-mode .portalShell .scheduleCard,
+body.light-mode .portalShell .quickCard,
+body.light-mode .portalShell .upcomingCard,
+body.light-mode .portalShell .requestsCard,
+body.light-mode .portalShell .nextCard {
+  background: #fff !important;
+  border-radius: 18px !important;
+}
+body.light-mode .portalShell .statGrid article,
+body.light-mode .portalShell .upcomingGrid article,
+body.light-mode .portalShell .requestList article {
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+body.light-mode .portalShell .statGrid article:hover,
+body.light-mode .portalShell .upcomingGrid article:hover,
+body.light-mode .portalShell .requestList article:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 25px rgba(30, 41, 59, 0.1);
+}
+body.light-mode .mobilePortalNav a,
+body.light-mode .mobilePortalNav button {
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(30, 41, 59, 0.05);
+}
+body.light-mode .smartDashboard,
+body.light-mode .calendarCard,
+body.light-mode .workloadPanel,
+body.light-mode .panel,
+body.light-mode .status,
+body.light-mode .message,
+body.light-mode .requestCard,
+body.light-mode .accountCard,
+body.light-mode .history,
+body.light-mode .section,
+body.light-mode .queue,
+body.light-mode .stats article,
+body.light-mode .statsGrid article,
+body.light-mode .summaryGrid article,
+body.light-mode .summaryCards article,
+body.light-mode .summaryCards a,
+body.light-mode .upcomingCard,
+body.light-mode .requestsCard,
+body.light-mode .scheduleCard,
+body.light-mode .quickCard,
+body.light-mode .nextCard,
+body.light-mode .weekCard,
+body.light-mode .auditShell article,
+body.light-mode .historyShell article {
+  background: #f8fafc !important;
+}
+body.light-mode .summaryCards article,
+body.light-mode .summaryCards a,
+body.light-mode .alertGrid a,
+body.light-mode .lessonCard,
+body.light-mode .agendaItem,
+body.light-mode .task,
+body.light-mode .upcomingGrid article,
+body.light-mode .requestList article,
+body.light-mode .quickLink,
+body.light-mode .dayLessonList > button,
+body.light-mode .quickRow,
+body.light-mode .workloadStats button {
+  background: #f1f4f8 !important;
+}
+body.light-mode .searchBox,
+body.light-mode .filterBar select,
+body.light-mode .filterBar > button,
+body.light-mode input,
+body.light-mode select,
+body.light-mode textarea {
+  background: #eef2f6 !important;
+}
+body.light-mode .importShell .dropZone {
+  border-radius: 16px !important;
+  background: linear-gradient(145deg, #fff, #f8f9ff) !important;
+  box-shadow: inset 0 0 0 1px rgba(102, 83, 222, 0.05);
+}
+body.light-mode .importShell .tableWrap {
+  border-radius: 14px;
+  box-shadow: var(--premium-shadow);
+}
+body.light-mode .importShell .importStats article {
+  background: #f1f4f8 !important;
+  border-color: #dbe2ee !important;
+  color: #172033 !important;
+}
+body.light-mode .importShell .importStats article span {
+  color: #52627a !important;
+}
+body.light-mode .importShell .importStats article strong {
+  color: #172033 !important;
+}
+body.light-mode .importShell .importStats article.new strong {
+  color: #15803d !important;
+}
+body.light-mode .importShell .importStats article.changed strong {
+  color: #a16207 !important;
+}
+body.light-mode .importShell .importStats article.danger strong,
+body.light-mode .importShell .importStats article.removed strong {
+  color: #be123c !important;
+}
+body.light-mode .filters {
+  padding: 12px;
+  border: 1px solid var(--premium-line);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 5px 18px rgba(30, 41, 59, 0.04);
+}
+body.light-mode .adminPageContent main.shell {
+  display: block !important;
+  grid-template-columns: 1fr !important;
+  width: 100%;
+  min-width: 0;
+}
+body.light-mode .adminPageContent main.shell > .workspace {
+  grid-template-columns: 390px minmax(0, 1fr);
+}
+body.light-mode .taskTabs button {
+  box-shadow: 0 4px 12px rgba(30, 41, 59, 0.04);
+  transition: transform 0.18s ease;
+}
+body.light-mode .taskTabs button:hover {
+  transform: translateY(-1px);
+}
+body.light-mode .quickPanel {
+  background: #f8fafc !important;
+  border-color: #dbe2ee !important;
+  box-shadow: 0 20px 55px rgba(30, 41, 59, 0.16) !important;
+}
+body.light-mode .quickPanelHeader strong,
+body.light-mode .quickPanelHeader button {
+  color: #334155 !important;
+}
+body.light-mode .quickPanelHeader button {
+  background: #eef2f6 !important;
+}
+body.light-mode .quickLink {
+  background: #fff !important;
+  border-color: #dbe2ee !important;
+  color: #334155 !important;
+}
+body.light-mode .quickLink.danger,
+body.light-mode .quickLink.warning,
+body.light-mode .quickLink.dangerSoft,
+body.light-mode .quickLink.info,
+body.light-mode .quickLink.purple {
+  background: #fff !important;
+  color: #334155 !important;
+}
+body.light-mode .quickLink svg {
+  color: #6653de !important;
+}
+body.light-mode .calendarAiTrigger {
+  background: #fff !important;
+  color: #334155 !important;
+  border-color: #dbe2ee !important;
+}
+@media (max-width: 900px) {
+  body.light-mode .editorHeader .headerActions {
+    gap: 7px;
+  }
+  .editorHeader .headerActions > * {
+    min-height: 44px;
+  }
+  .editorHeader .headerActions .conflictLink {
+    grid-column: 1/-1;
+  }
+  .workloadPanel {
+    border-radius: 16px !important;
+  }
+  .smartDashboard {
+    border-radius: 18px !important;
+  }
+}
+@media (max-width: 900px) {
+  body.light-mode .editorHeader .headerActions {
+    display: flex !important;
+    flex-wrap: wrap;
+    width: 100%;
+    justify-content: stretch;
+  }
+  .editorHeader .headerActions > * {
+    flex: 1 1 calc(50% - 7px);
+    min-width: 0;
+  }
+  .editorHeader .headerActions .conflictLink {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+  }
+}
+body.light-mode .bulkToolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--premium-line);
+  border-radius: 12px;
+  background: #fff;
+  color: #334155;
+  box-shadow: 0 4px 14px rgba(30, 41, 59, 0.04);
+}
+body.light-mode .bulkToolbar label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-right: auto;
+  font-size: 12px;
+  font-weight: 800;
+}
+body.light-mode .bulkToolbar select,
+body.light-mode .bulkToolbar button {
+  min-height: 36px;
+  padding: 7px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+}
+body.light-mode .bulkToolbar button {
+  background: #6653de;
+  color: #fff;
+  border-color: #6653de;
+}
+body.light-mode .bulkToolbar .dangerAction {
+  background: #fff1f2;
+  color: #be123c;
+  border-color: #fecdd3;
+}
+body.light-mode .undoBanner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+  padding: 10px 13px;
+  border: 1px solid #c7d2fe;
+  border-radius: 12px;
+  background: #eef2ff;
+  color: #312e81;
+  font-size: 12px;
+  font-weight: 800;
+}
+body.light-mode .undoBanner span {
+  margin-right: auto;
+  color: #312e81 !important;
+}
+body.light-mode .undoBanner button {
+  min-height: 34px;
+  padding: 7px 11px;
+  border: 0;
+  border-radius: 8px;
+  background: #6653de;
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+}
+body.light-mode .undoBanner .dismissUndo {
+  background: transparent;
+  color: #4338ca;
+}
+body.light-mode button:focus-visible,
+body.light-mode a:focus-visible,
+body.light-mode input:focus-visible,
+body.light-mode select:focus-visible,
+body.light-mode textarea:focus-visible {
+  outline: 3px solid rgba(102, 83, 222, 0.35);
+  outline-offset: 2px;
+}
+body.light-mode input[type='checkbox'] {
+  min-width: 18px;
+  min-height: 18px;
+  accent-color: #6653de;
+}
+body.light-mode .duplicate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 1px solid #c7d2fe;
+  border-radius: 11px;
+  background: #eef2ff;
+  color: #4338ca;
+  font-weight: 800;
+  cursor: pointer;
+}
+body.light-mode .copyDatePanel {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 14px;
+  border: 1px solid #c7d2fe;
+  border-radius: 13px;
+  background: #eef2ff;
+  color: #312e81;
+}
+.copyDatePanel > div {
+  display: flex;
+  gap: 8px;
+}
+.copyDatePanel input {
+  flex: 1;
+  min-width: 0;
+}
+.copyDatePanel input,
+.copyDatePanel button {
+  padding: 9px 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+}
+.copyDatePanel button {
+  background: #6653de;
+  color: #fff;
+  font-weight: 800;
+}
+.copyDatePanel span {
+  font-size: 12px;
+  color: #475569;
+}
+body.light-mode .weekdayPicker {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  padding: 10px 0;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+}
+.weekdayPicker > span {
+  width: 100%;
+}
+.weekdayPicker label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 9px;
+  border: 1px solid #dbe2ee;
+  border-radius: 8px;
+  background: #fff;
+  color: #475569;
+}
+@media (max-width: 900px) {
+  body.light-mode .editorHeader .headerActions > * {
+    flex: 1 1 calc(50% - 7px);
+  }
+  body.light-mode .editorHeader .headerActions .conflictLink {
+    flex: 1 1 100%;
+  }
+}

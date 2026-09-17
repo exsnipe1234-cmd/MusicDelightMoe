@@ -1,8 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import {
-  key, normalizeSchool, rgba, flatColour, escapeHtml,
-  mapsSchool, mapsUrl, pretty, blankDraft, blankQuickRow,
-  blankRecurring, currentMonthRange, defaultTeacherColours,
+  key,
+  normalizeSchool,
+  rgba,
+  flatColour,
+  escapeHtml,
+  mapsSchool,
+  mapsUrl,
+  pretty,
+  blankDraft,
+  blankQuickRow,
+  blankRecurring,
+  currentMonthRange,
+  defaultTeacherColours,
 } from '../app/admin/calendar/_components/calendarUtils';
 import { teacherInitials } from '../app/admin/calendar/_components/teacherInitials';
 

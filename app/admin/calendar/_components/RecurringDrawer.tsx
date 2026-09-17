@@ -26,49 +26,107 @@ function RecurringDrawer({ draft, onDraftChange, teachers, onSave, saving, onClo
 
   return (
     <div className={styles.drawerBackdrop} onMouseDown={onClose}>
-      <aside ref={trapRef} className={styles.quickDrawer} onMouseDown={(event) => event.stopPropagation()} role="dialog" aria-label="Create recurring weekly lessons">
+      <aside
+        ref={trapRef}
+        className={styles.quickDrawer}
+        onMouseDown={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-label="Create recurring weekly lessons"
+      >
         <div className={styles.drawerHeader}>
           <div>
             <p>RECURRING LESSONS</p>
             <h2>Create weekly lessons</h2>
             <span>One class across a date range</span>
           </div>
-          <button onClick={onClose} aria-label="Close recurring"><X aria-hidden="true" /></button>
+          <button onClick={onClose} aria-label="Close recurring">
+            <X aria-hidden="true" />
+          </button>
         </div>
         <div className={styles.formGrid}>
           <label htmlFor={`${id}-school`}>
             School
-            <input id={`${id}-school`} list="calendar-school-options" value={draft.school} onChange={(event) => onDraftChange((current) => ({ ...current, school: event.target.value }))} />
+            <input
+              id={`${id}-school`}
+              list="calendar-school-options"
+              value={draft.school}
+              onChange={(event) =>
+                onDraftChange((current) => ({ ...current, school: event.target.value }))
+              }
+            />
           </label>
           <label htmlFor={`${id}-class`}>
             Class / programme
-            <input id={`${id}-class`} list="calendar-class-options" value={draft.className} onChange={(event) => onDraftChange((current) => ({ ...current, className: event.target.value }))} />
+            <input
+              id={`${id}-class`}
+              list="calendar-class-options"
+              value={draft.className}
+              onChange={(event) =>
+                onDraftChange((current) => ({ ...current, className: event.target.value }))
+              }
+            />
           </label>
           <div className={styles.timeRow}>
             <label htmlFor={`${id}-start`}>
               Start
-              <input id={`${id}-start`} type="time" value={draft.startTime} onChange={(event) => onDraftChange((current) => ({ ...current, startTime: event.target.value }))} />
+              <input
+                id={`${id}-start`}
+                type="time"
+                value={draft.startTime}
+                onChange={(event) =>
+                  onDraftChange((current) => ({ ...current, startTime: event.target.value }))
+                }
+              />
             </label>
             <label htmlFor={`${id}-end`}>
               End
-              <input id={`${id}-end`} type="time" value={draft.endTime} onChange={(event) => onDraftChange((current) => ({ ...current, endTime: event.target.value }))} />
+              <input
+                id={`${id}-end`}
+                type="time"
+                value={draft.endTime}
+                onChange={(event) =>
+                  onDraftChange((current) => ({ ...current, endTime: event.target.value }))
+                }
+              />
             </label>
           </div>
           <div className={styles.timeRow}>
             <label htmlFor={`${id}-from`}>
               From
-              <input id={`${id}-from`} type="date" value={draft.startDate} onChange={(event) => onDraftChange((current) => ({ ...current, startDate: event.target.value }))} />
+              <input
+                id={`${id}-from`}
+                type="date"
+                value={draft.startDate}
+                onChange={(event) =>
+                  onDraftChange((current) => ({ ...current, startDate: event.target.value }))
+                }
+              />
             </label>
             <label htmlFor={`${id}-to`}>
               To
-              <input id={`${id}-to`} type="date" value={draft.endDate} onChange={(event) => onDraftChange((current) => ({ ...current, endDate: event.target.value }))} />
+              <input
+                id={`${id}-to`}
+                type="date"
+                value={draft.endDate}
+                onChange={(event) =>
+                  onDraftChange((current) => ({ ...current, endDate: event.target.value }))
+                }
+              />
             </label>
           </div>
           <label htmlFor={`${id}-teacher`}>
             Teacher
-            <select id={`${id}-teacher`} value={draft.teacher} onChange={(event) => onDraftChange((current) => ({ ...current, teacher: event.target.value }))}>
+            <select
+              id={`${id}-teacher`}
+              value={draft.teacher}
+              onChange={(event) =>
+                onDraftChange((current) => ({ ...current, teacher: event.target.value }))
+              }
+            >
               <option value="">Unassigned</option>
-              {teachers.map((teacher) => <option key={teacher.name}>{teacher.name}</option>)}
+              {teachers.map((teacher) => (
+                <option key={teacher.name}>{teacher.name}</option>
+              ))}
             </select>
           </label>
           <fieldset className={styles.weekdayPicker}>
@@ -78,12 +136,14 @@ function RecurringDrawer({ draft, onDraftChange, teachers, onSave, saving, onClo
                 <input
                   type="checkbox"
                   checked={draft.weekdays.includes(index)}
-                  onChange={() => onDraftChange((current) => ({
-                    ...current,
-                    weekdays: current.weekdays.includes(index)
-                      ? current.weekdays.filter((day) => day !== index)
-                      : [...current.weekdays, index],
-                  }))}
+                  onChange={() =>
+                    onDraftChange((current) => ({
+                      ...current,
+                      weekdays: current.weekdays.includes(index)
+                        ? current.weekdays.filter((day) => day !== index)
+                        : [...current.weekdays, index],
+                    }))
+                  }
                 />
                 {name}
               </label>
@@ -92,7 +152,12 @@ function RecurringDrawer({ draft, onDraftChange, teachers, onSave, saving, onClo
         </div>
         <div className={styles.drawerActions}>
           <button className={styles.save} onClick={onSave} disabled={saving}>
-            {saving ? <Loader2 className={styles.spin} size={17} aria-hidden="true" /> : <Save size={17} aria-hidden="true" />} Create recurring lessons
+            {saving ? (
+              <Loader2 className={styles.spin} size={17} aria-hidden="true" />
+            ) : (
+              <Save size={17} aria-hidden="true" />
+            )}{' '}
+            Create recurring lessons
           </button>
         </div>
       </aside>

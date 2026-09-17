@@ -49,8 +49,10 @@ export const strings = {
   cancelled: 'Cancelled',
   noLessonsMatch: 'No lessons match the current filters.',
   noSchoolLessons: 'No school lessons in this range.',
-  filterBy: (name: string, count: number) => `Filter by ${name}: ${count} lesson${count === 1 ? '' : 's'}`,
-  filterCancelled: (count: number) => `Filter cancelled classes: ${count} class${count === 1 ? '' : 'es'}`,
+  filterBy: (name: string, count: number) =>
+    `Filter by ${name}: ${count} lesson${count === 1 ? '' : 's'}`,
+  filterCancelled: (count: number) =>
+    `Filter cancelled classes: ${count} class${count === 1 ? '' : 'es'}`,
   lesson: (n: number) => `lesson${n === 1 ? '' : 's'}`,
   class: (n: number) => `class${n === 1 ? '' : 'es'}`,
 
@@ -161,7 +163,8 @@ export const strings = {
   cancelledPdfTitle: 'Cancelled Classes Calendar',
   teacherPdfTitle: (name: string) => `${name} Calendar`,
   schedulePdfTitle: 'Music Delight Teacher Schedule PDF',
-  completeDetails: 'Complete the recurring lesson details, choose at least one weekday, and check the date range.',
+  completeDetails:
+    'Complete the recurring lesson details, choose at least one weekday, and check the date range.',
   noWeekdays: 'No selected weekdays fall inside this date range.',
   completeSchoolClass: 'Complete the school and class for every lesson before saving.',
   couldNotLoadTeachers: 'Could not load teachers.',

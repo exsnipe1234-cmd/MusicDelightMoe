@@ -21,19 +21,38 @@ type Props = {
 
 export default memo(DayPanel);
 
-function DayPanel({ day, dayLessons, onClose, onAddLesson, onOpenLesson, onCopyToQuickAdd, onCopyToDates, teacherColour }: Props) {
+function DayPanel({
+  day,
+  dayLessons,
+  onClose,
+  onAddLesson,
+  onOpenLesson,
+  onCopyToQuickAdd,
+  onCopyToDates,
+  teacherColour,
+}: Props) {
   const trapRef = useFocusTrap(true);
 
   return (
     <div className={styles.drawerBackdrop} onMouseDown={onClose}>
-      <aside ref={trapRef} className={styles.dayPanel} onMouseDown={(event) => event.stopPropagation()} role="dialog" aria-label={`Schedule for ${pretty(day)}`}>
+      <aside
+        ref={trapRef}
+        className={styles.dayPanel}
+        onMouseDown={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-label={`Schedule for ${pretty(day)}`}
+      >
         <div className={styles.drawerHeader}>
           <div>
             <p>DAILY SCHEDULE</p>
             <h2 id="day-panel-title">{pretty(day)}</h2>
-            <span>{dayLessons.length} lesson{dayLessons.length === 1 ? '' : 's'}</span>
+            <span>
+              {dayLessons.length} lesson{dayLessons.length === 1 ? '' : 's'}
+            </span>
           </div>
-          <button onClick={onClose} aria-label="Close day panel"><X aria-hidden="true" /></button>
+          <button onClick={onClose} aria-label="Close day panel">
+            <X aria-hidden="true" />
+          </button>
         </div>
         <button className={styles.addLesson} onClick={() => onAddLesson(day)}>
           <CalendarPlus size={17} aria-hidden="true" /> Add lesson
@@ -56,16 +75,33 @@ function DayPanel({ day, dayLessons, onClose, onAddLesson, onOpenLesson, onCopyT
               const initials = teacherInitials(lesson.teacher_name);
               const teacherName = lesson.teacher_name ?? 'Unassigned';
               return (
-                <button key={lesson.id} onClick={() => onOpenLesson(lesson)} style={{ borderLeftColor: teacherColour(lesson.teacher_name) }} role="listitem" aria-label={`${lesson.start_time.slice(0, 5)} to ${lesson.end_time.slice(0, 5)}: ${lesson.school}, ${lesson.class_name}, ${teacherName}`}>
-                  <strong>{lesson.start_time.slice(0, 5)}-{lesson.end_time.slice(0, 5)}</strong>
+                <button
+                  key={lesson.id}
+                  onClick={() => onOpenLesson(lesson)}
+                  style={{ borderLeftColor: teacherColour(lesson.teacher_name) }}
+                  role="listitem"
+                  aria-label={`${lesson.start_time.slice(0, 5)} to ${lesson.end_time.slice(0, 5)}: ${lesson.school}, ${lesson.class_name}, ${teacherName}`}
+                >
+                  <strong>
+                    {lesson.start_time.slice(0, 5)}-{lesson.end_time.slice(0, 5)}
+                  </strong>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
                     <span style={{ flex: 1 }}>{lesson.school}</span>
-                    <a href={mapsUrl(lesson.school)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} style={{ flexShrink: 0, color: 'inherit', opacity: 0.65, display: 'flex' }} aria-label={`Open ${lesson.school} in Google Maps`}>
+                    <a
+                      href={mapsUrl(lesson.school)}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ flexShrink: 0, color: 'inherit', opacity: 0.65, display: 'flex' }}
+                      aria-label={`Open ${lesson.school} in Google Maps`}
+                    >
                       <MapPin size={11} aria-hidden="true" />
                     </a>
                   </span>
                   <small style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span className="teacherBadge" aria-hidden="true">{initials}</span>
+                    <span className="teacherBadge" aria-hidden="true">
+                      {initials}
+                    </span>
                     {lesson.class_name} \u00b7 {teacherName}
                   </small>
                 </button>

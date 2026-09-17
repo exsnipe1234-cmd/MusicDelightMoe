@@ -18,7 +18,16 @@ type Props = {
   teacherColour: (name: string | null) => string;
 };
 
-function WorkloadPanels({ teacherWorkload, schoolWorkload, cancelledCount, filter, onTeacherFilter, onSchoolFilter, onCancelledFilter, teacherColour }: Props) {
+function WorkloadPanels({
+  teacherWorkload,
+  schoolWorkload,
+  cancelledCount,
+  filter,
+  onTeacherFilter,
+  onSchoolFilter,
+  onCancelledFilter,
+  teacherColour,
+}: Props) {
   return (
     <>
       <section className={styles.workloadPanel} aria-label="Teacher workload summary">
@@ -34,15 +43,26 @@ function WorkloadPanels({ teacherWorkload, schoolWorkload, cancelledCount, filte
             <span className={styles.empty}>No lessons match the current filters.</span>
           ) : (
             teacherWorkload.map(([name, count]) => (
-              <button key={name} onClick={() => onTeacherFilter(name === 'Unassigned' ? 'unassigned' : name)} aria-label={`Filter by ${name}: ${count} lesson${count === 1 ? '' : 's'}`}>
-                <i style={{ background: teacherColour(name === 'Unassigned' ? null : name) }} aria-hidden="true" />
+              <button
+                key={name}
+                onClick={() => onTeacherFilter(name === 'Unassigned' ? 'unassigned' : name)}
+                aria-label={`Filter by ${name}: ${count} lesson${count === 1 ? '' : 's'}`}
+              >
+                <i
+                  style={{ background: teacherColour(name === 'Unassigned' ? null : name) }}
+                  aria-hidden="true"
+                />
                 <span>{name}</span>
                 <strong>{count}</strong>
                 <small>lesson{count === 1 ? '' : 's'}</small>
               </button>
             ))
           )}
-          <button className={filter === 'cancelled' ? styles.active : ''} onClick={onCancelledFilter} aria-label={`Filter cancelled classes: ${cancelledCount} class${cancelledCount === 1 ? '' : 'es'}`}>
+          <button
+            className={filter === 'cancelled' ? styles.active : ''}
+            onClick={onCancelledFilter}
+            aria-label={`Filter cancelled classes: ${cancelledCount} class${cancelledCount === 1 ? '' : 'es'}`}
+          >
             <i style={{ background: '#f87171' }} aria-hidden="true" />
             <span>Cancelled</span>
             <strong>{cancelledCount}</strong>
@@ -63,7 +83,11 @@ function WorkloadPanels({ teacherWorkload, schoolWorkload, cancelledCount, filte
             <span className={styles.empty}>No school lessons in this range.</span>
           ) : (
             schoolWorkload.map(({ name, count }) => (
-              <button key={name} onClick={() => onSchoolFilter(name)} aria-label={`Filter by ${name}: ${count} lesson${count === 1 ? '' : 's'}`}>
+              <button
+                key={name}
+                onClick={() => onSchoolFilter(name)}
+                aria-label={`Filter by ${name}: ${count} lesson${count === 1 ? '' : 's'}`}
+              >
                 <i style={{ background: '#55d6cf' }} aria-hidden="true" />
                 <span>{name}</span>
                 <strong>{count}</strong>

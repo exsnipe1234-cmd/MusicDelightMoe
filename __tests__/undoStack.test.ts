@@ -66,8 +66,18 @@ describe('Undo stack logic (pure)', () => {
   }
 
   it('pushes an action to the front of the stack', () => {
-    const action1: UndoAction = { label: 'moved', mode: 'update', before: [makeLesson('1')], after: [makeLesson('1', { lesson_date: '2026-01-16' })] };
-    const action2: UndoAction = { label: 'deleted', mode: 'delete', before: [makeLesson('2')], after: [] };
+    const action1: UndoAction = {
+      label: 'moved',
+      mode: 'update',
+      before: [makeLesson('1')],
+      after: [makeLesson('1', { lesson_date: '2026-01-16' })],
+    };
+    const action2: UndoAction = {
+      label: 'deleted',
+      mode: 'delete',
+      before: [makeLesson('2')],
+      after: [],
+    };
 
     let stack: UndoAction[] = [];
     stack = pushUndo(stack, action1);
@@ -89,8 +99,18 @@ describe('Undo stack logic (pure)', () => {
   });
 
   it('undo pops the top action', () => {
-    const action1: UndoAction = { label: 'first', mode: 'update', before: [makeLesson('1')], after: [] };
-    const action2: UndoAction = { label: 'second', mode: 'update', before: [makeLesson('2')], after: [] };
+    const action1: UndoAction = {
+      label: 'first',
+      mode: 'update',
+      before: [makeLesson('1')],
+      after: [],
+    };
+    const action2: UndoAction = {
+      label: 'second',
+      mode: 'update',
+      before: [makeLesson('2')],
+      after: [],
+    };
 
     let stack: UndoAction[] = [];
     stack = pushUndo(stack, action1);

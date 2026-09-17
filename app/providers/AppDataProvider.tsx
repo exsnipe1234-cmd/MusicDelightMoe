@@ -52,56 +52,66 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const lessonCache = useRef(new Map<string, LessonRow[]>());
   const lessonPromises = useRef(new Map<string, Promise<LessonRow[]>>());
 
-  const ensureReferences = useCallback(async (force = false) => {
-    if (referencesLoaded.current && !force) return;
-    if (referencesPromise.current && !force) return referencesPromise.current;
+  const ensureReferences = useCallback(
+    async (force = false) => {
+      if (referencesLoaded.current && !force) return;
+      if (referencesPromise.current && !force) return referencesPromise.current;
 
-    const request = (async () => {
-      setReferencesLoading(true);
-      const [teacherResult, availabilityResult] = await Promise.all([
-        supabase.from('teachers').select('name,color').order('name'),
-        supabase.from('teacher_availability').select('*'),
-      ]);
+      const request = (async () => {
+        setReferencesLoading(true);
+        const [teacherResult, availabilityResult] = await Promise.all([
+          supabase.from('teachers').select('name,color').order('name'),
+          supabase.from('teacher_availability').select('*'),
+        ]);
 
-      if (teacherResult.error) throw teacherResult.error;
-      setTeachers((teacherResult.data as TeacherRow[]) ?? []);
-      setAvailability(availabilityResult.error ? [] : ((availabilityResult.data as AvailabilityRow[]) ?? []));
-      referencesLoaded.current = true;
-    })().finally(() => {
-      referencesPromise.current = null;
-      setReferencesLoading(false);
-    });
+        if (teacherResult.error) throw teacherResult.error;
+        setTeachers((teacherResult.data as TeacherRow[]) ?? []);
+        setAvailability(
+          availabilityResult.error ? [] : ((availabilityResult.data as AvailabilityRow[]) ?? []),
+        );
+        referencesLoaded.current = true;
+      })().finally(() => {
+        referencesPromise.current = null;
+        setReferencesLoading(false);
+      });
 
-    referencesPromise.current = request;
-    return request;
-  }, [supabase]);
+      referencesPromise.current = request;
+      return request;
+    },
+    [supabase],
+  );
 
-  const getLessons = useCallback(async (range: LessonRange, force = false) => {
-    const cacheKey = `${range.start}|${range.end}`;
-    if (!force) {
-      const cached = lessonCache.current.get(cacheKey);
-      if (cached) return cached;
-      const pending = lessonPromises.current.get(cacheKey);
-      if (pending) return pending;
-    }
+  const getLessons = useCallback(
+    async (range: LessonRange, force = false) => {
+      const cacheKey = `${range.start}|${range.end}`;
+      if (!force) {
+        const cached = lessonCache.current.get(cacheKey);
+        if (cached) return cached;
+        const pending = lessonPromises.current.get(cacheKey);
+        if (pending) return pending;
+      }
 
-    const request = (async () => {
-      const { data, error } = await supabase
-        .from('lessons')
-        .select('id,lesson_date,school,class_name,start_time,end_time,teacher_name,unavailable,cancelled')
-        .gte('lesson_date', range.start)
-        .lt('lesson_date', range.end)
-        .order('lesson_date')
-        .order('start_time');
-      if (error) throw error;
-      const rows = (data as LessonRow[]) ?? [];
-      lessonCache.current.set(cacheKey, rows);
-      return rows;
-    })().finally(() => lessonPromises.current.delete(cacheKey));
+      const request = (async () => {
+        const { data, error } = await supabase
+          .from('lessons')
+          .select(
+            'id,lesson_date,school,class_name,start_time,end_time,teacher_name,unavailable,cancelled',
+          )
+          .gte('lesson_date', range.start)
+          .lt('lesson_date', range.end)
+          .order('lesson_date')
+          .order('start_time');
+        if (error) throw error;
+        const rows = (data as LessonRow[]) ?? [];
+        lessonCache.current.set(cacheKey, rows);
+        return rows;
+      })().finally(() => lessonPromises.current.delete(cacheKey));
 
-    lessonPromises.current.set(cacheKey, request);
-    return request;
-  }, [supabase]);
+      lessonPromises.current.set(cacheKey, request);
+      return request;
+    },
+    [supabase],
+  );
 
   const upsertCachedLesson = useCallback((lesson: LessonRow) => {
     for (const [cacheKey, rows] of lessonCache.current.entries()) {
@@ -110,18 +120,23 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       const existingIndex = rows.findIndex((row) => row.id === lesson.id);
 
       if (!belongsToRange && existingIndex >= 0) {
-        lessonCache.current.set(cacheKey, rows.filter((row) => row.id !== lesson.id));
+        lessonCache.current.set(
+          cacheKey,
+          rows.filter((row) => row.id !== lesson.id),
+        );
         continue;
       }
 
       if (!belongsToRange) continue;
 
-      const nextRows = existingIndex >= 0
-        ? rows.map((row) => (row.id === lesson.id ? lesson : row))
-        : [...rows, lesson];
+      const nextRows =
+        existingIndex >= 0
+          ? rows.map((row) => (row.id === lesson.id ? lesson : row))
+          : [...rows, lesson];
 
-      nextRows.sort((a, b) =>
-        a.lesson_date.localeCompare(b.lesson_date) || a.start_time.localeCompare(b.start_time),
+      nextRows.sort(
+        (a, b) =>
+          a.lesson_date.localeCompare(b.lesson_date) || a.start_time.localeCompare(b.start_time),
       );
       lessonCache.current.set(cacheKey, nextRows);
     }
@@ -139,25 +154,28 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     lessonPromises.current.clear();
   }, []);
 
-  const value = useMemo<AppDataContextValue>(() => ({
-    teachers,
-    availability,
-    referencesLoading,
-    ensureReferences,
-    getLessons,
-    upsertCachedLesson,
-    removeCachedLesson,
-    invalidateLessons,
-  }), [
-    teachers,
-    availability,
-    referencesLoading,
-    ensureReferences,
-    getLessons,
-    upsertCachedLesson,
-    removeCachedLesson,
-    invalidateLessons,
-  ]);
+  const value = useMemo<AppDataContextValue>(
+    () => ({
+      teachers,
+      availability,
+      referencesLoading,
+      ensureReferences,
+      getLessons,
+      upsertCachedLesson,
+      removeCachedLesson,
+      invalidateLessons,
+    }),
+    [
+      teachers,
+      availability,
+      referencesLoading,
+      ensureReferences,
+      getLessons,
+      upsertCachedLesson,
+      removeCachedLesson,
+      invalidateLessons,
+    ],
+  );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;
 }

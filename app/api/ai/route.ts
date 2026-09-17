@@ -49,7 +49,10 @@ function cleanMessages(value: unknown): ChatMessage[] {
     .filter((item): item is ChatMessage => {
       if (!item || typeof item !== 'object') return false;
       const message = item as Partial<ChatMessage>;
-      return (message.role === 'user' || message.role === 'assistant') && typeof message.content === 'string';
+      return (
+        (message.role === 'user' || message.role === 'assistant') &&
+        typeof message.content === 'string'
+      );
     })
     .slice(-MAX_MESSAGES)
     .map((message) => ({
@@ -63,19 +66,17 @@ function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SECRET_KEY;
 
-if (!url || !key) {
-  throw new Error(
-    "NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SECRET_KEY is missing."
-  );
-}
+  if (!url || !key) {
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SECRET_KEY is missing.');
+  }
 
-return createClient(url, key, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionInUrl: false,
-  },
-});
+  return createClient(url, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
 }
 
 function normalise(value: string) {
@@ -176,23 +177,31 @@ async function searchLessons(args: SearchLessonsArgs) {
   // The lessons table is the source of truth for lesson searches. Some deployments
   // have stricter RLS on `teachers`, so do not fail name matching when that table is
   // empty or inaccessible but lesson rows are readable.
-  if (teacherError) console.warn('Calendar AI could not read teachers table:', teacherError.message);
+  if (teacherError)
+    console.warn('Calendar AI could not read teachers table:', teacherError.message);
   if (lessonTeacherError) throw lessonTeacherError;
   if (schoolError) throw schoolError;
 
   const teacherNames = Array.from(
-    new Set([
-      ...(teacherRows ?? []).map((row) => String(row.name ?? '').trim()),
-      ...(lessonTeacherRows ?? []).map((row) => String(row.teacher_name ?? '').trim()),
-    ].filter(Boolean)),
+    new Set(
+      [
+        ...(teacherRows ?? []).map((row) => String(row.name ?? '').trim()),
+        ...(lessonTeacherRows ?? []).map((row) => String(row.teacher_name ?? '').trim()),
+      ].filter(Boolean),
+    ),
   ).sort();
-  const schoolNames = Array.from(new Set((schoolRows ?? []).map((row) => String(row.school)).filter(Boolean))).sort();
+  const schoolNames = Array.from(
+    new Set((schoolRows ?? []).map((row) => String(row.school)).filter(Boolean)),
+  ).sort();
 
   let resolvedTeacher: string | undefined;
   let teacherMatches: Array<{ value: string; score: number }> = [];
   if (args.teacher) {
     teacherMatches = bestMatches(args.teacher, teacherNames, 'teacher');
-    if (teacherMatches[0]?.score >= 90 && (teacherMatches[1]?.score ?? 0) < teacherMatches[0].score) {
+    if (
+      teacherMatches[0]?.score >= 90 &&
+      (teacherMatches[1]?.score ?? 0) < teacherMatches[0].score
+    ) {
       resolvedTeacher = teacherMatches[0].value;
     } else if (teacherMatches.length === 1 && teacherMatches[0].score >= 80) {
       resolvedTeacher = teacherMatches[0].value;
@@ -239,7 +248,8 @@ async function searchLessons(args: SearchLessonsArgs) {
 
   if (resolvedTeacher) query = query.eq('teacher_name', resolvedTeacher);
   if (resolvedSchool) query = query.eq('school', resolvedSchool);
-  if (args.class_name) query = query.ilike('class_name', `%${args.class_name.replace(/[%_,]/g, '')}%`);
+  if (args.class_name)
+    query = query.ilike('class_name', `%${args.class_name.replace(/[%_,]/g, '')}%`);
   if (args.date) query = query.eq('lesson_date', args.date);
   if (args.date_from) query = query.gte('lesson_date', args.date_from);
   if (args.date_to) query = query.lte('lesson_date', args.date_to);
@@ -256,7 +266,8 @@ async function searchLessons(args: SearchLessonsArgs) {
   if (error) throw error;
 
   let lessons = (data ?? []) as LessonRow[];
-  if (args.instrument) lessons = lessons.filter((lesson) => matchesInstrument(lesson, args.instrument!));
+  if (args.instrument)
+    lessons = lessons.filter((lesson) => matchesInstrument(lesson, args.instrument!));
   lessons = lessons.slice(0, requestedLimit);
 
   return {
@@ -276,18 +287,25 @@ async function searchLessons(args: SearchLessonsArgs) {
 
 async function listTeachers() {
   const supabase = getSupabase();
-  const [{ data: teachers, error: teacherError }, { data: lessonRows, error: lessonError }] = await Promise.all([
-    supabase.from('teachers').select('id,name,color').order('name'),
-    supabase.from('lessons').select('teacher_name'),
-  ]);
+  const [{ data: teachers, error: teacherError }, { data: lessonRows, error: lessonError }] =
+    await Promise.all([
+      supabase.from('teachers').select('id,name,color').order('name'),
+      supabase.from('lessons').select('teacher_name'),
+    ]);
 
   if (lessonError) throw lessonError;
-  if (teacherError) console.warn('Calendar AI could not read teachers table:', teacherError.message);
+  if (teacherError)
+    console.warn('Calendar AI could not read teachers table:', teacherError.message);
 
   const teacherMap = new Map<string, { id: string | null; name: string; color: string | null }>();
   for (const teacher of teachers ?? []) {
     const name = String(teacher.name ?? '').trim();
-    if (name) teacherMap.set(normalise(name), { id: teacher.id ?? null, name, color: teacher.color ?? null });
+    if (name)
+      teacherMap.set(normalise(name), {
+        id: teacher.id ?? null,
+        name,
+        color: teacher.color ?? null,
+      });
   }
   for (const row of lessonRows ?? []) {
     const name = String(row.teacher_name ?? '').trim();
@@ -305,25 +323,60 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     type: 'function',
     function: {
       name: 'search_lessons',
-      description: 'Read-only search of the live Supabase lessons table. Use this for teacher, school, class, instrument, date and time questions. Never claim to modify data.',
+      description:
+        'Read-only search of the live Supabase lessons table. Use this for teacher, school, class, instrument, date and time questions. Never claim to modify data.',
       strict: true,
       parameters: {
         type: 'object',
         additionalProperties: false,
         properties: {
-          teacher: { type: ['string', 'null'], description: 'Teacher name, including a partial or natural version such as Teacher Joel.' },
-          school: { type: ['string', 'null'], description: 'School name or abbreviation such as Meridian or Bukit Timah PS.' },
-          instrument: { type: ['string', 'null'], description: 'Instrument such as keyboard, piano, guitar, violin, drums or ukulele.' },
-          class_name: { type: ['string', 'null'], description: 'Class/programme text such as 4IN, Guitar Ensemble or MCCA.' },
+          teacher: {
+            type: ['string', 'null'],
+            description:
+              'Teacher name, including a partial or natural version such as Teacher Joel.',
+          },
+          school: {
+            type: ['string', 'null'],
+            description: 'School name or abbreviation such as Meridian or Bukit Timah PS.',
+          },
+          instrument: {
+            type: ['string', 'null'],
+            description: 'Instrument such as keyboard, piano, guitar, violin, drums or ukulele.',
+          },
+          class_name: {
+            type: ['string', 'null'],
+            description: 'Class/programme text such as 4IN, Guitar Ensemble or MCCA.',
+          },
           date: { type: ['string', 'null'], description: 'Exact lesson date in YYYY-MM-DD.' },
-          date_from: { type: ['string', 'null'], description: 'Beginning of date range in YYYY-MM-DD.' },
+          date_from: {
+            type: ['string', 'null'],
+            description: 'Beginning of date range in YYYY-MM-DD.',
+          },
           date_to: { type: ['string', 'null'], description: 'End of date range in YYYY-MM-DD.' },
-          start_time_from: { type: ['string', 'null'], description: 'Earliest start time in 24-hour HH:MM format.' },
-          start_time_to: { type: ['string', 'null'], description: 'Latest start time in 24-hour HH:MM format.' },
+          start_time_from: {
+            type: ['string', 'null'],
+            description: 'Earliest start time in 24-hour HH:MM format.',
+          },
+          start_time_to: {
+            type: ['string', 'null'],
+            description: 'Latest start time in 24-hour HH:MM format.',
+          },
           unavailable: { type: ['boolean', 'null'], description: 'Filter by unavailable flag.' },
           limit: { type: ['integer', 'null'], minimum: 1, maximum: 300 },
         },
-        required: ['teacher', 'school', 'instrument', 'class_name', 'date', 'date_from', 'date_to', 'start_time_from', 'start_time_to', 'unavailable', 'limit'],
+        required: [
+          'teacher',
+          'school',
+          'instrument',
+          'class_name',
+          'date',
+          'date_from',
+          'date_to',
+          'start_time_from',
+          'start_time_to',
+          'unavailable',
+          'limit',
+        ],
       },
     },
   },
@@ -331,7 +384,8 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     type: 'function',
     function: {
       name: 'list_teachers',
-      description: 'Return the current teacher list from Supabase. Use when the user asks who the teachers are or when checking a teacher name.',
+      description:
+        'Return the current teacher list from Supabase. Use when the user asks who the teachers are or when checking a teacher name.',
       strict: true,
       parameters: { type: 'object', additionalProperties: false, properties: {}, required: [] },
     },
@@ -349,7 +403,10 @@ function nullableArgs(value: unknown): SearchLessonsArgs {
 
 export async function POST(request: Request) {
   if (!process.env.OPENAI_API_KEY) {
-    return NextResponse.json({ error: 'OPENAI_API_KEY is missing from the server environment.' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'OPENAI_API_KEY is missing from the server environment.' },
+      { status: 500 },
+    );
   }
 
   try {
@@ -361,10 +418,12 @@ export async function POST(request: Request) {
     }
 
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const conversation: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = messages.map((message) => ({
-      role: message.role,
-      content: message.content,
-    }));
+    const conversation: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = messages.map(
+      (message) => ({
+        role: message.role,
+        content: message.content,
+      }),
+    );
 
     const singaporeDate = new Intl.DateTimeFormat('en-CA', {
       timeZone: 'Asia/Singapore',
@@ -439,7 +498,8 @@ Reliability rules:
       }
     }
 
-    if (!finalText) finalText = 'I could not complete the database search. Please try a more specific question.';
+    if (!finalText)
+      finalText = 'I could not complete the database search. Please try a more specific question.';
 
     return new Response(finalText, {
       headers: {

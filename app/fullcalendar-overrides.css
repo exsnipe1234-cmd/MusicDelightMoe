@@ -11,7 +11,10 @@
   border-radius: 7px !important;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
   overflow: hidden;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    filter 0.15s ease;
 }
 
 .fc .fc-event:hover,

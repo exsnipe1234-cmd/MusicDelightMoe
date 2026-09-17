@@ -155,7 +155,7 @@
   color: var(--cal-text-bulk-strong);
 }
 
-.bulkToolbar input[type="date"] {
+.bulkToolbar input[type='date'] {
   padding: 7px 10px;
   border: 1px solid var(--cal-border-input);
   border-radius: 9px;
@@ -367,12 +367,24 @@
   animation: pulse 1.8s ease-in-out infinite;
 }
 
-.skeletonDay:nth-child(7n+2) { animation-delay: 0.05s; }
-.skeletonDay:nth-child(7n+3) { animation-delay: 0.1s; }
-.skeletonDay:nth-child(7n+4) { animation-delay: 0.15s; }
-.skeletonDay:nth-child(7n+5) { animation-delay: 0.2s; }
-.skeletonDay:nth-child(7n+6) { animation-delay: 0.25s; }
-.skeletonDay:nth-child(7n+7) { animation-delay: 0.3s; }
+.skeletonDay:nth-child(7n + 2) {
+  animation-delay: 0.05s;
+}
+.skeletonDay:nth-child(7n + 3) {
+  animation-delay: 0.1s;
+}
+.skeletonDay:nth-child(7n + 4) {
+  animation-delay: 0.15s;
+}
+.skeletonDay:nth-child(7n + 5) {
+  animation-delay: 0.2s;
+}
+.skeletonDay:nth-child(7n + 6) {
+  animation-delay: 0.25s;
+}
+.skeletonDay:nth-child(7n + 7) {
+  animation-delay: 0.3s;
+}
 
 .skeletonDayNum {
   width: 22px;
@@ -389,12 +401,21 @@
   margin-bottom: 4px;
 }
 
-.skeletonEvent:nth-child(2) { width: 75%; }
-.skeletonEvent:nth-child(3) { width: 60%; }
+.skeletonEvent:nth-child(2) {
+  width: 75%;
+}
+.skeletonEvent:nth-child(3) {
+  width: 60%;
+}
 
 @keyframes pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.7; }
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 /* ── Accessibility ── */
@@ -763,11 +784,19 @@
 
 /* ── Animations ── */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideInRight {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }

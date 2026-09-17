@@ -16,11 +16,18 @@ function UndoBanner({ action, stackDepth, undoing, onUndo, onDismiss }: Props) {
 
   return (
     <div className={styles.undoBanner} role="status" aria-live="polite">
-      <span>Last change: {action.label}{stackDepth > 1 ? ` (${stackDepth} total)` : ''}</span>
+      <span>
+        Last change: {action.label}
+        {stackDepth > 1 ? ` (${stackDepth} total)` : ''}
+      </span>
       <button onClick={onUndo} disabled={undoing}>
         {undoing ? 'Undoing...' : 'Undo'}
       </button>
-      <button className={styles.dismissUndo} onClick={onDismiss} aria-label="Dismiss all undo history">
+      <button
+        className={styles.dismissUndo}
+        onClick={onDismiss}
+        aria-label="Dismiss all undo history"
+      >
         Dismiss all
       </button>
     </div>
