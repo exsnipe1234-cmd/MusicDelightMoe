@@ -61,7 +61,7 @@ export function colourFromName(name: string | null): string {
     hash = hash & hash; // Convert to 32-bit integer
   }
   const hue = Math.abs(hash) % 360;
-  return hslToHex(hue, 55, 58);
+  return hslToHex(hue, 72, 50);
 }
 
 /** Convert HSL to hex colour string. */
