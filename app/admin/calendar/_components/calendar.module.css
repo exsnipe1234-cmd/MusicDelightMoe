@@ -341,6 +341,62 @@
   color: var(--cal-text-muted);
 }
 
+/* ── Skeleton Loading ── */
+.skeletonGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  min-height: 580px;
+  padding: 4px;
+}
+
+.skeletonHeader {
+  padding: 10px 4px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--cal-text-muted);
+  opacity: 0.5;
+}
+
+.skeletonDay {
+  min-height: 90px;
+  padding: 6px;
+  border-radius: 6px;
+  background: var(--cal-bg-day-lesson);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+.skeletonDay:nth-child(7n+2) { animation-delay: 0.05s; }
+.skeletonDay:nth-child(7n+3) { animation-delay: 0.1s; }
+.skeletonDay:nth-child(7n+4) { animation-delay: 0.15s; }
+.skeletonDay:nth-child(7n+5) { animation-delay: 0.2s; }
+.skeletonDay:nth-child(7n+6) { animation-delay: 0.25s; }
+.skeletonDay:nth-child(7n+7) { animation-delay: 0.3s; }
+
+.skeletonDayNum {
+  width: 22px;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--cal-bg-input);
+  margin-bottom: 6px;
+}
+
+.skeletonEvent {
+  height: 10px;
+  border-radius: 4px;
+  background: var(--cal-bg-input);
+  margin-bottom: 4px;
+}
+
+.skeletonEvent:nth-child(2) { width: 75%; }
+.skeletonEvent:nth-child(3) { width: 60%; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.7; }
+}
+
 /* ── Accessibility ── */
 .fieldError {
   color: #fb7185;
@@ -355,6 +411,7 @@
   backdrop-filter: blur(4px);
   display: flex;
   justify-content: flex-end;
+  animation: fadeIn 0.2s ease;
 }
 
 .dayPanel,
@@ -366,6 +423,7 @@
   background: var(--cal-bg-drawer);
   border-left: 1px solid var(--cal-border-card);
   box-shadow: var(--cal-shadow-drawer);
+  animation: slideInRight 0.25s ease;
 }
 
 .quickDrawer {
@@ -376,6 +434,7 @@
   background: var(--cal-bg-drawer);
   border-left: 1px solid var(--cal-border-card);
   box-shadow: var(--cal-shadow-drawer);
+  animation: slideInRight 0.25s ease;
 }
 
 .drawerHeader {
@@ -695,16 +754,20 @@
   }
 }
 
-/* ── Accessibility ── */
-.fieldError {
-  color: #fb7185;
-  font-size: 11px;
-  font-weight: 600;
-}
-
 /* Reset fieldset styling for weekday picker */
 .weekdayPicker {
   border: 0;
   padding: 10px 0;
   margin: 0;
+}
+
+/* ── Animations ── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
 }

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { AlertTriangle, CalendarDays, FileClock, FileUp, History, Home, KeyRound, LogOut, Menu, Repeat2, School, Users, UserRoundCheck, UserRoundX, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '../../../utils/supabase/client';
+import ThemeToggle from '../../components/ThemeToggle';
 
 const links = [
   { href: '/', label: 'Dashboard', icon: Home, exact: true },
@@ -53,6 +54,7 @@ export default function AdminSidebar() {
             const active = exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
             return <Link key={href} href={href} className={active ? 'adminNavLink active' : 'adminNavLink'}><Icon size={18}/><span>{label}</span></Link>;
           })}
+          <ThemeToggle />
         </nav>
         <div className="adminSidebarFooter">
           <div><span>ADMIN PORTAL</span><strong>MOE Calendar</strong></div>

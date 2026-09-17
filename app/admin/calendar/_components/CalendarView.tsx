@@ -6,11 +6,14 @@ import type { DatesSetArg, EventChangeArg, EventInput } from '@fullcalendar/core
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin, { DateClickArg } from '@fullcalendar/interaction';
-import { Loader2, MapPin } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import type { LessonRow } from '../../../providers/AppDataProvider';
 import { mapsUrl } from './calendarUtils';
 import { teacherInitials } from './teacherInitials';
 import styles from './calendar.module.css';
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const SKELETON_DAYS = Array.from({ length: 35 });
 
 type Props = {
   calendarRef: React.Ref<FullCalendar>;
@@ -77,8 +80,17 @@ function CalendarView({ calendarRef, events, loading, mobileCalendar, nativeCale
   return (
     <section className={styles.calendarCard} aria-label="Lesson calendar">
       {loading && events.length === 0 ? (
-        <div className={styles.loading} role="status">
-          <Loader2 className={styles.spin} aria-hidden="true" /> Loading calendar...
+        <div className={styles.skeletonGrid} role="status" aria-label="Loading calendar">
+          {WEEKDAYS.map((day) => (
+            <div key={day} className={styles.skeletonHeader}>{day}</div>
+          ))}
+          {SKELETON_DAYS.map((_, i) => (
+            <div key={i} className={styles.skeletonDay}>
+              <div className={styles.skeletonDayNum} />
+              <div className={styles.skeletonEvent} />
+              <div className={styles.skeletonEvent} />
+            </div>
+          ))}
         </div>
       ) : (
         <FullCalendar
