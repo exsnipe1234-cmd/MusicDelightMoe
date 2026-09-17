@@ -16,6 +16,7 @@ type Props = {
   schools: string[];
   visibleCount: number;
   onClear: () => void;
+  searchInputRef?: React.Ref<HTMLInputElement>;
 };
 
 function FilterBar({
@@ -29,12 +30,14 @@ function FilterBar({
   schools,
   visibleCount,
   onClear,
+  searchInputRef,
 }: Props) {
   return (
     <section className={styles.filterBar} aria-label="Calendar filters">
       <div className={styles.searchBox}>
         <Search size={17} aria-hidden="true" />
         <input
+          ref={searchInputRef}
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
           placeholder="Search school, class or teacher"

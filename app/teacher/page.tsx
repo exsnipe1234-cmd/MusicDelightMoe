@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   AlertTriangle,
@@ -19,356 +18,19 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
-import { createClient } from '../../utils/supabase/client';
-
-type Profile = {
-  display_name: string;
-  teacher_name: string | null;
-  role: 'admin' | 'teacher';
-  active: boolean;
-};
-type AccessRow = { teacher_name: string };
-type LessonRow = {
-  id: string;
-  lesson_date: string;
-  school: string;
-  class_name: string;
-  start_time: string;
-  end_time: string;
-  teacher_name: string | null;
-  unavailable: boolean;
-};
-type RequestRow = {
-  id: string;
-  start_date: string;
-  end_date: string;
-  reason: string;
-  remarks: string | null;
-  status: 'pending' | 'approved' | 'rejected' | 'replacement_assigned' | 'cancelled';
-  admin_note: string | null;
-  replacement_summary: string | null;
-  affected_lessons: Array<{
-    id: string;
-    lesson_date: string;
-    school: string;
-    class_name: string;
-    start_time: string;
-    end_time: string;
-  }>;
-  created_at: string;
-};
-
-const dateKey = (date: Date) =>
-  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-const parseLocalDate = (value: string) => new Date(`${value}T12:00:00`);
-const formatTime = (value: string) => value.slice(0, 5);
-const mapsUrl = (school: string) =>
-  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${mapsSchool(school)} Singapore`)}`;
-const mapsSchool = (value: string) => {
-  let school = value
-    .replace(/\s*\([^)]*\)\s*/g, ' ')
-    .replace(/\bcca\b/gi, '')
-    .replace(/\bpri\b/gi, 'primary school')
-    .replace(/\bps\b(?!\s+school)/gi, 'primary school')
-    .replace(/\bprimary school\b\s+primary school\b/gi, 'primary school')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase();
-  if (!school.includes('school') && !school.includes('secondary') && !school.includes('junior'))
-    school = `${school} primary school`;
-  return school.replace(/\b\w/g, (char) => char.toUpperCase());
-};
-const minutesBetween = (start: string, end: string) => {
-  const [sh, sm] = start.slice(0, 5).split(':').map(Number);
-  const [eh, em] = end.slice(0, 5).split(':').map(Number);
-  return Math.max(0, eh * 60 + em - sh * 60 - sm);
-};
+import {
+  useTeacherPortal,
+  dateKey,
+  formatTime,
+  mapsUrl,
+  parseLocalDate,
+} from './_components/useTeacherPortal';
 
 export default function TeacherPortal() {
   const router = useRouter();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [userId, setUserId] = useState('');
-  const [lessons, setLessons] = useState<LessonRow[]>([]);
-  const [linkedTeacherNames, setLinkedTeacherNames] = useState<string[]>([]);
-  const [requests, setRequests] = useState<RequestRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState('');
-  const [now, setNow] = useState(() => new Date());
-  const [requestOpen, setRequestOpen] = useState(false);
-  const [startDate, setStartDate] = useState(dateKey(new Date()));
-  const [endDate, setEndDate] = useState(dateKey(new Date()));
-  const [reason, setReason] = useState('MC');
-  const [remarks, setRemarks] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [requestMessage, setRequestMessage] = useState('');
-  const [reloadKey, setReloadKey] = useState(0);
+  const portal = useTeacherPortal();
 
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 60_000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  const loadRequests = async (uid: string) => {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from('teacher_unavailability_requests')
-      .select(
-        'id,start_date,end_date,reason,remarks,status,admin_note,replacement_summary,affected_lessons,created_at',
-      )
-      .eq('teacher_user_id', uid)
-      .order('created_at', { ascending: false })
-      .limit(8);
-    if (!error) setRequests((data as RequestRow[]) ?? []);
-  };
-
-  useEffect(() => {
-    const load = async () => {
-      const supabase = createClient();
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session) {
-        router.replace('/login');
-        return;
-      }
-      setUserId(sessionData.session.user.id);
-
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('display_name, teacher_name, role, active')
-        .eq('id', sessionData.session.user.id)
-        .single();
-      if (profileError || !profileData?.active) {
-        await supabase.auth.signOut();
-        router.replace('/login');
-        return;
-      }
-      if (profileData.role === 'admin') {
-        router.replace('/');
-        return;
-      }
-
-      const typedProfile = profileData as Profile;
-      setProfile(typedProfile);
-
-      const { data: accessData, error: accessError } = await supabase
-        .from('profile_teacher_access')
-        .select('teacher_name')
-        .eq('profile_id', sessionData.session.user.id);
-      if (accessError) {
-        setMessage(`${accessError.message}. Run the multi-timetable Supabase migration first.`);
-        setLoading(false);
-        return;
-      }
-      const accessNames = ((accessData ?? []) as AccessRow[]).map((row) => row.teacher_name);
-      const visibleTeacherNames = Array.from(
-        new Set([
-          ...(typedProfile.teacher_name ? [typedProfile.teacher_name] : []),
-          ...accessNames,
-        ]),
-      );
-      setLinkedTeacherNames(visibleTeacherNames);
-      if (!visibleTeacherNames.length) {
-        setLoading(false);
-        return;
-      }
-
-      const rangeStart = new Date();
-      rangeStart.setMonth(0, 1);
-      rangeStart.setHours(0, 0, 0, 0);
-      const rangeEnd = new Date();
-      rangeEnd.setFullYear(rangeEnd.getFullYear() + 1, 0, 1);
-      rangeEnd.setHours(0, 0, 0, 0);
-
-      const [{ data, error }] = await Promise.all([
-        supabase
-          .from('lessons')
-          .select('id,lesson_date,school,class_name,start_time,end_time,teacher_name,unavailable')
-          .in('teacher_name', visibleTeacherNames)
-          .eq('cancelled', false)
-          .gte('lesson_date', dateKey(rangeStart))
-          .lt('lesson_date', dateKey(rangeEnd))
-          .order('lesson_date')
-          .order('start_time'),
-        loadRequests(sessionData.session.user.id),
-      ]);
-      if (error) setMessage(error.message);
-      else setLessons((data as LessonRow[]) ?? []);
-      setLoading(false);
-    };
-    void load();
-  }, [router, reloadKey]);
-  useEffect(() => {
-    const client = createClient();
-    const channel = client
-      .channel('teacher-portal-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'lessons' }, () =>
-        setReloadKey((value) => value + 1),
-      )
-      .subscribe();
-    return () => {
-      void client.removeChannel(channel);
-    };
-  }, []);
-
-  const todayKey = dateKey(now);
-  const teacherName = profile?.teacher_name ?? profile?.display_name ?? 'Teacher';
-  const todayLessons = useMemo(
-    () => lessons.filter((l) => l.lesson_date === todayKey),
-    [lessons, todayKey],
-  );
-  const upcomingLessons = useMemo(
-    () => lessons.filter((l) => new Date(`${l.lesson_date}T${l.end_time.slice(0, 8)}`) >= now),
-    [lessons, now],
-  );
-  const nextLesson = upcomingLessons[0] ?? null;
-  const weekRange = useMemo(() => {
-    const start = new Date(now);
-    const day = start.getDay();
-    start.setDate(start.getDate() + (day === 0 ? -6 : 1 - day));
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 7);
-    return { start, end };
-  }, [now]);
-  const weekLessons = useMemo(
-    () =>
-      lessons.filter((l) => {
-        const d = parseLocalDate(l.lesson_date);
-        return d >= weekRange.start && d < weekRange.end;
-      }),
-    [lessons, weekRange],
-  );
-  const monthLessons = useMemo(
-    () =>
-      lessons.filter((l) => {
-        const d = parseLocalDate(l.lesson_date);
-        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      }),
-    [lessons, now],
-  );
-  const weeklyCounts = useMemo(() => {
-    const counts = Array.from({ length: 7 }, () => 0);
-    for (const lesson of weekLessons)
-      counts[(parseLocalDate(lesson.lesson_date).getDay() + 6) % 7] += 1;
-    return counts;
-  }, [weekLessons]);
-  const weeklyHours = useMemo(
-    () => weekLessons.reduce((s, l) => s + minutesBetween(l.start_time, l.end_time), 0) / 60,
-    [weekLessons],
-  );
-  const monthlyHours = useMemo(
-    () => monthLessons.reduce((s, l) => s + minutesBetween(l.start_time, l.end_time), 0) / 60,
-    [monthLessons],
-  );
-  const schoolCount = useMemo(
-    () => new Set(monthLessons.map((l) => l.school)).size,
-    [monthLessons],
-  );
-  const affectedLessons = useMemo(
-    () =>
-      lessons.filter(
-        (l) =>
-          l.teacher_name === profile?.teacher_name &&
-          l.lesson_date >= startDate &&
-          l.lesson_date <= endDate,
-      ),
-    [lessons, profile?.teacher_name, startDate, endDate],
-  );
-  const countdown = useMemo(() => {
-    if (!nextLesson) return 'No upcoming lessons';
-    const diff =
-      new Date(`${nextLesson.lesson_date}T${nextLesson.start_time.slice(0, 8)}`).getTime() -
-      now.getTime();
-    if (diff <= 0) return 'In progress now';
-    const m = Math.ceil(diff / 60_000),
-      d = Math.floor(m / 1440),
-      h = Math.floor((m % 1440) / 60),
-      min = m % 60;
-    return d > 0
-      ? `Starts in ${d}d ${h}h`
-      : h > 0
-        ? `Starts in ${h}h ${min}m`
-        : `Starts in ${min}m`;
-  }, [nextLesson, now]);
-
-  const submitRequest = async () => {
-    setRequestMessage('');
-    if (!profile?.teacher_name || !userId) return;
-    if (endDate < startDate) {
-      setRequestMessage('The end date cannot be before the start date.');
-      return;
-    }
-    if (!affectedLessons.length) {
-      setRequestMessage('There are no assigned lessons in this date range.');
-      return;
-    }
-    setSubmitting(true);
-    const payloadLessons = affectedLessons.map(
-      ({ id, lesson_date, school, class_name, start_time, end_time }) => ({
-        id,
-        lesson_date,
-        school,
-        class_name,
-        start_time,
-        end_time,
-      }),
-    );
-    const { error } = await createClient()
-      .from('teacher_unavailability_requests')
-      .insert({
-        teacher_user_id: userId,
-        teacher_name: profile.teacher_name,
-        start_date: startDate,
-        end_date: endDate,
-        reason,
-        remarks: remarks.trim() || null,
-        affected_lesson_ids: affectedLessons.map((l) => l.id),
-        affected_lessons: payloadLessons,
-      });
-    setSubmitting(false);
-    if (error) {
-      setRequestMessage(
-        error.message.includes('teacher_unavailability_requests')
-          ? 'The request database has not been installed yet. Run the new Supabase migration first.'
-          : error.message,
-      );
-      return;
-    }
-    await loadRequests(userId);
-    setRequestOpen(false);
-    setRemarks('');
-    setReason('MC');
-    setMessage('Your unable-to-attend request was sent to the admin.');
-  };
-
-  const cancelRequest = async (id: string) => {
-    const { error } = await createClient()
-      .from('teacher_unavailability_requests')
-      .update({ status: 'cancelled' })
-      .eq('id', id)
-      .eq('status', 'pending');
-    if (error) setMessage(error.message);
-    else await loadRequests(userId);
-  };
-
-  const signOut = async () => {
-    await createClient().auth.signOut();
-    router.replace('/login');
-    router.refresh();
-  };
-  const scrollToSchedule = () =>
-    document.getElementById('today-schedule')?.scrollIntoView({ behavior: 'smooth' });
-  const greeting =
-    now.getHours() < 12 ? 'Good morning' : now.getHours() < 18 ? 'Good afternoon' : 'Good evening';
-  const maxWeeklyCount = Math.max(1, ...weeklyCounts);
-  const statusLabel: Record<RequestRow['status'], string> = {
-    pending: 'Pending',
-    approved: 'Approved',
-    rejected: 'Rejected',
-    replacement_assigned: 'Replacement assigned',
-    cancelled: 'Cancelled',
-  };
-
-  if (loading)
+  if (portal.loading)
     return (
       <main className="loading">
         <Loader2 className="spin" size={26} /> Loading your dashboard...
@@ -391,7 +53,7 @@ export default function TeacherPortal() {
           <button className="signOut" onClick={() => router.push('/account/password')}>
             <KeyRound size={17} /> Password
           </button>
-          <button className="signOut" onClick={signOut}>
+          <button className="signOut" onClick={portal.signOut}>
             <LogOut size={17} /> Sign out
           </button>
         </div>
@@ -404,14 +66,14 @@ export default function TeacherPortal() {
               weekday: 'long',
               day: 'numeric',
               month: 'long',
-            }).format(now)}
+            }).format(portal.now)}
           </p>
           <h2>
-            {greeting}, {teacherName} <span>👋</span>
+            {portal.greeting}, {portal.teacherName} <span>👋</span>
           </h2>
           <small>
-            {linkedTeacherNames.length > 1
-              ? `Viewing ${linkedTeacherNames.join(' + ')}`
+            {portal.linkedTeacherNames.length > 1
+              ? `Viewing ${portal.linkedTeacherNames.join(' + ')}`
               : 'Here is everything you need for your teaching day.'}
           </small>
         </div>
@@ -424,10 +86,12 @@ export default function TeacherPortal() {
         <a href="#upcoming-lessons">Upcoming</a>
         <button onClick={() => router.refresh()}>Refresh</button>
       </nav>
-      {message && (
-        <div className={message.startsWith('Your unable') ? 'success' : 'error'}>{message}</div>
+      {portal.message && (
+        <div className={portal.message.startsWith('Your unable') ? 'success' : 'error'}>
+          {portal.message}
+        </div>
       )}
-      {!linkedTeacherNames.length && (
+      {!portal.linkedTeacherNames.length && (
         <div className="warning">
           Your account has not been linked to any timetables yet. Ask the administrator to set your
           timetable access.
@@ -439,19 +103,19 @@ export default function TeacherPortal() {
           <div className="cardLabel">
             <Sparkles size={15} /> NEXT LESSON
           </div>
-          {nextLesson ? (
+          {portal.nextLesson ? (
             <>
               <div className="nextMain">
                 <div className="timeBadge">
                   <Clock3 size={20} />
-                  <strong>{formatTime(nextLesson.start_time)}</strong>
-                  <span>{formatTime(nextLesson.end_time)}</span>
+                  <strong>{formatTime(portal.nextLesson.start_time)}</strong>
+                  <span>{formatTime(portal.nextLesson.end_time)}</span>
                 </div>
                 <div>
                   <h3 style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {nextLesson.school}
+                    {portal.nextLesson.school}
                     <a
-                      href={mapsUrl(nextLesson.school)}
+                      href={mapsUrl(portal.nextLesson.school)}
                       target="_blank"
                       rel="noreferrer"
                       style={{ color: 'inherit', opacity: 0.65, display: 'flex' }}
@@ -460,25 +124,25 @@ export default function TeacherPortal() {
                       <MapPin size={13} />
                     </a>
                   </h3>
-                  <p>{nextLesson.class_name}</p>
+                  <p>{portal.nextLesson.class_name}</p>
                   <small>
                     <CalendarDays size={14} />{' '}
-                    {linkedTeacherNames.length > 1
-                      ? `${nextLesson.teacher_name ?? 'Unassigned'} · `
+                    {portal.linkedTeacherNames.length > 1
+                      ? `${portal.nextLesson.teacher_name ?? 'Unassigned'} · `
                       : ''}
-                    {nextLesson.lesson_date === todayKey
+                    {portal.nextLesson.lesson_date === portal.todayKey
                       ? 'Today'
                       : new Intl.DateTimeFormat('en-SG', {
                           weekday: 'long',
                           day: 'numeric',
                           month: 'short',
-                        }).format(parseLocalDate(nextLesson.lesson_date))}
+                        }).format(parseLocalDate(portal.nextLesson.lesson_date))}
                   </small>
                 </div>
               </div>
               <div className="countdown">
                 <i />
-                <strong>{countdown}</strong>
+                <strong>{portal.countdown}</strong>
               </div>
             </>
           ) : (
@@ -500,11 +164,11 @@ export default function TeacherPortal() {
           <div className="weekBars">
             {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
               <div className="barColumn" key={day}>
-                <span>{weeklyCounts[index]}</span>
+                <span>{portal.weeklyCounts[index]}</span>
                 <div>
                   <i
                     style={{
-                      height: `${Math.max(8, (weeklyCounts[index] / maxWeeklyCount) * 100)}%`,
+                      height: `${Math.max(8, (portal.weeklyCounts[index] / portal.maxWeeklyCount) * 100)}%`,
                     }}
                   />
                 </div>
@@ -521,23 +185,23 @@ export default function TeacherPortal() {
             <CalendarDays size={18} />
           </div>
           <span>Lessons this week</span>
-          <strong>{weekLessons.length}</strong>
-          <small>{weeklyHours.toFixed(1)} teaching hours</small>
+          <strong>{portal.weekLessons.length}</strong>
+          <small>{portal.weeklyHours.toFixed(1)} teaching hours</small>
         </article>
         <article>
           <div className="statIcon blue">
             <Clock3 size={18} />
           </div>
           <span>Hours this month</span>
-          <strong>{monthlyHours.toFixed(1)}</strong>
-          <small>{monthLessons.length} scheduled lessons</small>
+          <strong>{portal.monthlyHours.toFixed(1)}</strong>
+          <small>{portal.monthLessons.length} scheduled lessons</small>
         </article>
         <article>
           <div className="statIcon green">
             <School size={18} />
           </div>
           <span>Schools this month</span>
-          <strong>{schoolCount}</strong>
+          <strong>{portal.schoolCount}</strong>
           <small>Unique MOE locations</small>
         </article>
       </section>
@@ -550,19 +214,19 @@ export default function TeacherPortal() {
               <h3>Today&apos;s schedule</h3>
             </div>
             <span>
-              {todayLessons.length} lesson{todayLessons.length === 1 ? '' : 's'}
+              {portal.todayLessons.length} lesson{portal.todayLessons.length === 1 ? '' : 's'}
             </span>
           </div>
           <div className="todayList">
-            {todayLessons.length ? (
-              todayLessons.map((lesson, index) => (
+            {portal.todayLessons.length ? (
+              portal.todayLessons.map((lesson, index) => (
                 <div
                   className={`todayLesson ${lesson.unavailable ? 'unavailable' : ''}`}
                   key={lesson.id}
                 >
                   <div className="timeline">
                     <i />
-                    <span>{index < todayLessons.length - 1 && <b />}</span>
+                    <span>{index < portal.todayLessons.length - 1 && <b />}</span>
                   </div>
                   <div className="lessonTime">
                     <strong>{formatTime(lesson.start_time)}</strong>
@@ -586,7 +250,7 @@ export default function TeacherPortal() {
                     <span>{lesson.class_name}</span>
                     <small style={{ overflow: 'visible' }}>
                       <MapPin size={13} />{' '}
-                      {linkedTeacherNames.length > 1
+                      {portal.linkedTeacherNames.length > 1
                         ? `${lesson.teacher_name ?? 'Unassigned'} · `
                         : ''}
                       MOE programme
@@ -611,7 +275,7 @@ export default function TeacherPortal() {
               <h3>Quick actions</h3>
             </div>
           </div>
-          <button className="urgentAction" onClick={() => setRequestOpen(true)}>
+          <button className="urgentAction" onClick={() => portal.setRequestOpen(true)}>
             <span className="quickIcon alert">
               <AlertTriangle size={18} />
             </span>
@@ -621,7 +285,7 @@ export default function TeacherPortal() {
             </div>
             <ChevronRight size={18} />
           </button>
-          <button onClick={scrollToSchedule}>
+          <button onClick={portal.scrollToSchedule}>
             <span className="quickIcon">
               <CalendarDays size={18} />
             </span>
@@ -650,13 +314,13 @@ export default function TeacherPortal() {
             <p>REQUESTS</p>
             <h3>My unable-to-attend requests</h3>
           </div>
-          <button onClick={() => setRequestOpen(true)}>
+          <button onClick={() => portal.setRequestOpen(true)}>
             New request <ArrowRight size={15} />
           </button>
         </div>
         <div className="requestList">
-          {requests.length ? (
-            requests.map((request) => (
+          {portal.requests.length ? (
+            portal.requests.map((request) => (
               <article key={request.id}>
                 <div>
                   <span>
@@ -675,11 +339,16 @@ export default function TeacherPortal() {
                     {(request.affected_lessons?.length ?? 0) === 1 ? '' : 's'}
                   </small>
                 </div>
-                <div className={`status ${request.status}`}>{statusLabel[request.status]}</div>
+                <div className={`status ${request.status}`}>
+                  {portal.statusLabel[request.status]}
+                </div>
                 {request.replacement_summary && <p>{request.replacement_summary}</p>}
                 {request.admin_note && <p>{request.admin_note}</p>}
                 {request.status === 'pending' && (
-                  <button className="cancelRequest" onClick={() => cancelRequest(request.id)}>
+                  <button
+                    className="cancelRequest"
+                    onClick={() => portal.cancelRequest(request.id)}
+                  >
                     Cancel
                   </button>
                 )}
@@ -701,12 +370,12 @@ export default function TeacherPortal() {
             <p>UPCOMING</p>
             <h3>All scheduled lessons</h3>
           </div>
-          <button onClick={scrollToSchedule}>
+          <button onClick={portal.scrollToSchedule}>
             Today <ArrowRight size={15} />
           </button>
         </div>
         <div className="upcomingGrid">
-          {upcomingLessons.map((lesson) => (
+          {portal.upcomingLessons.map((lesson) => (
             <article key={lesson.id}>
               <span>
                 {new Intl.DateTimeFormat('en-SG', {
@@ -729,24 +398,26 @@ export default function TeacherPortal() {
               </strong>
               <small>
                 {lesson.class_name}
-                {linkedTeacherNames.length > 1 ? ` · ${lesson.teacher_name ?? 'Unassigned'}` : ''}
+                {portal.linkedTeacherNames.length > 1
+                  ? ` · ${lesson.teacher_name ?? 'Unassigned'}`
+                  : ''}
               </small>
               <p>
                 <Clock3 size={13} /> {formatTime(lesson.start_time)}–{formatTime(lesson.end_time)}
               </p>
             </article>
           ))}
-          {!upcomingLessons.length && (
+          {!portal.upcomingLessons.length && (
             <div className="emptyUpcoming">No upcoming lessons assigned.</div>
           )}
         </div>
       </section>
 
-      {requestOpen && (
+      {portal.requestOpen && (
         <div
           className="modalBackdrop"
           onMouseDown={(e) => {
-            if (e.currentTarget === e.target) setRequestOpen(false);
+            if (e.currentTarget === e.target) portal.setRequestOpen(false);
           }}
         >
           <section className="requestModal">
@@ -755,7 +426,7 @@ export default function TeacherPortal() {
                 <p>UNABLE TO ATTEND</p>
                 <h3>Send a replacement request</h3>
               </div>
-              <button onClick={() => setRequestOpen(false)}>
+              <button onClick={() => portal.setRequestOpen(false)}>
                 <X size={20} />
               </button>
             </header>
@@ -764,11 +435,11 @@ export default function TeacherPortal() {
                 <span>From date</span>
                 <input
                   type="date"
-                  value={startDate}
-                  min={todayKey}
+                  value={portal.startDate}
+                  min={portal.todayKey}
                   onChange={(e) => {
-                    setStartDate(e.target.value);
-                    if (e.target.value > endDate) setEndDate(e.target.value);
+                    portal.setStartDate(e.target.value);
+                    if (e.target.value > portal.endDate) portal.setEndDate(e.target.value);
                   }}
                 />
               </label>
@@ -776,15 +447,15 @@ export default function TeacherPortal() {
                 <span>To date</span>
                 <input
                   type="date"
-                  value={endDate}
-                  min={startDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  value={portal.endDate}
+                  min={portal.startDate}
+                  onChange={(e) => portal.setEndDate(e.target.value)}
                 />
               </label>
             </div>
             <label className="field">
               <span>Reason</span>
-              <select value={reason} onChange={(e) => setReason(e.target.value)}>
+              <select value={portal.reason} onChange={(e) => portal.setReason(e.target.value)}>
                 {[
                   'MC',
                   'Sick',
@@ -804,18 +475,18 @@ export default function TeacherPortal() {
               </span>
               <textarea
                 rows={3}
-                value={remarks}
-                onChange={(e) => setRemarks(e.target.value)}
+                value={portal.remarks}
+                onChange={(e) => portal.setRemarks(e.target.value)}
                 placeholder="Add any information the admin should know."
               />
             </label>
             <div className="affected">
               <div>
                 <span>Affected lessons</span>
-                <strong>{affectedLessons.length}</strong>
+                <strong>{portal.affectedLessons.length}</strong>
               </div>
-              {affectedLessons.length ? (
-                affectedLessons.map((lesson) => (
+              {portal.affectedLessons.length ? (
+                portal.affectedLessons.map((lesson) => (
                   <article key={lesson.id}>
                     <CalendarDays size={16} />
                     <div>
@@ -837,18 +508,18 @@ export default function TeacherPortal() {
                 <div className="noAffected">No assigned lessons found for this date range.</div>
               )}
             </div>
-            {requestMessage && <div className="modalError">{requestMessage}</div>}
+            {portal.requestMessage && <div className="modalError">{portal.requestMessage}</div>}
             <footer>
-              <button className="secondary" onClick={() => setRequestOpen(false)}>
+              <button className="secondary" onClick={() => portal.setRequestOpen(false)}>
                 Close
               </button>
               <button
                 className="submit"
-                disabled={submitting || !affectedLessons.length}
-                onClick={submitRequest}
+                disabled={portal.submitting || !portal.affectedLessons.length}
+                onClick={portal.submitRequest}
               >
-                {submitting ? <Loader2 className="spin" size={17} /> : <Send size={17} />} Send
-                request
+                {portal.submitting ? <Loader2 className="spin" size={17} /> : <Send size={17} />}{' '}
+                Send request
               </button>
             </footer>
           </section>

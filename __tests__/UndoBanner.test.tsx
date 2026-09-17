@@ -27,7 +27,7 @@ describe('UndoBanner', () => {
         onDismiss={vi.fn()}
       />,
     );
-    expect(screen.getByText(/Last change: moved/)).toBeInTheDocument();
+    expect(screen.getByText('moved')).toBeInTheDocument();
   });
 
   it('shows stack depth when > 1', () => {

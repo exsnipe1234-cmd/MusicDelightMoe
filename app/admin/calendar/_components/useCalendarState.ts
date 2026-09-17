@@ -6,6 +6,7 @@ import FullCalendar from '@fullcalendar/react';
 import type { DatesSetArg, EventChangeArg } from '@fullcalendar/core';
 import { createClient } from '../../../../utils/supabase/client';
 import { LessonRow, useAppData } from '../../../providers/AppDataProvider';
+import { useKeyboardShortcuts } from './useKeyboardShortcuts';
 import { openPrintPreview, buildCalendarPdfBody, buildSchedulePdfBody } from './PdfExport';
 import {
   type Draft,
@@ -50,6 +51,7 @@ export function useCalendarState() {
   const supabase = useMemo(() => createClient(), []);
   const requestId = useRef(0);
   const calendarRef = useRef<FullCalendar | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const { teachers, ensureReferences, getLessons, upsertCachedLesson, removeCachedLesson } =
     useAppData();
 
@@ -82,6 +84,8 @@ export function useCalendarState() {
   const [mobileCalendar, setMobileCalendar] = useState(false);
   const [nativeCalendar, setNativeCalendar] = useState(false);
   const [connected, setConnected] = useState(true);
+  const [workloadCollapsed, setWorkloadCollapsed] = useState(false);
+  const [schoolWorkloadCollapsed, setSchoolWorkloadCollapsed] = useState(false);
   const [dayMaxEvents, setDayMaxEvents] = useState(() => {
     if (typeof window === 'undefined') return 3;
     const stored = window.localStorage.getItem(DAY_MAX_EVENTS_KEY);
@@ -817,6 +821,32 @@ export function useCalendarState() {
     setDrawer(true);
   };
 
+  const navigateDay = useCallback((direction: -1 | 1) => {
+    setDay((current) => {
+      if (!current) return current;
+      const d = new Date(`${current}T12:00:00`);
+      d.setDate(d.getDate() + direction);
+      return key(d);
+    });
+  }, []);
+
+  const closeAll = useCallback(() => {
+    setDay(null);
+    setDrawer(false);
+    setQuickAdd(false);
+    setRecurringOpen(false);
+  }, []);
+
+  useKeyboardShortcuts({
+    onQuickAdd: openQuickAdd,
+    onUndo: () => {
+      void undoLast();
+    },
+    onCloseAll: closeAll,
+    calendarRef,
+    searchInputRef,
+  });
+
   const addQuickRow = () => {
     const last = quickRows[quickRows.length - 1];
     setQuickRows((current) => [
@@ -938,6 +968,7 @@ export function useCalendarState() {
   return {
     // Refs
     calendarRef,
+    searchInputRef,
 
     // State
     teachers,
@@ -972,6 +1003,8 @@ export function useCalendarState() {
     dayMaxEvents,
     failedPayload,
     topAction,
+    workloadCollapsed,
+    schoolWorkloadCollapsed,
 
     // Derived
     schools,
@@ -1002,6 +1035,8 @@ export function useCalendarState() {
     setRecurringOpen,
     setRecurringDraft,
     setDayMaxEvents,
+    setWorkloadCollapsed,
+    setSchoolWorkloadCollapsed,
 
     // Actions
     openLesson,
@@ -1024,6 +1059,8 @@ export function useCalendarState() {
     addCopyDate,
     saveCopyDates,
     duplicateLesson,
+    navigateDay,
+    closeAll,
     addQuickRow,
     updateQuickRow,
     removeQuickRow,

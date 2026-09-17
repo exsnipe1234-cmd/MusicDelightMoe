@@ -14,7 +14,14 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body className="light-mode">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var t=localStorage.getItem('music-delight-theme');if(t!=='dark'){document.body.classList.add('light-mode')}})()`,
+          }}
+        />
+      </head>
+      <body>
         <AppDataProvider>
           <NativeAppViewport />
           {children}

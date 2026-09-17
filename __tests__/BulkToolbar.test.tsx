@@ -26,7 +26,7 @@ describe('BulkToolbar', () => {
         onDelete={vi.fn()}
       />,
     );
-    expect(screen.getByText('Select visible lessons')).toBeInTheDocument();
+    expect(screen.getByText(/Select visible lessons/)).toBeInTheDocument();
   });
 
   it('shows bulk actions when lessons are selected', () => {

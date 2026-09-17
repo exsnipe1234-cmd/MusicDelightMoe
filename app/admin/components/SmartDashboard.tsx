@@ -104,6 +104,28 @@ function SmartDashboard() {
       </header>
       {error ? (
         <div className="summaryError">{error}</div>
+      ) : loading ? (
+        <>
+          <div className="summaryCards">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <article key={i} className="skeletonStat">
+                <div className="skeletonIcon" />
+                <div className="skeletonLine short" />
+                <div className="skeletonLine long" />
+              </article>
+            ))}
+          </div>
+          <div className="alertGrid">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="skeletonAlert">
+                <div className="skeletonLine medium" />
+                <div className="skeletonLine" />
+                <div className="skeletonLine" />
+                <div className="skeletonLine short" />
+              </div>
+            ))}
+          </div>
+        </>
       ) : (
         <>
           <div className="summaryCards">
@@ -305,6 +327,52 @@ function SmartDashboard() {
         }
         .summaryError {
           color: #fb7185;
+        }
+        .skeletonStat,
+        .skeletonAlert {
+          min-height: 88px;
+          padding: 12px;
+          border: 1px solid rgba(148, 163, 184, 0.11);
+          border-radius: 13px;
+          background: #0c1426;
+          display: grid;
+          gap: 6px;
+        }
+        .skeletonAlert {
+          min-height: 105px;
+          align-content: start;
+        }
+        .skeletonIcon {
+          width: 22px;
+          height: 22px;
+          border-radius: 6px;
+          background: rgba(148, 163, 184, 0.12);
+          animation: pulse 1.5s ease-in-out infinite;
+        }
+        .skeletonLine {
+          height: 10px;
+          border-radius: 5px;
+          background: rgba(148, 163, 184, 0.1);
+          animation: pulse 1.5s ease-in-out infinite;
+        }
+        .skeletonLine.short {
+          width: 55%;
+        }
+        .skeletonLine.medium {
+          width: 75%;
+        }
+        .skeletonLine.long {
+          height: 18px;
+          width: 40%;
+        }
+        @keyframes pulse {
+          0%,
+          100% {
+            opacity: 0.4;
+          }
+          50% {
+            opacity: 0.8;
+          }
         }
         .spin {
           animation: spin 1s linear infinite;

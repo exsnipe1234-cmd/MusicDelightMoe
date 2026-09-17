@@ -195,6 +195,12 @@
   border: 1px solid rgba(251, 113, 133, 0.25);
 }
 
+.bulkHint {
+  color: var(--cal-text-muted);
+  font-size: 12px;
+  opacity: 0.7;
+}
+
 /* ── Workload Panels ── */
 .workloadPanel {
   display: flex;
@@ -212,6 +218,31 @@
   align-items: center;
   gap: 9px;
   min-width: 170px;
+}
+
+.workloadToggle {
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--cal-border-input);
+  border-radius: 7px;
+  background: var(--cal-bg-input);
+  color: var(--cal-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.workloadToggle:hover {
+  background: var(--cal-bg-button-secondary);
+  color: var(--cal-text-primary);
+}
+
+.workloadSummary {
+  color: var(--cal-text-muted);
+  font-size: 12px;
+  padding: 4px 0;
 }
 
 .workloadHeading h2 {
@@ -286,40 +317,80 @@
   font-size: 12px;
 }
 
-/* ── Undo Banner ── */
-.undoBanner {
+/* ── Undo Toast (fixed position, bottom-right) ── */
+.undoToast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 5000;
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin: 10px 0;
-  padding: 10px 13px;
+  gap: 12px;
+  padding: 12px 16px;
   border: 1px solid var(--cal-border-undo);
   border-radius: 12px;
   background: var(--cal-bg-undo);
   color: var(--cal-text-undo);
   font-size: 12px;
   font-weight: 800;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  animation: undoSlideUp 0.25s ease;
 }
 
-.undoBanner span {
-  margin-right: auto;
+@keyframes undoSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.undoToastContent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   color: var(--cal-text-undo);
 }
 
-.undoBanner button {
-  min-height: 34px;
-  padding: 7px 11px;
+.undoToastActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.undoToastActions button {
+  min-height: 32px;
+  padding: 6px 12px;
   border: 0;
   border-radius: 8px;
   background: #6653de;
   color: #fff;
   font-weight: 800;
+  font-size: 12px;
   cursor: pointer;
 }
 
-.undoBanner .dismissUndo {
-  background: transparent;
-  color: var(--cal-text-undo-dismiss);
+.undoToastActions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.undoToastDismiss {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0 !important;
+  background: transparent !important;
+  color: var(--cal-text-undo-dismiss) !important;
+  border-radius: 8px !important;
+}
+
+.undoToastDismiss:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
 }
 
 /* ── Calendar Card ── */
@@ -445,6 +516,39 @@
   border-left: 1px solid var(--cal-border-card);
   box-shadow: var(--cal-shadow-drawer);
   animation: slideInRight 0.25s ease;
+}
+
+.dayNav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.dayNavButton {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--cal-border-input);
+  border-radius: 8px;
+  background: var(--cal-bg-input);
+  color: var(--cal-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.dayNavButton:hover {
+  background: var(--cal-bg-button-secondary);
+  color: var(--cal-text-primary);
+}
+
+.dayNavLabel {
+  flex: 1;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cal-text-primary);
 }
 
 .quickDrawer {

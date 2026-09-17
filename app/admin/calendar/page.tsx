@@ -130,6 +130,7 @@ export default function CalendarPage() {
           state.setFilter('all');
           state.setSchoolFilter('all');
         }}
+        searchInputRef={state.searchInputRef}
       />
 
       <BulkToolbar
@@ -165,6 +166,10 @@ export default function CalendarPage() {
         onSchoolFilter={state.setSchoolFilter}
         onCancelledFilter={() => state.setFilter('cancelled')}
         teacherColour={state.colour}
+        workloadCollapsed={state.workloadCollapsed}
+        onToggleWorkload={() => state.setWorkloadCollapsed((v) => !v)}
+        schoolWorkloadCollapsed={state.schoolWorkloadCollapsed}
+        onToggleSchoolWorkload={() => state.setSchoolWorkloadCollapsed((v) => !v)}
       />
 
       <CalendarView
@@ -189,6 +194,7 @@ export default function CalendarPage() {
           onOpenLesson={state.openLesson}
           onCopyToQuickAdd={state.copyDayLessons}
           onCopyToDates={state.copyDayToDates}
+          onNavigateDay={state.navigateDay}
           teacherColour={state.colour}
         />
       )}

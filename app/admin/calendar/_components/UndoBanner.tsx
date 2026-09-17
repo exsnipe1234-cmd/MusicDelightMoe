@@ -1,6 +1,7 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useEffect, useRef } from 'react';
+import { Undo2, X } from 'lucide-react';
 import styles from './calendar.module.css';
 
 type Props = {
@@ -12,24 +13,39 @@ type Props = {
 };
 
 function UndoBanner({ action, stackDepth, undoing, onUndo, onDismiss }: Props) {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!action) return;
+    timerRef.current = setTimeout(() => onDismiss(), 8000);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [action, onDismiss]);
+
   if (!action) return null;
 
   return (
-    <div className={styles.undoBanner} role="status" aria-live="polite">
-      <span>
-        Last change: {action.label}
-        {stackDepth > 1 ? ` (${stackDepth} total)` : ''}
-      </span>
-      <button onClick={onUndo} disabled={undoing}>
-        {undoing ? 'Undoing...' : 'Undo'}
-      </button>
-      <button
-        className={styles.dismissUndo}
-        onClick={onDismiss}
-        aria-label="Dismiss all undo history"
-      >
-        Dismiss all
-      </button>
+    <div className={styles.undoToast} role="status" aria-live="polite">
+      <div className={styles.undoToastContent}>
+        <Undo2 size={14} aria-hidden="true" />
+        <span>
+          {action.label}
+          {stackDepth > 1 ? ` (${stackDepth} total)` : ''}
+        </span>
+      </div>
+      <div className={styles.undoToastActions}>
+        <button onClick={onUndo} disabled={undoing}>
+          {undoing ? 'Undoing...' : 'Undo'}
+        </button>
+        <button
+          className={styles.undoToastDismiss}
+          onClick={onDismiss}
+          aria-label="Dismiss all undo history"
+        >
+          <X size={14} />
+        </button>
+      </div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { memo } from 'react';
-import { CalendarPlus, Copy, MapPin, X } from 'lucide-react';
+import { CalendarPlus, ChevronLeft, ChevronRight, Copy, MapPin, X } from 'lucide-react';
 import type { LessonRow } from '../../../providers/AppDataProvider';
 import { mapsUrl, pretty } from './calendarUtils';
 import { teacherInitials } from './teacherInitials';
@@ -16,6 +16,7 @@ type Props = {
   onOpenLesson: (lesson: LessonRow) => void;
   onCopyToQuickAdd: () => void;
   onCopyToDates: () => void;
+  onNavigateDay: (direction: -1 | 1) => void;
   teacherColour: (name: string | null) => string;
 };
 
@@ -29,9 +30,17 @@ function DayPanel({
   onOpenLesson,
   onCopyToQuickAdd,
   onCopyToDates,
+  onNavigateDay,
   teacherColour,
 }: Props) {
   const trapRef = useFocusTrap(true);
+
+  const formattedDate = new Intl.DateTimeFormat('en-SG', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(`${day}T12:00:00`));
 
   return (
     <div className={styles.drawerBackdrop} onMouseDown={onClose}>
@@ -54,6 +63,25 @@ function DayPanel({
             <X aria-hidden="true" />
           </button>
         </div>
+
+        <div className={styles.dayNav}>
+          <button
+            onClick={() => onNavigateDay(-1)}
+            aria-label="Previous day"
+            className={styles.dayNavButton}
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <span className={styles.dayNavLabel}>{formattedDate}</span>
+          <button
+            onClick={() => onNavigateDay(1)}
+            aria-label="Next day"
+            className={styles.dayNavButton}
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+
         <button className={styles.addLesson} onClick={() => onAddLesson(day)}>
           <CalendarPlus size={17} aria-hidden="true" /> Add lesson
         </button>
