@@ -1172,17 +1172,17 @@
 }
 
 /* ── Density CSS Custom Properties ── */
-[data-density='compact'] {
+.calendarCard[data-density='compact'] {
   --cal-event-font-size: 10px;
   --cal-event-padding: 1px 3px;
 }
 
-[data-density='comfortable'] {
+.calendarCard[data-density='comfortable'] {
   --cal-event-font-size: 12px;
   --cal-event-padding: 2px 4px;
 }
 
-[data-density='spacious'] {
+.calendarCard[data-density='spacious'] {
   --cal-event-font-size: 13px;
   --cal-event-padding: 4px 6px;
 }
