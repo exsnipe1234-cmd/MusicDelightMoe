@@ -4,6 +4,7 @@ create table if not exists public.teachers (
   id uuid primary key default gen_random_uuid(),
   name text not null unique,
   color text not null,
+  max_weekly_hours numeric(4, 1),
   created_at timestamptz not null default now()
 );
 

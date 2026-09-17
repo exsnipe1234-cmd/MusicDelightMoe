@@ -32,6 +32,7 @@ export type UndoAction = {
   mode: 'update' | 'delete' | 'insert';
   before: LessonRow[];
   after: LessonRow[];
+  timestamp: number;
 };
 export type RecurringDraft = {
   school: string;
@@ -45,12 +46,16 @@ export type RecurringDraft = {
 };
 export type NativeWindow = Window & { Capacitor?: { isNativePlatform?: () => boolean } };
 
-export const blankDraft = (date = new Date().toISOString().slice(0, 10)): Draft => ({
+export const blankDraft = (
+  date = new Date().toISOString().slice(0, 10),
+  startTime = '08:00',
+  endTime = '09:00',
+): Draft => ({
   date,
   school: '',
   className: '',
-  startTime: '09:00',
-  endTime: '10:00',
+  startTime,
+  endTime,
   teacher: '',
   unavailable: false,
   cancelled: false,

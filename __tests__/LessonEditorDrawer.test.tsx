@@ -9,6 +9,9 @@ const teachers = [
   { name: 'Audrey', color: '#c77bd5' },
 ];
 
+const emptyLessons: never[] = [];
+const emptyHistory = new Map<string, { className: string; startTime: string; endTime: string }>();
+
 const newDraft: Draft = {
   date: '2026-01-15',
   school: '',
@@ -32,136 +35,66 @@ const editDraft: Draft = {
   cancelled: false,
 };
 
+const defaultProps = {
+  lessons: emptyLessons,
+  schoolHistory: emptyHistory,
+  onDraftChange: vi.fn(),
+  teachers,
+  onSave: vi.fn(),
+  onDelete: vi.fn(),
+  onDuplicate: vi.fn(),
+  onClose: vi.fn(),
+};
+
 describe('LessonEditorDrawer', () => {
   it('renders new lesson form', () => {
-    render(
-      <LessonEditorDrawer
-        draft={newDraft}
-        onDraftChange={vi.fn()}
-        teachers={teachers}
-        onSave={vi.fn()}
-        onDelete={vi.fn()}
-        onDuplicate={vi.fn()}
-        onClose={vi.fn()}
-      />,
-    );
+    render(<LessonEditorDrawer {...defaultProps} draft={newDraft} />);
     expect(screen.getByText('NEW LESSON')).toBeInTheDocument();
     expect(screen.getByText('Add lesson')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /save lesson/i })).toBeInTheDocument();
   });
 
   it('renders edit lesson form with school name', () => {
-    render(
-      <LessonEditorDrawer
-        draft={editDraft}
-        onDraftChange={vi.fn()}
-        teachers={teachers}
-        onSave={vi.fn()}
-        onDelete={vi.fn()}
-        onDuplicate={vi.fn()}
-        onClose={vi.fn()}
-      />,
-    );
+    render(<LessonEditorDrawer {...defaultProps} draft={editDraft} />);
     expect(screen.getByText('EDIT LESSON')).toBeInTheDocument();
     expect(screen.getByText('Tampines Primary School')).toBeInTheDocument();
   });
 
   it('shows delete and duplicate buttons for existing lessons', () => {
-    render(
-      <LessonEditorDrawer
-        draft={editDraft}
-        onDraftChange={vi.fn()}
-        teachers={teachers}
-        onSave={vi.fn()}
-        onDelete={vi.fn()}
-        onDuplicate={vi.fn()}
-        onClose={vi.fn()}
-      />,
-    );
+    render(<LessonEditorDrawer {...defaultProps} draft={editDraft} />);
     expect(screen.getByText('Delete')).toBeInTheDocument();
     expect(screen.getByText('Duplicate')).toBeInTheDocument();
   });
 
   it('hides delete and duplicate for new lessons', () => {
-    render(
-      <LessonEditorDrawer
-        draft={newDraft}
-        onDraftChange={vi.fn()}
-        teachers={teachers}
-        onSave={vi.fn()}
-        onDelete={vi.fn()}
-        onDuplicate={vi.fn()}
-        onClose={vi.fn()}
-      />,
-    );
+    render(<LessonEditorDrawer {...defaultProps} draft={newDraft} />);
     expect(screen.queryByText('Delete')).toBeNull();
     expect(screen.queryByText('Duplicate')).toBeNull();
   });
 
   it('calls onSave when save button clicked', async () => {
     const onSave = vi.fn();
-    render(
-      <LessonEditorDrawer
-        draft={newDraft}
-        onDraftChange={vi.fn()}
-        teachers={teachers}
-        onSave={onSave}
-        onDelete={vi.fn()}
-        onDuplicate={vi.fn()}
-        onClose={vi.fn()}
-      />,
-    );
+    render(<LessonEditorDrawer {...defaultProps} draft={newDraft} onSave={onSave} />);
     await userEvent.click(screen.getByRole('button', { name: /save lesson/i }));
     expect(onSave).toHaveBeenCalledOnce();
   });
 
   it('calls onClose when backdrop clicked', async () => {
     const onClose = vi.fn();
-    render(
-      <LessonEditorDrawer
-        draft={newDraft}
-        onDraftChange={vi.fn()}
-        teachers={teachers}
-        onSave={vi.fn()}
-        onDelete={vi.fn()}
-        onDuplicate={vi.fn()}
-        onClose={onClose}
-      />,
-    );
-    // Click the backdrop (first child of drawerBackdrop)
+    render(<LessonEditorDrawer {...defaultProps} draft={newDraft} onClose={onClose} />);
     const backdrop = screen.getByRole('dialog').parentElement!;
     await userEvent.click(backdrop);
     expect(onClose).toHaveBeenCalledOnce();
   });
 
   it('renders teacher options in select', () => {
-    render(
-      <LessonEditorDrawer
-        draft={newDraft}
-        onDraftChange={vi.fn()}
-        teachers={teachers}
-        onSave={vi.fn()}
-        onDelete={vi.fn()}
-        onDuplicate={vi.fn()}
-        onClose={vi.fn()}
-      />,
-    );
+    render(<LessonEditorDrawer {...defaultProps} draft={newDraft} />);
     expect(screen.getByText('Ashley')).toBeInTheDocument();
     expect(screen.getByText('Audrey')).toBeInTheDocument();
   });
 
   it('has dialog role for accessibility', () => {
-    render(
-      <LessonEditorDrawer
-        draft={newDraft}
-        onDraftChange={vi.fn()}
-        teachers={teachers}
-        onSave={vi.fn()}
-        onDelete={vi.fn()}
-        onDuplicate={vi.fn()}
-        onClose={vi.fn()}
-      />,
-    );
+    render(<LessonEditorDrawer {...defaultProps} draft={newDraft} />);
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 });

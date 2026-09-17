@@ -22,10 +22,13 @@ type Props = {
   mobileCalendar: boolean;
   nativeCalendar: boolean;
   dayMaxEvents: number;
+  density: 'compact' | 'comfortable' | 'spacious';
   onDatesSet: (arg: DatesSetArg) => void;
   onDateClick: (date: string) => void;
   onEventClick: (lesson: LessonRow) => void;
+  onEventContextMenu: (lesson: LessonRow, x: number, y: number) => void;
   onMove: (arg: EventChangeArg) => Promise<void>;
+  onSelectRange: (date: string, startTime: string, endTime: string) => void;
 };
 
 export default memo(CalendarView);
@@ -37,10 +40,13 @@ function CalendarView({
   mobileCalendar,
   nativeCalendar,
   dayMaxEvents,
+  density,
   onDatesSet,
   onDateClick,
   onEventClick,
+  onEventContextMenu,
   onMove,
+  onSelectRange,
 }: Props) {
   const eventContent = useCallback(
     (arg: { event: { extendedProps: LessonRow }; view: { type: string } }) => {
@@ -112,27 +118,50 @@ function CalendarView({
   );
 
   const eventDidMount = useCallback(
-    (info: { event: { extendedProps: { teacherColour?: string } }; el: HTMLElement }) => {
-      const color = info.event.extendedProps.teacherColour;
+    (info: { event: { extendedProps: Record<string, unknown> }; el: HTMLElement }) => {
+      const color = info.event.extendedProps.teacherColour as string | undefined;
       if (color) {
         info.el.style.setProperty('background-color', color, 'important');
         info.el.style.setProperty('color', '#1a1a2e', 'important');
       }
+      // 7b: Right-click context menu
+      info.el.addEventListener('contextmenu', (e: Event) => {
+        const mouseEvent = e as MouseEvent;
+        mouseEvent.preventDefault();
+        onEventContextMenu(
+          info.event.extendedProps as unknown as LessonRow,
+          mouseEvent.clientX,
+          mouseEvent.clientY,
+        );
+      });
     },
-    [],
+    [onEventContextMenu],
   );
 
   const handleDateClick = useCallback(
     (arg: DateClickArg) => onDateClick(arg.dateStr.slice(0, 10)),
     [onDateClick],
   );
+
   const handleEventClick = useCallback(
     (arg: { event: { extendedProps: unknown } }) =>
       onEventClick(arg.event.extendedProps as LessonRow),
     [onEventClick],
   );
+
+  // 7a: Drag-to-create — extract date and times from the selected range
+  const handleSelect = useCallback(
+    (arg: { startStr: string; endStr: string }) => {
+      const date = arg.startStr.slice(0, 10);
+      const startTime = arg.startStr.slice(11, 16);
+      const endTime = arg.endStr.slice(11, 16);
+      onSelectRange(date, startTime, endTime);
+    },
+    [onSelectRange],
+  );
+
   return (
-    <section className={styles.calendarCard} aria-label="Lesson calendar">
+    <section className={styles.calendarCard} aria-label="Lesson calendar" data-density={density}>
       {loading && events.length === 0 ? (
         <div className={styles.skeletonGrid} role="status" aria-label="Loading calendar">
           {WEEKDAYS.map((day) => (
@@ -177,6 +206,7 @@ function CalendarView({
           eventResize={onMove}
           eventContent={eventContent}
           eventDidMount={eventDidMount}
+          select={handleSelect}
           nowIndicator
           slotMinTime="06:00:00"
           slotMaxTime="22:00:00"

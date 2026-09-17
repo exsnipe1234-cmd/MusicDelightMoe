@@ -10,9 +10,10 @@ type Props = {
   undoing: boolean;
   onUndo: () => void;
   onDismiss: () => void;
+  onOpenHistory: () => void;
 };
 
-function UndoBanner({ action, stackDepth, undoing, onUndo, onDismiss }: Props) {
+function UndoBanner({ action, stackDepth, undoing, onUndo, onDismiss, onOpenHistory }: Props) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -27,7 +28,12 @@ function UndoBanner({ action, stackDepth, undoing, onUndo, onDismiss }: Props) {
 
   return (
     <div className={styles.undoToast} role="status" aria-live="polite">
-      <div className={styles.undoToastContent}>
+      <div
+        className={styles.undoToastContent}
+        onClick={onOpenHistory}
+        style={{ cursor: 'pointer' }}
+        title="Click to view undo history"
+      >
         <Undo2 size={14} aria-hidden="true" />
         <span>
           {action.label}

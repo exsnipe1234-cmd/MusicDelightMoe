@@ -86,6 +86,12 @@ export function useCalendarState() {
   const [connected, setConnected] = useState(true);
   const [workloadCollapsed, setWorkloadCollapsed] = useState(false);
   const [schoolWorkloadCollapsed, setSchoolWorkloadCollapsed] = useState(false);
+  const [density, setDensity] = useState<'compact' | 'comfortable' | 'spacious'>(() => {
+    if (typeof window === 'undefined') return 'comfortable';
+    const stored = window.localStorage.getItem('music-delight-calendar-density');
+    return stored === 'compact' || stored === 'spacious' ? stored : 'comfortable';
+  });
+  const [undoHistoryOpen, setUndoHistoryOpen] = useState(false);
   const [dayMaxEvents, setDayMaxEvents] = useState(() => {
     if (typeof window === 'undefined') return 3;
     const stored = window.localStorage.getItem(DAY_MAX_EVENTS_KEY);
@@ -194,6 +200,34 @@ export function useCalendarState() {
       setFilter(requested);
   }, [teachers]);
 
+  // 3a: Persist filters to sessionStorage so they survive navigation
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    sessionStorage.setItem('calendar-filter', filter);
+  }, [filter]);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    sessionStorage.setItem('calendar-school-filter', schoolFilter);
+  }, [schoolFilter]);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    sessionStorage.setItem('calendar-search', search);
+  }, [search]);
+
+  // Restore filters from sessionStorage on mount (URL param takes priority)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const urlFilter = new URLSearchParams(window.location.search).get('filter');
+    if (!urlFilter) {
+      const stored = sessionStorage.getItem('calendar-filter');
+      if (stored) setFilter(stored);
+    }
+    const storedSchool = sessionStorage.getItem('calendar-school-filter');
+    if (storedSchool) setSchoolFilter(storedSchool);
+    const storedSearch = sessionStorage.getItem('calendar-search');
+    if (storedSearch) setSearch(storedSearch);
+  }, []);
+
   useEffect(() => {
     const media = window.matchMedia('(max-width: 900px)');
     const update = () => setMobileCalendar(media.matches);
@@ -250,6 +284,24 @@ export function useCalendarState() {
     return defaultTeacherColours[name?.trim().toLowerCase() ?? ''] ?? colourFromName(name);
   }, []);
 
+  // 3c: Quick-fill history — most recent class/duration per school
+  const schoolHistory = useMemo(() => {
+    const map = new Map<string, { className: string; startTime: string; endTime: string }>();
+    // Process in reverse so the most recent entry wins
+    for (let i = lessons.length - 1; i >= 0; i--) {
+      const lesson = lessons[i];
+      const key = normalizeSchool(lesson.school);
+      if (!map.has(key)) {
+        map.set(key, {
+          className: lesson.class_name,
+          startTime: lesson.start_time.slice(0, 5),
+          endTime: lesson.end_time.slice(0, 5),
+        });
+      }
+    }
+    return map;
+  }, [lessons]);
+
   const visible = useMemo(() => {
     const query = search.trim().toLowerCase();
     return lessons.filter(
@@ -292,15 +344,32 @@ export function useCalendarState() {
   );
 
   const workload = useMemo(() => {
-    const counts = new Map<string, number>();
+    const map = new Map<string, { count: number; hours: number }>();
     lessons
       .filter((lesson) => !lesson.cancelled)
       .forEach((lesson) => {
         const name = lesson.teacher_name ?? 'Unassigned';
-        counts.set(name, (counts.get(name) ?? 0) + 1);
+        const entry = map.get(name) ?? { count: 0, hours: 0 };
+        const [sh, sm] = lesson.start_time.slice(0, 5).split(':').map(Number);
+        const [eh, em] = lesson.end_time.slice(0, 5).split(':').map(Number);
+        const duration = Math.max(0, eh * 60 + em - sh * 60 - sm) / 60;
+        entry.count += 1;
+        entry.hours += duration;
+        map.set(name, entry);
       });
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+    return [...map.entries()]
+      .map(([name, data]) => ({ name, ...data }))
+      .sort((a, b) => b.count - a.count);
   }, [lessons]);
+
+  // 8c: Teacher max hours lookup
+  const teacherMaxHours = useMemo(() => {
+    const map = new Map<string, number>();
+    teachers.forEach((t) => {
+      if (t.max_weekly_hours != null) map.set(t.name, t.max_weekly_hours);
+    });
+    return map;
+  }, [teachers]);
 
   const schoolWorkload = useMemo(() => {
     const groups = new Map<string, { name: string; count: number }>();
@@ -365,11 +434,31 @@ export function useCalendarState() {
     setDrawer(true);
   }, []);
 
-  const addLesson = useCallback((date: string) => {
-    setDraft(blankDraft(date));
-    setDay(null);
-    setDrawer(true);
-  }, []);
+  const addLesson = useCallback(
+    (date: string, startTime?: string, endTime?: string) => {
+      // 3b: Smart time suggestion — default to the latest end_time at same school on same day
+      let suggestedStart = startTime ?? '08:00';
+      let suggestedEnd = endTime ?? '09:00';
+      if (!startTime) {
+        const sameDaySchool = lessons
+          .filter((l) => l.lesson_date === date)
+          .sort((a, b) => b.end_time.localeCompare(a.end_time));
+        if (sameDaySchool.length > 0) {
+          suggestedStart = sameDaySchool[0].end_time.slice(0, 5);
+          // Suggest 1-hour duration from the suggested start
+          const [h, m] = suggestedStart.split(':').map(Number);
+          const totalMins = h * 60 + m + 60;
+          const endH = Math.floor(totalMins / 60) % 24;
+          const endM = totalMins % 60;
+          suggestedEnd = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+        }
+      }
+      setDraft(blankDraft(date, suggestedStart, suggestedEnd));
+      setDay(null);
+      setDrawer(true);
+    },
+    [lessons],
+  );
 
   const onDatesSet = useCallback((arg: DatesSetArg) => {
     const next = {
@@ -418,7 +507,13 @@ export function useCalendarState() {
       showError(error.message, () => move(arg));
       return;
     }
-    pushUndo({ label: 'moved', mode: 'update', before: [before], after: [optimistic] });
+    pushUndo({
+      label: 'moved',
+      mode: 'update',
+      before: [before],
+      after: [optimistic],
+      timestamp: Date.now(),
+    });
     showInfo('Lesson moved and saved.');
   };
 
@@ -489,6 +584,7 @@ export function useCalendarState() {
       mode: isUpdate ? 'update' : 'insert',
       before: before ? [before] : [],
       after: [saved],
+      timestamp: Date.now(),
     });
     showInfo(saved.cancelled ? 'Lesson cancelled.' : 'Lesson saved.');
   };
@@ -510,7 +606,13 @@ export function useCalendarState() {
       showError(error.message, () => remove());
       return;
     }
-    pushUndo({ label: 'deleted', mode: 'delete', before: [before], after: [] });
+    pushUndo({
+      label: 'deleted',
+      mode: 'delete',
+      before: [before],
+      after: [],
+      timestamp: Date.now(),
+    });
     showInfo('Lesson deleted.');
   };
 
@@ -555,7 +657,7 @@ export function useCalendarState() {
     const after = (data ?? []) as LessonRow[];
     setLessons((current) => current.map((l) => after.find((item) => item.id === l.id) ?? l));
     after.forEach(upsertCachedLesson);
-    pushUndo({ label, mode: 'update', before, after });
+    pushUndo({ label, mode: 'update', before, after, timestamp: Date.now() });
     showInfo(`${after.length} lessons ${label.toLowerCase()}.`);
   };
 
@@ -584,7 +686,7 @@ export function useCalendarState() {
       showError(`Could not delete lessons: ${error.message}`, () => bulkDelete());
       return;
     }
-    pushUndo({ label: 'deleted', mode: 'delete', before, after: [] });
+    pushUndo({ label: 'deleted', mode: 'delete', before, after: [], timestamp: Date.now() });
     showInfo(`${before.length} lessons deleted.`);
   };
 
@@ -649,6 +751,19 @@ export function useCalendarState() {
   };
 
   const dismissAllUndo = () => setUndoStack([]);
+
+  // 8a: Undo up to a specific action (undoes that action + all newer ones)
+  const undoUpTo = useCallback(
+    async (index: number) => {
+      // Simply call undoLast repeatedly — it already handles popping the stack
+      const count = index + 1;
+      for (let i = 0; i < count; i++) {
+        await undoLast();
+      }
+      showInfo('Changes undone.');
+    },
+    [undoLast],
+  );
 
   const saveRecurring = async () => {
     if (
@@ -724,7 +839,13 @@ export function useCalendarState() {
     );
     tempRows.forEach((r) => removeCachedLesson(r.id));
     saved.forEach(upsertCachedLesson);
-    pushUndo({ label: 'added recurring lessons', mode: 'insert', before: [], after: saved });
+    pushUndo({
+      label: 'added recurring lessons',
+      mode: 'insert',
+      before: [],
+      after: saved,
+      timestamp: Date.now(),
+    });
     setRecurringDraft(blankRecurring());
     showInfo(`${saved.length} recurring lessons added.`);
   };
@@ -808,7 +929,13 @@ export function useCalendarState() {
     );
     tempRows.forEach((r) => removeCachedLesson(r.id));
     saved.forEach(upsertCachedLesson);
-    pushUndo({ label: 'copied lessons', mode: 'insert', before: [], after: saved });
+    pushUndo({
+      label: 'copied lessons',
+      mode: 'insert',
+      before: [],
+      after: saved,
+      timestamp: Date.now(),
+    });
     setCopySourceLessons([]);
     setCopyDates([]);
     setQuickRows([]);
@@ -910,7 +1037,13 @@ export function useCalendarState() {
     );
     tempRows.forEach((r) => removeCachedLesson(r.id));
     saved.forEach(upsertCachedLesson);
-    pushUndo({ label: 'added quick lessons', mode: 'insert', before: [], after: saved });
+    pushUndo({
+      label: 'added quick lessons',
+      mode: 'insert',
+      before: [],
+      after: saved,
+      timestamp: Date.now(),
+    });
     setQuickRows([]);
     setQuickAdd(false);
     showInfo(`${saved.length} lessons added.`);
@@ -1005,16 +1138,20 @@ export function useCalendarState() {
     topAction,
     workloadCollapsed,
     schoolWorkloadCollapsed,
+    density,
+    undoHistoryOpen,
 
     // Derived
     schools,
     classesForSchool,
+    schoolHistory,
     colour,
     visible,
     selectedLessons,
     events,
     workload,
     schoolWorkload,
+    teacherMaxHours,
     cancelledCount,
     dayLessons,
     exportRange,
@@ -1037,6 +1174,8 @@ export function useCalendarState() {
     setDayMaxEvents,
     setWorkloadCollapsed,
     setSchoolWorkloadCollapsed,
+    setDensity,
+    setUndoHistoryOpen,
 
     // Actions
     openLesson,
@@ -1051,6 +1190,7 @@ export function useCalendarState() {
     bulkMove,
     bulkDelete,
     undoLast,
+    undoUpTo,
     dismissAllUndo,
     saveRecurring,
     openQuickAdd,

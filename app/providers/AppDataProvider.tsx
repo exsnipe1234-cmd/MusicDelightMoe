@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import { createClient } from '../../utils/supabase/client';
 
-export type TeacherRow = { name: string; color: string };
+export type TeacherRow = { name: string; color: string; max_weekly_hours?: number | null };
 export type AvailabilityRow = {
   id: string;
   teacher_name: string;
@@ -60,7 +60,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       const request = (async () => {
         setReferencesLoading(true);
         const [teacherResult, availabilityResult] = await Promise.all([
-          supabase.from('teachers').select('name,color').order('name'),
+          supabase.from('teachers').select('name,color,max_weekly_hours').order('name'),
           supabase.from('teacher_availability').select('*'),
         ]);
 

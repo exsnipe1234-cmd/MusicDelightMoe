@@ -3,6 +3,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import UndoBanner from '../app/admin/calendar/_components/UndoBanner';
 
+const noop = vi.fn();
+
 describe('UndoBanner', () => {
   it('renders nothing when action is null', () => {
     const { container } = render(
@@ -10,8 +12,9 @@ describe('UndoBanner', () => {
         action={null}
         stackDepth={0}
         undoing={false}
-        onUndo={vi.fn()}
-        onDismiss={vi.fn()}
+        onUndo={noop}
+        onDismiss={noop}
+        onOpenHistory={noop}
       />,
     );
     expect(container.firstChild).toBeNull();
@@ -23,8 +26,9 @@ describe('UndoBanner', () => {
         action={{ label: 'moved' }}
         stackDepth={1}
         undoing={false}
-        onUndo={vi.fn()}
-        onDismiss={vi.fn()}
+        onUndo={noop}
+        onDismiss={noop}
+        onOpenHistory={noop}
       />,
     );
     expect(screen.getByText('moved')).toBeInTheDocument();
@@ -36,8 +40,9 @@ describe('UndoBanner', () => {
         action={{ label: 'deleted' }}
         stackDepth={3}
         undoing={false}
-        onUndo={vi.fn()}
-        onDismiss={vi.fn()}
+        onUndo={noop}
+        onDismiss={noop}
+        onOpenHistory={noop}
       />,
     );
     expect(screen.getByText(/\(3 total\)/)).toBeInTheDocument();
@@ -49,8 +54,9 @@ describe('UndoBanner', () => {
         action={{ label: 'added' }}
         stackDepth={1}
         undoing={false}
-        onUndo={vi.fn()}
-        onDismiss={vi.fn()}
+        onUndo={noop}
+        onDismiss={noop}
+        onOpenHistory={noop}
       />,
     );
     expect(screen.queryByText(/total/)).toBeNull();
@@ -64,7 +70,8 @@ describe('UndoBanner', () => {
         stackDepth={1}
         undoing={false}
         onUndo={onUndo}
-        onDismiss={vi.fn()}
+        onDismiss={noop}
+        onOpenHistory={noop}
       />,
     );
     await userEvent.click(screen.getByText('Undo'));
@@ -77,8 +84,9 @@ describe('UndoBanner', () => {
         action={{ label: 'moved' }}
         stackDepth={1}
         undoing={true}
-        onUndo={vi.fn()}
-        onDismiss={vi.fn()}
+        onUndo={noop}
+        onDismiss={noop}
+        onOpenHistory={noop}
       />,
     );
     expect(screen.getByText('Undoing...')).toBeDisabled();
@@ -91,8 +99,9 @@ describe('UndoBanner', () => {
         action={{ label: 'moved' }}
         stackDepth={1}
         undoing={false}
-        onUndo={vi.fn()}
+        onUndo={noop}
         onDismiss={onDismiss}
+        onOpenHistory={noop}
       />,
     );
     await userEvent.click(screen.getByLabelText('Dismiss all undo history'));
@@ -105,8 +114,9 @@ describe('UndoBanner', () => {
         action={{ label: 'moved' }}
         stackDepth={1}
         undoing={false}
-        onUndo={vi.fn()}
-        onDismiss={vi.fn()}
+        onUndo={noop}
+        onDismiss={noop}
+        onOpenHistory={noop}
       />,
     );
     expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite');

@@ -140,8 +140,8 @@ describe('blankDraft', () => {
     expect(draft.date).toBe('2026-01-15');
     expect(draft.school).toBe('');
     expect(draft.className).toBe('');
-    expect(draft.startTime).toBe('09:00');
-    expect(draft.endTime).toBe('10:00');
+    expect(draft.startTime).toBe('08:00');
+    expect(draft.endTime).toBe('09:00');
     expect(draft.teacher).toBe('');
     expect(draft.unavailable).toBe(false);
     expect(draft.cancelled).toBe(false);

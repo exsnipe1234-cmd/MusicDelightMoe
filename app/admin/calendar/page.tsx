@@ -1,8 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { CalendarDays, CalendarPlus, List, Plus, WifiOff } from 'lucide-react';
+import { CalendarDays, CalendarPlus, LayoutGrid, List, Plus, WifiOff } from 'lucide-react';
+import { useCallback, useState } from 'react';
 import { useCalendarState } from './_components/useCalendarState';
+import type { LessonRow } from '../../providers/AppDataProvider';
 import SmartDashboard from '../components/SmartDashboard';
 import CalendarView from './_components/CalendarView';
 import DayPanel from './_components/DayPanel';
@@ -13,10 +15,48 @@ import FilterBar from './_components/FilterBar';
 import BulkToolbar from './_components/BulkToolbar';
 import WorkloadPanels from './_components/WorkloadPanels';
 import UndoBanner from './_components/UndoBanner';
+import UndoHistoryPanel from './_components/UndoHistoryPanel';
+import ContextMenu from './_components/ContextMenu';
+import { key } from './_components/calendarUtils';
 import styles from './_components/calendar.module.css';
 
 export default function CalendarPage() {
   const state = useCalendarState();
+
+  // 7b: Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    lesson: LessonRow;
+  } | null>(null);
+
+  const handleContextMenu = useCallback((lesson: LessonRow, x: number, y: number) => {
+    setContextMenu({ x, y, lesson });
+  }, []);
+
+  // 7a: Drag-to-create handler
+  const handleSelectRange = useCallback(
+    (date: string, startTime: string, endTime: string) => {
+      state.addLesson(date, startTime, endTime);
+    },
+    [state.addLesson],
+  );
+
+  // 7b: Context menu actions
+  const handleMoveToTomorrow = useCallback(
+    (lesson: LessonRow) => {
+      const tomorrow = key(new Date(Date.now() + 86400000));
+      state.bulkUpdate({ lesson_date: tomorrow }, 'moved');
+    },
+    [state.bulkUpdate],
+  );
+
+  const handleAssignTeacher = useCallback(
+    (lesson: LessonRow, teacher: string) => {
+      state.bulkUpdate({ teacher_name: teacher, unavailable: false }, 'assigned');
+    },
+    [state.bulkUpdate],
+  );
 
   return (
     <main className={styles.editorShell}>
@@ -107,13 +147,60 @@ export default function CalendarPage() {
         </div>
       </header>
 
+      {/* 7c: Density toggle */}
+      <div className={styles.densityToggle}>
+        <span>Density</span>
+        <button
+          className={state.density === 'compact' ? styles.densityActive : ''}
+          onClick={() => {
+            state.setDensity('compact');
+            localStorage.setItem('music-delight-calendar-density', 'compact');
+          }}
+          title="Compact"
+        >
+          Compact
+        </button>
+        <button
+          className={state.density === 'comfortable' ? styles.densityActive : ''}
+          onClick={() => {
+            state.setDensity('comfortable');
+            localStorage.setItem('music-delight-calendar-density', 'comfortable');
+          }}
+          title="Comfortable"
+        >
+          Comfort
+        </button>
+        <button
+          className={state.density === 'spacious' ? styles.densityActive : ''}
+          onClick={() => {
+            state.setDensity('spacious');
+            localStorage.setItem('music-delight-calendar-density', 'spacious');
+          }}
+          title="Spacious"
+        >
+          Spacious
+        </button>
+      </div>
+
       <UndoBanner
         action={state.topAction}
         stackDepth={state.undoStack.length}
         undoing={state.undoing}
         onUndo={() => void state.undoLast()}
         onDismiss={state.dismissAllUndo}
+        onOpenHistory={() => state.setUndoHistoryOpen(true)}
       />
+
+      {/* 8a: Undo history panel */}
+      {state.undoHistoryOpen && (
+        <UndoHistoryPanel
+          stack={state.undoStack}
+          undoing={state.undoing}
+          onUndoUpTo={(index) => void state.undoUpTo(index)}
+          onDismissAll={state.dismissAllUndo}
+          onClose={() => state.setUndoHistoryOpen(false)}
+        />
+      )}
 
       <FilterBar
         search={state.search}
@@ -160,6 +247,7 @@ export default function CalendarPage() {
       <WorkloadPanels
         teacherWorkload={state.workload}
         schoolWorkload={state.schoolWorkload}
+        teacherMaxHours={state.teacherMaxHours}
         cancelledCount={state.cancelledCount}
         filter={state.filter}
         onTeacherFilter={(name) => state.setFilter(name)}
@@ -178,11 +266,14 @@ export default function CalendarPage() {
         loading={state.loading}
         mobileCalendar={state.mobileCalendar}
         nativeCalendar={state.nativeCalendar}
+        dayMaxEvents={state.dayMaxEvents}
+        density={state.density}
         onDatesSet={state.onDatesSet}
         onDateClick={state.setDay}
         onEventClick={state.openLesson}
+        onEventContextMenu={handleContextMenu}
         onMove={state.move}
-        dayMaxEvents={state.dayMaxEvents}
+        onSelectRange={handleSelectRange}
       />
 
       {state.day && (
@@ -204,6 +295,8 @@ export default function CalendarPage() {
           draft={state.draft}
           onDraftChange={state.setDraft}
           teachers={state.teachers}
+          lessons={state.lessons}
+          schoolHistory={state.schoolHistory}
           onSave={() => void state.save()}
           onDelete={() => void state.remove()}
           onDuplicate={state.duplicateLesson}
@@ -240,6 +333,27 @@ export default function CalendarPage() {
           onSaveCopies={() => void state.saveCopyDates()}
         />
       )}
+
+      {/* 7b: Right-click context menu */}
+      <ContextMenu
+        state={contextMenu}
+        teachers={state.teachers}
+        onClose={() => setContextMenu(null)}
+        onEdit={(lesson) => state.openLesson(lesson)}
+        onDuplicate={(lesson) => {
+          state.openLesson(lesson);
+          state.duplicateLesson();
+        }}
+        onMoveToTomorrow={handleMoveToTomorrow}
+        onAssign={handleAssignTeacher}
+        onCancel={(lesson) => void state.bulkUpdate({ cancelled: true }, 'cancelled')}
+        onDelete={(lesson) => {
+          if (window.confirm('Delete this lesson?')) {
+            state.openLesson(lesson);
+            setTimeout(() => state.remove(), 50);
+          }
+        }}
+      />
     </main>
   );
 }

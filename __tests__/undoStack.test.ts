@@ -16,6 +16,8 @@ const makeLesson = (id: string, overrides: Partial<LessonRow> = {}): LessonRow =
   ...overrides,
 });
 
+const now = Date.now();
+
 describe('UndoAction type', () => {
   it('correctly types an update action', () => {
     const before = makeLesson('1');
@@ -25,6 +27,7 @@ describe('UndoAction type', () => {
       mode: 'update',
       before: [before],
       after: [after],
+      timestamp: now,
     };
     expect(action.mode).toBe('update');
     expect(action.before[0].teacher_name).toBe('Ashley');
@@ -38,6 +41,7 @@ describe('UndoAction type', () => {
       mode: 'delete',
       before: [before],
       after: [],
+      timestamp: now,
     };
     expect(action.mode).toBe('delete');
     expect(action.before).toHaveLength(1);
@@ -51,6 +55,7 @@ describe('UndoAction type', () => {
       mode: 'insert',
       before: [],
       after: [after],
+      timestamp: now,
     };
     expect(action.mode).toBe('insert');
     expect(action.before).toHaveLength(0);
@@ -71,12 +76,14 @@ describe('Undo stack logic (pure)', () => {
       mode: 'update',
       before: [makeLesson('1')],
       after: [makeLesson('1', { lesson_date: '2026-01-16' })],
+      timestamp: now,
     };
     const action2: UndoAction = {
       label: 'deleted',
       mode: 'delete',
       before: [makeLesson('2')],
       after: [],
+      timestamp: now,
     };
 
     let stack: UndoAction[] = [];
@@ -91,7 +98,13 @@ describe('Undo stack logic (pure)', () => {
   it('caps at MAX_UNDO entries', () => {
     let stack: UndoAction[] = [];
     for (let i = 0; i < 25; i++) {
-      stack = pushUndo(stack, { label: `action-${i}`, mode: 'update', before: [], after: [] });
+      stack = pushUndo(stack, {
+        label: `action-${i}`,
+        mode: 'update',
+        before: [],
+        after: [],
+        timestamp: now,
+      });
     }
     expect(stack).toHaveLength(MAX_UNDO);
     expect(stack[0].label).toBe('action-24'); // most recent
@@ -104,12 +117,14 @@ describe('Undo stack logic (pure)', () => {
       mode: 'update',
       before: [makeLesson('1')],
       after: [],
+      timestamp: now,
     };
     const action2: UndoAction = {
       label: 'second',
       mode: 'update',
       before: [makeLesson('2')],
       after: [],
+      timestamp: now,
     };
 
     let stack: UndoAction[] = [];
@@ -126,8 +141,8 @@ describe('Undo stack logic (pure)', () => {
 
   it('dismissAll clears the entire stack', () => {
     let stack: UndoAction[] = [
-      { label: 'a', mode: 'update', before: [], after: [] },
-      { label: 'b', mode: 'update', before: [], after: [] },
+      { label: 'a', mode: 'update', before: [], after: [], timestamp: now },
+      { label: 'b', mode: 'update', before: [], after: [], timestamp: now },
     ];
     stack = [];
     expect(stack).toHaveLength(0);

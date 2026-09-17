@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChangeEvent, useMemo, useState } from 'react';
+import { ChangeEvent, useCallback, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   ArrowLeft,
   CheckCircle2,
+  Download,
   Filter,
   Loader2,
   ShieldCheck,
@@ -955,6 +956,44 @@ export default function ImportPage() {
     setComparison(analysis.summary);
   };
 
+  // 8b: Download import template
+  const downloadTemplate = useCallback(() => {
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1: Lessons template
+    const lessonsData = [
+      ['Date', 'Start Time', 'End Time', 'School', 'Class', 'Teacher'],
+      ['2026-01-15', '08:00', '09:00', 'Chongfu Primary School', 'P3A', 'Gerald'],
+      ['2026-01-15', '09:00', '10:00', 'Chongfu Primary School', 'P4B', 'Claris'],
+      ['2026-01-16', '08:00', '08:30', 'Nan Chiau Primary School', 'P2C', ''],
+    ];
+    const ws1 = XLSX.utils.aoa_to_sheet(lessonsData);
+    ws1['!cols'] = [{ wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 30 }, { wch: 10 }, { wch: 15 }];
+    XLSX.utils.book_append_sheet(wb, ws1, 'Lessons');
+
+    // Sheet 2: Instructions
+    const instructionsData = [
+      ['Column', 'Description', 'Format / Notes'],
+      ['Date', 'Lesson date', 'YYYY-MM-DD format (e.g. 2026-01-15)'],
+      ['Start Time', 'Lesson start time', 'HH:MM 24-hour format (e.g. 08:00)'],
+      ['End Time', 'Lesson end time', 'HH:MM 24-hour format (e.g. 09:00)'],
+      ['School', 'Full school name', 'Include "Primary School" / "Secondary School"'],
+      ['Class', 'Class or programme name', 'e.g. P3A, Sec 2B, CCA Band'],
+      ['Teacher', 'Teacher name (optional)', 'Leave blank for unassigned lessons'],
+      ['', '', ''],
+      ['Tips:', '', ''],
+      ['', '• Delete the example rows before importing your own data', ''],
+      ['', '• Save as .xlsx format', ''],
+      ['', '• Teacher names must match exactly (case-sensitive)', ''],
+      ['', '• Times must not overlap for the same teacher on the same day', ''],
+    ];
+    const ws2 = XLSX.utils.aoa_to_sheet(instructionsData);
+    ws2['!cols'] = [{ wch: 15 }, { wch: 50 }, { wch: 55 }];
+    XLSX.utils.book_append_sheet(wb, ws2, 'Instructions');
+
+    XLSX.writeFile(wb, 'MusicDelight_Import_Template.xlsx');
+  }, []);
+
   const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -1208,6 +1247,9 @@ export default function ImportPage() {
             anything is saved.
           </span>
         </div>
+        <button className="downloadTemplate" onClick={downloadTemplate}>
+          <Download size={16} /> Template
+        </button>
       </header>
       <section className="importCard uploadCard">
         <label className="dropZone">
@@ -1613,6 +1655,23 @@ export default function ImportPage() {
         }
         .importHeader span {
           color: #8995ad;
+        }
+        .downloadTemplate {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 16px;
+          border: 1px solid rgba(52, 211, 153, 0.25);
+          border-radius: 10px;
+          background: rgba(52, 211, 153, 0.08);
+          color: #6ee7b7;
+          font-weight: 800;
+          font-size: 13px;
+          cursor: pointer;
+          width: max-content;
+        }
+        .downloadTemplate:hover {
+          background: rgba(52, 211, 153, 0.14);
         }
         .importCard,
         .importStats article {
