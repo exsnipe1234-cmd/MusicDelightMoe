@@ -1,6 +1,6 @@
 'use client';
 
-import { useId } from 'react';
+import { memo, useId } from 'react';
 import { Loader2, Save, X } from 'lucide-react';
 import type { TeacherRow } from '../../../providers/AppDataProvider';
 import type { RecurringDraft } from './calendarUtils';
@@ -18,7 +18,9 @@ type Props = {
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-export default function RecurringDrawer({ draft, onDraftChange, teachers, onSave, saving, onClose }: Props) {
+export default memo(RecurringDrawer);
+
+function RecurringDrawer({ draft, onDraftChange, teachers, onSave, saving, onClose }: Props) {
   const trapRef = useFocusTrap(true);
   const id = useId();
 

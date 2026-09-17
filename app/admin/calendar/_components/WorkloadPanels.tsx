@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { BarChart3, School } from 'lucide-react';
 import styles from './calendar.module.css';
 
@@ -17,7 +18,7 @@ type Props = {
   teacherColour: (name: string | null) => string;
 };
 
-export default function WorkloadPanels({ teacherWorkload, schoolWorkload, cancelledCount, filter, onTeacherFilter, onSchoolFilter, onCancelledFilter, teacherColour }: Props) {
+function WorkloadPanels({ teacherWorkload, schoolWorkload, cancelledCount, filter, onTeacherFilter, onSchoolFilter, onCancelledFilter, teacherColour }: Props) {
   return (
     <>
       <section className={styles.workloadPanel} aria-label="Teacher workload summary">
@@ -75,3 +76,5 @@ export default function WorkloadPanels({ teacherWorkload, schoolWorkload, cancel
     </>
   );
 }
+
+export default memo(WorkloadPanels);

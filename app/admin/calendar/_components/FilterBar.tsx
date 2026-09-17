@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { Search } from 'lucide-react';
 import type { TeacherRow } from '../../../providers/AppDataProvider';
 import styles from './calendar.module.css';
@@ -17,7 +18,7 @@ type Props = {
   onClear: () => void;
 };
 
-export default function FilterBar({ search, onSearchChange, filter, onFilterChange, schoolFilter, onSchoolFilterChange, teachers, schools, visibleCount, onClear }: Props) {
+function FilterBar({ search, onSearchChange, filter, onFilterChange, schoolFilter, onSchoolFilterChange, teachers, schools, visibleCount, onClear }: Props) {
   return (
     <section className={styles.filterBar} aria-label="Calendar filters">
       <div className={styles.searchBox}>
@@ -39,3 +40,5 @@ export default function FilterBar({ search, onSearchChange, filter, onFilterChan
     </section>
   );
 }
+
+export default memo(FilterBar);

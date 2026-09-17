@@ -169,9 +169,9 @@ export default function CalendarPage() {
   const exportLessons = useMemo(() => visible.filter((lesson) => lesson.lesson_date >= exportRange.start && lesson.lesson_date < exportRange.end), [visible, exportRange]);
 
   // ── CRUD Operations ──
-  const openLesson = (lesson: LessonRow) => { setDraft({ id: lesson.id, date: lesson.lesson_date, school: lesson.school, className: lesson.class_name, startTime: lesson.start_time.slice(0, 5), endTime: lesson.end_time.slice(0, 5), teacher: lesson.teacher_name ?? '', unavailable: lesson.unavailable, cancelled: lesson.cancelled }); setDay(null); setDrawer(true); };
-  const addLesson = (date: string) => { setDraft(blankDraft(date)); setDay(null); setDrawer(true); };
-  const onDatesSet = (arg: DatesSetArg) => { const next = { start: key(arg.start), end: key(arg.end), view: arg.view.type, currentStart: key(arg.view.currentStart), currentEnd: key(arg.view.currentEnd) }; setRange((current) => current.start === next.start && current.end === next.end && current.view === next.view && current.currentStart === next.currentStart && current.currentEnd === next.currentEnd ? current : next); };
+  const openLesson = useCallback((lesson: LessonRow) => { setDraft({ id: lesson.id, date: lesson.lesson_date, school: lesson.school, className: lesson.class_name, startTime: lesson.start_time.slice(0, 5), endTime: lesson.end_time.slice(0, 5), teacher: lesson.teacher_name ?? '', unavailable: lesson.unavailable, cancelled: lesson.cancelled }); setDay(null); setDrawer(true); }, []);
+  const addLesson = useCallback((date: string) => { setDraft(blankDraft(date)); setDay(null); setDrawer(true); }, []);
+  const onDatesSet = useCallback((arg: DatesSetArg) => { const next = { start: key(arg.start), end: key(arg.end), view: arg.view.type, currentStart: key(arg.view.currentStart), currentEnd: key(arg.view.currentEnd) }; setRange((current) => current.start === next.start && current.end === next.end && current.view === next.view && current.currentStart === next.currentStart && current.currentEnd === next.currentEnd ? current : next); }, []);
 
   // move() already has optimistic-like behavior (local state updated after server confirms, but revert on error)
   const move = async (arg: EventChangeArg) => {
@@ -265,8 +265,8 @@ export default function CalendarPage() {
     showInfo('Lesson deleted.');
   };
 
-  const setSelection = (id: string) => setSelectedIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
-  const selectVisible = () => setSelectedIds((current) => current.length === visible.length ? [] : visible.map((lesson) => lesson.id));
+  const setSelection = useCallback((id: string) => setSelectedIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]), []);
+  const selectVisible = useCallback(() => setSelectedIds((current) => current.length === visible.length ? [] : visible.map((lesson) => lesson.id)), [visible]);
 
   const bulkUpdate = async (changes: Partial<LessonRow>, label: string) => {
     if (!selectedLessons.length) return;

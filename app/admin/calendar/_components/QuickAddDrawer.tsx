@@ -1,6 +1,6 @@
 'use client';
 
-import { useId } from 'react';
+import { memo, useId } from 'react';
 import { Plus, X } from 'lucide-react';
 import type { TeacherRow } from '../../../providers/AppDataProvider';
 import type { QuickRow } from './calendarUtils';
@@ -24,7 +24,9 @@ type Props = {
   onSaveCopies: () => void;
 };
 
-export default function QuickAddDrawer({ quickRows, onUpdateRow, onRemoveRow, onAddRow, onSave, saving, onClose, teachers, copySourceCount, copyDateInput, onCopyDateInputChange, onAddCopyDate, copyDates, onSaveCopies }: Props) {
+export default memo(QuickAddDrawer);
+
+function QuickAddDrawer({ quickRows, onUpdateRow, onRemoveRow, onAddRow, onSave, saving, onClose, teachers, copySourceCount, copyDateInput, onCopyDateInputChange, onAddCopyDate, copyDates, onSaveCopies }: Props) {
   const trapRef = useFocusTrap(true);
   const id = useId();
 

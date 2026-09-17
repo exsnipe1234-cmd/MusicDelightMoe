@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { AlertTriangle, Building2, CalendarDays, Loader2, RefreshCw, Repeat2, Sparkles, UserRound, Users } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 
 type Summary = {
   today: string;
@@ -18,7 +18,9 @@ type Summary = {
   };
 };
 
-export default function SmartDashboard() {
+export default memo(SmartDashboard);
+
+function SmartDashboard() {
   const [data, setData] = useState<Summary | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);

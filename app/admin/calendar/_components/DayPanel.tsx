@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import { CalendarPlus, Copy, MapPin, X } from 'lucide-react';
 import type { LessonRow } from '../../../providers/AppDataProvider';
 import { mapsUrl, pretty } from './calendarUtils';
@@ -18,7 +19,9 @@ type Props = {
   teacherColour: (name: string | null) => string;
 };
 
-export default function DayPanel({ day, dayLessons, onClose, onAddLesson, onOpenLesson, onCopyToQuickAdd, onCopyToDates, teacherColour }: Props) {
+export default memo(DayPanel);
+
+function DayPanel({ day, dayLessons, onClose, onAddLesson, onOpenLesson, onCopyToQuickAdd, onCopyToDates, teacherColour }: Props) {
   const trapRef = useFocusTrap(true);
 
   return (

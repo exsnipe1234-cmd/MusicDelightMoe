@@ -1,6 +1,6 @@
 'use client';
 
-import { useId } from 'react';
+import { memo, useId } from 'react';
 import { Copy, Save, X } from 'lucide-react';
 import type { TeacherRow } from '../../../providers/AppDataProvider';
 import type { Draft } from './calendarUtils';
@@ -17,7 +17,9 @@ type Props = {
   onClose: () => void;
 };
 
-export default function LessonEditorDrawer({ draft, onDraftChange, teachers, onSave, onDelete, onDuplicate, onClose }: Props) {
+export default memo(LessonEditorDrawer);
+
+function LessonEditorDrawer({ draft, onDraftChange, teachers, onSave, onDelete, onDuplicate, onClose }: Props) {
   const trapRef = useFocusTrap(true);
   const id = useId();
   const schoolErrorId = `${id}-school-error`;

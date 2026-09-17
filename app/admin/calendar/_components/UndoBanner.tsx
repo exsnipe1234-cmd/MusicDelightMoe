@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import styles from './calendar.module.css';
 
 type Props = {
@@ -10,7 +11,7 @@ type Props = {
   onDismiss: () => void;
 };
 
-export default function UndoBanner({ action, stackDepth, undoing, onUndo, onDismiss }: Props) {
+function UndoBanner({ action, stackDepth, undoing, onUndo, onDismiss }: Props) {
   if (!action) return null;
 
   return (
@@ -25,3 +26,5 @@ export default function UndoBanner({ action, stackDepth, undoing, onUndo, onDism
     </div>
   );
 }
+
+export default memo(UndoBanner);

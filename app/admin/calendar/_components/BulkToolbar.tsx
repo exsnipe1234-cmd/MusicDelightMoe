@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import type { TeacherRow } from '../../../providers/AppDataProvider';
 import styles from './calendar.module.css';
 
@@ -18,7 +19,7 @@ type Props = {
   onDelete: () => void;
 };
 
-export default function BulkToolbar({ selectedCount, visibleCount, onSelectVisible, bulkDate, onBulkDateChange, bulkTeacher, onBulkTeacherChange, teachers, onMove, onAssign, onCancel, onDelete }: Props) {
+function BulkToolbar({ selectedCount, visibleCount, onSelectVisible, bulkDate, onBulkDateChange, bulkTeacher, onBulkTeacherChange, teachers, onMove, onAssign, onCancel, onDelete }: Props) {
   return (
     <section className={styles.bulkToolbar} aria-label="Bulk operations">
       <label>
@@ -42,3 +43,5 @@ export default function BulkToolbar({ selectedCount, visibleCount, onSelectVisib
     </section>
   );
 }
+
+export default memo(BulkToolbar);
