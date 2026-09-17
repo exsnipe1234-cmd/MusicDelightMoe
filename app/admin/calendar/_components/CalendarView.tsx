@@ -90,6 +90,12 @@ export default function CalendarView({ calendarRef, events, loading, mobileCalen
               </div>
             );
           }}
+          eventDidMount={(info) => {
+            const color = info.event.extendedProps.teacherColour;
+            if (color) {
+              info.el.style.setProperty('background-color', color, 'important');
+            }
+          }}
           nowIndicator
           slotMinTime="06:00:00"
           slotMaxTime="22:00:00"
