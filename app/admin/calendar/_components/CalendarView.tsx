@@ -94,6 +94,7 @@ export default function CalendarView({ calendarRef, events, loading, mobileCalen
             const color = info.event.extendedProps.teacherColour;
             if (color) {
               info.el.style.setProperty('background-color', color, 'important');
+              info.el.style.setProperty('color', '#1a1a2e', 'important');
             }
           }}
           nowIndicator
