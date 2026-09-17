@@ -48,7 +48,6 @@
   gap: 7px;
   padding: 10px 14px;
   border-radius: 10px;
-  color: #fff;
   text-decoration: none;
   font-weight: 800;
   font-size: 14px;
@@ -57,17 +56,19 @@
 .quickAddButton {
   border: 1px solid rgba(52, 211, 153, 0.35);
   background: rgba(52, 211, 153, 0.12);
-  color: #7ee7b4;
+  color: #15803d;
   cursor: pointer;
 }
 
 .conflictLink {
   background: #6653de;
+  color: #fff;
 }
 
 .exportButton {
   border: 1px solid var(--cal-border-export);
   background: var(--cal-bg-button-secondary);
+  color: var(--cal-text-primary);
   cursor: pointer;
 }
 
